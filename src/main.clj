@@ -56,15 +56,19 @@
 (defn formula-for-level [level]
   (* 25 level (+ level 1))
   )
-(def max-level 100)
-(def all-levels (vec (range 100)))
+(def max-level 10)
+(def all-levels (vec (range 10)))
 (defn xp-needed-to-level-up [vector-levels] (map formula-for-level vector-levels))
 
 ;(defn xp-needed-to-level-up [vector-levels]   ; reseno je sa jednom funkcijom
 ;  (map (fn [level] (* 25 level (+ level 1))) vector-levels))
 
-
-
+;dobijam koji je lvl ako upisem neki xp
+(reduce (fn [lvl-count level]
+          (if (> 2400 level) (inc lvl-count) lvl-count) )  all-levels)
+;sad mi treba za svakog usera da ucita odjednom
+(map  (fn [:xp] (reduce (fn [lvl-count level]
+               (if (> :xp level) (inc lvl-count) lvl-count) )  all-levels)) users)
 
 
 
