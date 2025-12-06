@@ -30,3 +30,18 @@
   (sort-by :xp desc participant-list))
 
 (println leaderboard users)
+
+(defn lvl-up
+  "ako korisnik ima od 0-100xp onda je lvl1, a vise od 100xp onda je lvl 2"
+  [useri]
+  (reduce < 100 useri)
+  )
+(def map-level
+  (map
+    (fn [user]
+      (if (< (:xp user) 100)
+        (assoc user :level 1) (assoc user :level 2)   ;assoc funkcija dodaje na neki seq key-word i value pair,
+        ))
+    users))
+(println map-level
+         )
