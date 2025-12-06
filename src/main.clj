@@ -4,8 +4,8 @@
 
 ;(println xp-gained-per-user
 ;)
-(defn desc [a b] ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
-  (compare b a)) ; sort koristi compare i time obrne mesto manjeg i veceg, desc je samo suprotno
+(defn desc [a b]                                            ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
+  (compare b a))                                            ; sort koristi compare i time obrne mesto manjeg i veceg, desc je samo suprotno
 
 (def most-xp (reduce max xp-gained-per-user))
 
@@ -18,11 +18,12 @@
   (sort desc participants-List)
   )
 
-(println(leaderboard xp-gained-per-user))
+(println (leaderboard xp-gained-per-user))
 
-(def users [{:name "Uros" :xp 130 }
+(def users [{:name "Uros" :xp 130}
             {:name "Milan" :xp 40}
-            {:name "Micko" :xp 70}])
+            {:name "Micko" :xp 70}
+            {:name "Trener" :xp 2400}])
 (defn
   leaderboard
   "users Leaderboard by earned XP"
@@ -40,8 +41,45 @@
   (map
     (fn [user]
       (if (< (:xp user) 100)
-        (assoc user :level 1) (assoc user :level 2)   ;assoc funkcija dodaje na neki seq key-word i value pair,
+        (assoc user :level 1) (assoc user :level 2)         ;assoc funkcija dodaje na neki seq key-word i value pair,
         ))
     users))
 (println map-level
          )
+
+;funkcija koja ce racunati koliko xp treba za svaki level,
+;formula ce biti nesto od ovog:
+;    25*X*(1+X)
+;    40*X*(1+X)
+;    50*X*(1+X)
+
+(defn formula-for-level [level]
+  (* 25 level (+ level 1))
+  )
+(def max-level 100)
+(def all-levels (vec (range 100)))
+(defn xp-needed-to-level-up [vector-levels] (map formula-for-level vector-levels))
+
+;(defn xp-needed-to-level-up [vector-levels]   ; reseno je sa jednom funkcijom
+;  (map (fn [level] (* 25 level (+ level 1))) vector-levels))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
