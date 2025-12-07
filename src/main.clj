@@ -20,7 +20,7 @@
 
 (println (leaderboard xp-gained-per-user))
 
-(def users [{:name "Uros" :xp 130}
+(def users [{:name "Uros" :xp 130 }
             {:name "Milan" :xp 40}
             {:name "Micko" :xp 70}
             {:name "Trener" :xp 2400}])
@@ -59,7 +59,7 @@
 (def max-level 10)
 (def all-levels (vec (range 10)))
 (defn xp-needed-to-level-up [vector-levels] (map formula-for-level vector-levels))
-
+(def xp-level-up (xp-needed-to-level-up all-levels))
 ;(defn xp-needed-to-level-up [vector-levels]   ; reseno je sa jednom funkcijom
 ;  (map (fn [level] (* 25 level (+ level 1))) vector-levels))
 
@@ -67,12 +67,22 @@
 (reduce (fn [lvl-count level]
           (if (> 2400 level) (inc lvl-count) lvl-count) )  all-levels)
 ;sad mi treba za svakog usera da ucita odjednom
-(map  (fn [:xp] (reduce (fn [lvl-count level]
-               (if (> :xp level) (inc lvl-count) lvl-count) )  all-levels)) users)
+(map  (fn [user] (reduce (fn [lvl-count level]
+               (if (> (:xp user) level) (inc lvl-count) lvl-count) )  all-levels)) users)
 
+; pogresna ali da imam
+(map (fn [user] (reduce (fn [lvl-count level]
+                          (if (> (:xp user) level)
+                            (assoc user :level (inc lvl-count))
+                            (assoc user :level (lvl-count)))  )  all-levels)) users)
+; EVO JE DOBRAAAA
+(map (fn [user] (reduce (fn [level-count level]
+                          (if (>= (:xp user) level) (inc level-count) level-count ))  0
+                        xp-level-up))
+     users)
 
-
-
+(def users-with-level (map (fn [user]
+                             ) users))
 
 
 
