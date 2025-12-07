@@ -20,10 +20,11 @@
 
 (println (leaderboard xp-gained-per-user))
 
-(def users [{:name "Uros" :xp 130 }
-            {:name "Milan" :xp 40}
-            {:name "Micko" :xp 70}
-            {:name "Trener" :xp 2400}])
+(def users [{:name "Uros" :xp 130 :level 0}
+             {:name "Milan" :xp 40 :level 0}
+             {:name "Micko" :xp 70 :level 0}
+             {:name "Trener" :xp 2400 :level 0}])
+
 (defn
   leaderboard
   "users Leaderboard by earned XP"
@@ -44,8 +45,8 @@
         (assoc user :level 1) (assoc user :level 2)         ;assoc funkcija dodaje na neki seq key-word i value pair,
         ))
     users))
-(println map-level
-         )
+;(println map-level
+;         )
 
 ;funkcija koja ce racunati koliko xp treba za svaki level,
 ;formula ce biti nesto od ovog:
@@ -81,10 +82,16 @@
                         xp-level-up))
      users)
 
-(def users-with-level (map (fn [user]
-                             ) users))
-
-
+;finalna funkcija koja odredjuje nivoe svih usera
+(map (fn [user] (assoc user :level (reduce (fn [level-count level]
+                                             (if (>= (:xp user) level) (inc level-count) level-count ))  0
+                                           xp-level-up)))
+     users)
+;
+(def users-with-level (map (fn [user] (assoc user :level (reduce (fn [level-count level]
+                                                                   (if (>= (:xp user) level) (inc level-count) level-count ))  0
+                                                                 xp-level-up)))
+                           users))
 
 
 
