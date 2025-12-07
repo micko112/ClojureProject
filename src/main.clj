@@ -4,8 +4,8 @@
 
 ;(println xp-gained-per-user
 ;)
-(defn desc [a b]                                            ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
-  (compare b a))                                            ; sort koristi compare i time obrne mesto manjeg i veceg, desc je samo suprotno
+(defn desc [a b] ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
+  (compare b a)) ; sort koristi compare i time obrne mesto manjeg i veceg, desc je samo suprotno
 
 (def most-xp (reduce max xp-gained-per-user))
 
@@ -31,7 +31,7 @@
   [participant-list]
   (sort-by :xp desc participant-list))
 
-(println leaderboard users)
+(println (leaderboard users))
 
 (defn lvl-up
   "ako korisnik ima od 0-100xp onda je lvl1, a vise od 100xp onda je lvl 2"
@@ -42,7 +42,7 @@
   (map
     (fn [user]
       (if (< (:xp user) 100)
-        (assoc user :level 1) (assoc user :level 2)         ;assoc funkcija dodaje na neki seq key-word i value pair,
+        (assoc user :level 1) (assoc user :level 2) ;assoc funkcija dodaje na neki seq key-word i value pair,
         ))
     users))
 ;(println map-level
@@ -58,7 +58,7 @@
   (* 25 level (+ level 1))
   )
 (def max-level 10)
-(def all-levels (vec (range 10)))
+(def all-levels (vec (range 1 10)))
 (defn xp-needed-to-level-up [vector-levels] (map formula-for-level vector-levels))
 (def xp-level-up (xp-needed-to-level-up all-levels))
 ;(defn xp-needed-to-level-up [vector-levels]   ; reseno je sa jednom funkcijom
@@ -87,11 +87,31 @@
                                              (if (>= (:xp user) level) (inc level-count) level-count ))  0
                                            xp-level-up)))
      users)
-;
-(def users-with-level (map (fn [user] (assoc user :level (reduce (fn [level-count level]
-                                                                   (if (>= (:xp user) level) (inc level-count) level-count ))  0
-                                                                 xp-level-up)))
+; nova lista usersa koji imaju izracunat level
+(def users-with-level
+  (map (fn [user]
+         (assoc user :level
+                     (reduce (fn [level-count level]
+                               (if (>= (:xp user) level)
+                                 (inc level-count) level-count ))
+                             0
+                             xp-level-up)))
                            users))
+; funckija koja odredjuje levele svih usera
+(defn define-users-levels
+  [list-users xp-for-levels]
+  (map (fn [user]
+         (assoc user :level
+                     (reduce (fn [level-count level]
+                               (if (>= (:xp user) level)
+                                 (inc level-count) level-count ))
+                             0
+                             xp-for-levels)))
+       list-users))
+(println (define-users-levels users xp-level-up)
+         )
+
+
 
 
 
