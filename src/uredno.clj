@@ -30,6 +30,7 @@
                              0
                              xp-for-levels)))
        list-users))
+
 (println (define-users-levels users xp-level-up)
          )
 (def users (vec (define-users-levels users xp-level-up)))
@@ -39,3 +40,29 @@
   [participant-list]
   (sort-by :xp desc participant-list))
 (println (leaderboard users))
+
+(defn filter-by-level [level] (reduce (fn [acc user]
+                                        (if (= (:level user) level) (conj acc user) acc)) [] users))
+
+
+(def vec-set-levels (vec (sort (set ( map (fn [user] (:level user) )users)))))
+
+(defn users-by-level [vec-set-levels users]
+  (map (fn [level-sorted]
+         (reduce (fn [acc user]
+                   (if (= (:level user) level-sorted)(conj acc user) acc) )
+                 [] users)) vec-set-levels))
+
+(users-by-level vec-set-levels users)
+
+(defn make-user [name]
+  {:name name
+   :xp 0
+   :level 0})
+
+(make-user "Micko")
+(make-user "Milan")
+(make-user "Uros")
+(make-user "Trener")
+
+(defn add-xp [user xp] (update user :xp + xp))

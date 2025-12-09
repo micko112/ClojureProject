@@ -11,12 +11,13 @@
 
 (println most-xp)
 
-(defn
-  leaderboard
-  "leaderboard by earned xp"
-  [participants-List]
-  (sort desc participants-List)
-  )
+; stara leaderboard fun
+;(defn
+;  leaderboard
+;  "leaderboard by earned xp"
+;  [participants-List]
+;  (sort desc participants-List)
+;  )
 
 (println (leaderboard xp-gained-per-user))
 
@@ -111,16 +112,53 @@
 (println (define-users-levels users xp-level-up)
          )
 
+;filter funkcija da vrati igrace koji su odredjeni level
+; na primer sve igrace koji su level 1
 
+(map (fn [user] (if (= (:level user) 1) (conj users user) (println "nije usao u listu")) )
+     users)
 
+(map (fn [user]
+       (reduce (fn [acc elm]
+                 (if (= (:level user) acc))) all-levels))
+     users)
+; ova vraca ko je level 1
+(map (fn [user]
+       (reduce (fn [level elm]
+                 (if (= (:level user) level) (println user) (println "ja nisam level 1" elm))) all-levels))
+     users)
+; FILTRIRA PO LEVELU
+(defn filter-by-level [level] (reduce (fn [acc user]
+          (if (= (:level user) level) (conj acc user) acc)) [] users))
+; filtrira po duzini stringa
+(reduce (fn [acc user]
+          (if (< (count (:name user)) 5)
+            (conj acc user) acc))
+        [] users)
 
+(def vec-levels
+  (vec (sort( map (fn [user] (:level user) )users))) )
 
+(def set-levels
+  (vector (set (sort( map (fn [user] (:level user) )users)))) )
 
+(def vec-set-levels (vec (sort (set ( map (fn [user] (:level user) )users)))))
 
+(map (fn [level-sorted] (reduce (fn [acc user]
+                                  (if (= (:level user) level-sorted)(conj acc user) acc) )
+                                [] users)) set-levels)
+(defn make-user [name]
+  {:name name
+   :xp 0
+   :level 0})
 
+(make-user "Micko")
+(make-user "Milan")
+(make-user "Uros")
+(make-user "Trener")
 
+(defn add-xp [user xp] (update user :xp + xp))
 
-
-
-
-
+(defn dodaj-xp [user xp] (map (fn [name ]
+                                (if (= (:name user) name)
+                                  (add-xp user xp))) users))
