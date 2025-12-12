@@ -64,5 +64,6 @@
 (make-user "Milan")
 (make-user "Uros")
 (make-user "Trener")
-
+(def micko (make-user "Micko"))
 (defn add-xp [user xp] (update user :xp + xp))
+(def micko (add-xp micko 40))

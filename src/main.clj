@@ -162,3 +162,11 @@
 (defn dodaj-xp [user xp] (map (fn [name ]
                                 (if (= (:name user) name)
                                   (add-xp user xp))) users))
+
+(def micko (add-xp micko 40))
+
+(defn need-for-level-up [user level]
+  (first ()))
+(defn next-level [xp] (first (reduce (fn [acc elm]
+                (if (< xp elm) (conj acc elm) acc)) [] xp-level-up)))
+(defn remaining-xp-for-level-up [xp] (- (next-level xp) xp))
