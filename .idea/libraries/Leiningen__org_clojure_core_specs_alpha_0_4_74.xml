@@ -1,5 +1,5 @@
 <component name="libraryTable">
-  <library name="Deps: org.clojure/core.specs.alpha:0.4.74">
+  <library name="Leiningen: org.clojure/core.specs.alpha:0.4.74">
     <CLASSES>
       <root url="jar://$MAVEN_REPOSITORY$/org/clojure/core.specs.alpha/0.4.74/core.specs.alpha-0.4.74.jar!/" />
     </CLASSES>

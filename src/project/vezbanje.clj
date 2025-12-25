@@ -1,6 +1,6 @@
-(ns main)
+(ns project.vezbanje)
 
-(def xp-gained-per-user [130 40 70])
+(comment (def xp-gained-per-user [130 40 70])
 
 ;(println xp-gained-per-user
 ;)
@@ -9,7 +9,7 @@
 
 (def most-xp (reduce max xp-gained-per-user))
 
-(println most-xp)
+#_(println most-xp)
 
 ; stara leaderboard fun
 ;(defn
@@ -19,7 +19,7 @@
 ;  (sort desc participants-List)
 ;  )
 
-(println (leaderboard xp-gained-per-user))
+
 
 (def users [{:name "Uros" :xp 130 :level 0}
              {:name "Milan" :xp 40 :level 0}
@@ -32,7 +32,7 @@
   [participant-list]
   (sort-by :xp desc participant-list))
 
-(println (leaderboard users))
+#_(println (leaderboard users))
 
 (defn lvl-up
   "ako korisnik ima od 0-100xp onda je lvl1, a vise od 100xp onda je lvl 2"
@@ -43,7 +43,8 @@
   (map
     (fn [user]
       (if (< (:xp user) 100)
-        (assoc user :level 1) (assoc user :level 2) ;assoc funkcija dodaje na neki seq key-word i value pair,
+        (assoc user :level 1) (assoc user :level 2)
+         ;assoc funkcija dodaje na neki seq key-word i value pair,
         ))
     users))
 ;(println map-level
@@ -69,22 +70,22 @@
 (reduce (fn [lvl-count level]
           (if (> 2400 level) (inc lvl-count) lvl-count) )  all-levels)
 ;sad mi treba za svakog usera da ucita odjednom
-(map  (fn [user] (reduce (fn [lvl-count level]
+#_(map  (fn [user] (reduce (fn [lvl-count level]
                (if (> (:xp user) level) (inc lvl-count) lvl-count) )  all-levels)) users)
 
 ; pogresna ali da imam
-(map (fn [user] (reduce (fn [lvl-count level]
+#_(map (fn [user] (reduce (fn [lvl-count level]
                           (if (> (:xp user) level)
                             (assoc user :level (inc lvl-count))
                             (assoc user :level (lvl-count)))  )  all-levels)) users)
 ; EVO JE DOBRAAAA
-(map (fn [user] (reduce (fn [level-count level]
+#_(map (fn [user] (reduce (fn [level-count level]
                           (if (>= (:xp user) level) (inc level-count) level-count ))  0
                         xp-level-up))
      users)
 
 ;finalna funkcija koja odredjuje nivoe svih usera
-(map (fn [user] (assoc user :level (reduce (fn [level-count level]
+#_(map (fn [user] (assoc user :level (reduce (fn [level-count level]
                                              (if (>= (:xp user) level) (inc level-count) level-count ))  0
                                            xp-level-up)))
      users)
@@ -109,21 +110,21 @@
                              0
                              xp-for-levels)))
        list-users))
-(println (define-users-levels users xp-level-up)
+#_(println (define-users-levels users xp-level-up)
          )
 
 ;filter funkcija da vrati igrace koji su odredjeni level
 ; na primer sve igrace koji su level 1
 
-(map (fn [user] (if (= (:level user) 1) (conj users user) (println "nije usao u listu")) )
+#_(map (fn [user] (if (= (:level user) 1) (conj users user) (println "nije usao u listu")) )
      users)
 
-(map (fn [user]
+#_(map (fn [user]
        (reduce (fn [acc elm]
                  (if (= (:level user) acc))) all-levels))
      users)
 ; ova vraca ko je level 1
-(map (fn [user]
+#_(map (fn [user]
        (reduce (fn [level elm]
                  (if (= (:level user) level) (println user) (println "ja nisam level 1" elm))) all-levels))
      users)
@@ -131,7 +132,7 @@
 (defn filter-by-level [level] (reduce (fn [acc user]
           (if (= (:level user) level) (conj acc user) acc)) [] users))
 ; filtrira po duzini stringa
-(reduce (fn [acc user]
+#_(reduce (fn [acc user]
           (if (< (count (:name user)) 5)
             (conj acc user) acc))
         [] users)
@@ -144,7 +145,7 @@
 
 (def vec-set-levels (vec (sort (set ( map (fn [user] (:level user) )users)))))
 
-(map (fn [level-sorted] (reduce (fn [acc user]
+#_(map (fn [level-sorted] (reduce (fn [acc user]
                                   (if (= (:level user) level-sorted)(conj acc user) acc) )
                                 [] users)) set-levels)
 (defn make-user [name]
@@ -152,21 +153,34 @@
    :xp 0
    :level 0})
 
-(make-user "Micko")
+(comment
+  (make-user "Micko")
 (make-user "Milan")
 (make-user "Uros")
-(make-user "Trener")
+(make-user "Trener"))
 
 (defn add-xp [user xp] (update user :xp + xp))
 
 (defn dodaj-xp [user xp] (map (fn [name ]
                                 (if (= (:name user) name)
-                                  (add-xp user xp))) users))
+                                  (add-xp user xp) user)) user))
 
-(def micko (add-xp micko 40))
+#_(def micko (add-xp micko 40))
 
 (defn need-for-level-up [user level]
   (first ()))
 (defn next-level [xp] (first (reduce (fn [acc elm]
                 (if (< xp elm) (conj acc elm) acc)) [] xp-level-up)))
 (defn remaining-xp-for-level-up [xp] (- (next-level xp) xp))
+
+
+
+
+
+         (defn take-first-100 [leaderboard] take 100 leaderboard  )
+()
+
+
+
+
+         )
