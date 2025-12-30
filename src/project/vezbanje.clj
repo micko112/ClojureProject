@@ -1,4 +1,5 @@
-(ns project.vezbanje)
+(ns project.vezbanje
+  (:require [datomic.api :as db ]))
 
 (comment (def xp-gained-per-user [130 40 70])
 
