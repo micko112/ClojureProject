@@ -1,5 +1,6 @@
 (ns project.uredno
-  (:require [datomic.api :as db ]))
+  (:require [datomic.api :as d ]
+            [project.db :as db]))
 
 (defn desc [a b] ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
   (compare b a))

@@ -23,15 +23,33 @@
                   :db/cardinality :db.cardinality/one
                   :db/doc         "Rang on leaderboard of user"}
                  ])
-;@(d/transact conn user-shema)
+@(d/transact conn user-shema)
 (def db (d/db conn))
 
 (def users-db [{}])
 
 (def user-ids (d/q '[:find ?e .
                      :where [?e :user/username]]db))
+
+(defn get-all-users [db] (d/q '[:find (pull ?e [*])
+                     :where [?e :user/username]] db))
 (map (fn [user-id] ))
 (defn create-user! [name] @(d/transact conn [{:user/username name
                                           :user/xp 0
-                                          :user/level 0}]))
+                                              :user/level 0}]))
+; pokusaj 1
+#_(defn add-xp [username xp] @(d/transact conn [(+ xp (d/q '[:find ?xp
+                                                     :where [?e :user/username username]
+                                                            [?e :user/xp ?xp]
+                                                     ] db))]))
+; pokusaj 2 sa pomoci jer ne bih znao sam
+(defn add-xp [conn db username xp]
+  (let [e current-xp]
+    (first (d/q))))
 
+
+(d/q '[:find ?e ?xp
+       :where [?e :user/username "Micko"]
+       [?e :user/xp ?xp]
+       ]
+     db)
