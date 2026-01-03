@@ -2,7 +2,7 @@
   (:require [datomic.api :as d ]))
 
 (def db-uri "datomic:dev://localhost:4334/bebetter")
-(d/create-database db-uri)
+;(d/create-database db-uri)
 (def conn (d/connect db-uri))
 
 (def user-shema [{:db/ident       :user/username
@@ -43,9 +43,17 @@
                                                             [?e :user/xp ?xp]
                                                      ] db))]))
 ; pokusaj 2 sa pomoci jer ne bih znao sam
-(defn add-xp [conn db username xp]
-  (let [e current-xp]
-    (first (d/q))))
+(defn add-xp [conn db username xp-to-add]
+  (let [[e current-xp]
+        (first (d/q '[:find ?e ?xp
+                      :in $ ?username
+                      :where [?e :user/username ?username]
+                      [?e :user/xp ?xp]
+                      ]
+                    db username))
+        new-xp (+ current-xp xp-to-add)]
+    @(d/transact conn [[:db/add e :user/xp new-xp]])
+    ))
 
 
 (d/q '[:find ?e ?xp
