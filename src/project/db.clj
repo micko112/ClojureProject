@@ -54,9 +54,19 @@
         new-xp (+ current-xp xp-to-add)]
     @(d/transact conn [[:db/add e :user/xp new-xp]])
     ))
+#_(defn add-xp-3 [conn db username xp-to-add]
+  (let [[e current-xp]
+        (first (d/q '[:find ?e ?xp
+                      :in $ ?username
+                      :where [?e :user/username ?username]
+                      [?e :user/xp ?xp]] db ))]))
 
 
-(d/q '[:find ?e ?xp
+#_(defn add-xp-4 [conn db username xp-to-add]
+  (let [[e current-xp]
+        (d/q)]))
+#_(d/q '[:find ?e ?xp
+       :in $ ?username
        :where [?e :user/username "Micko"]
        [?e :user/xp ?xp]
        ]
