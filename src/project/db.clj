@@ -71,3 +71,64 @@
        [?e :user/xp ?xp]
        ]
      db)
+
+; Transakciona funckija
+(def add-xp-tx {:db/ident :user/add-xp
+                :db/fn (d/function
+                         '{:lang "clojure"
+                          :params [db username xp]
+                          :code (let [[e current-xp]
+                                      (first (d/q '[:find ?e ?xp
+                                                    :in $ ?username
+                                                    :where [?e :user/username ?username]
+                                                    [?e :user/xp ?xp]
+                                                    ] db username))]
+                                  [[:db/add e :user/xp (+ current-xp xp)]])})})
+;@(d/transact conn [add-xp-tx])
+
+;@(d/transact conn [[:user/add-xp "Micko" 40]])
+
+(def activity-schema [{:db/ident :activity/user
+                       :db/valueType :db.type/ref
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "User who performed activity"}
+                      {:db/ident :activity/type
+                       :db/valueType :db.type/keyword
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "Main type of activity (training, work, studying etc.)"}
+                      {:db/ident :activity/subtype
+                       :db/valueType :db.type/keyword
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "Optional type of activity (training, work, studying etc.)"}
+                      {:db/ident :activity/duration
+                       :db/valueType :db.type/long
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "Duration of activity in minutes."}
+                      {:db/ident :activity/intensity
+                       :db/valueType :db.type/long
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "Intensity of activity on scale 1-5"}
+                      {:db/ident :activity/at
+                       :db/valueType :db.type/instant
+                       :db/cardinality :db.cardinality/one
+                       :db/doc "When activity happened"}
+                      ])
+
+@(d/transact conn activity-schema)
+
+(def activity-type-schema [{:db/ident :activity-type/key
+                            :db/valueType :db.type/keyword
+                            :db/cardinality :db.cardinality/one
+                            :db/doc "Key word type of activity"}
+                           {:db/ident :activity-type/name
+                            :db/valueType :db.type/string
+                            :db/cardinality :db.cardinality/one
+                            :db/doc "Name of activity type"}
+                           {:db/ident :activity-type/xp-per-minute
+                            :db/valueType :db.type/long
+                            :db/cardinality :db.cardinality/one
+                            :db/doc "Xp per minute"}
+                           ])
+(def db (d/db conn))
+@(d/transact conn activity-type-schema)
+
