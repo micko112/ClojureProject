@@ -35,7 +35,7 @@
                        :db/cardinality :db.cardinality/one
                        :db/doc "Intensity of activity on scale 1-5"}
                       {:db/ident :activity/at
-                       :db/valueType :db.type/ref
+                       :db/valueType :db.type/instant
                        :db/cardinality :db.cardinality/one
                        :db/index true
                        :db/doc "When activity happened"}

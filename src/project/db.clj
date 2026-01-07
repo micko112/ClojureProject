@@ -1,7 +1,8 @@
 (ns project.db
-  (:require [datomic.api :as d ]
+  (:require [datomic.api :as d]
             [database.schema :as schema]
-            [database.seed :as seed-db]))
+            [database.seed :as seed-db])
+  (:import (java.util Date)))
 
 (def db-uri "datomic:dev://localhost:4334/bebetter")
 (d/create-database db-uri)
@@ -18,7 +19,7 @@
 
 (defn create-user! [name] @(d/transact conn [{:user/username name
                                           :user/xp 0
-                                              :user/level 0}]))
+                                              }]))
 ; pokusaj 1
 ()
 #_(defn add-xp [username xp] @(d/transact conn [(+ xp (d/q '[:find ?xp
@@ -69,10 +70,45 @@
 ;@(d/transact conn [add-xp-tx])
 ;@(d/transact conn [[:user/add-xp "Micko" 40]])
 
+
+
 @(d/transact conn schema/activity-schema)
 
 (def db (d/db conn))
-@(d/transact conn schema/activity-type-schema)
+;@(d/transact conn schema/activity-type-schema)
+@(d/transact conn seed-db/initial-type-activities)
 
+(def add-activity-tx {:db/ident :activity/add
+                      :db/fn (d/function '{:lang "clojure"
+                                           :params [db username activity-type-key duration intensity]
+                                           :code (let [
+                                                       user-e
+                                                       (d/q '[:find ?e .
+                                                              :in $ ?username
+                                                              :where [?e :user/username ?username]]
+                                                            db username)
+                                                       [act-type-e xp-per-min]
+                                                       (first (d/q '[:find ?e ?xp-per-minute
+                                                                     :in $ ?type
+                                                                     :where [?e :activity-type/key ?type]
+                                                                     [?e :activity-type/xp-per-minute ?xp-per-minute]
+                                                                     ] db activity-type-key))
+                                                       gained-xp (* duration xp-per-min intensity)
 
+                                                       current-xp (or (:user/xp (d/entity db user-e)) 0)
 
+                                                       new-xp (+ current-xp gained-xp)
+                                                       activity-id (d/tempid :db.part/user)]
+                                                   [
+                                                    {:db/id activity-id
+                                                     :activity/user user-e
+                                                     :activity/type act-type-e
+                                                     :activity/duration duration
+                                                     :activity/intensity intensity
+                                                     }
+                                                    [:db/add user-e :user/xp new-xp
+                                                     ]])})})
+
+@(d/transact conn [add-activity-tx])
+;@(d/transact conn [[:activity/add "Micko" :training 60 3 (java.util.Date.)]])
+@(d/transact conn [[:activity/add "Micko" :training 60 3 ]])
