@@ -105,6 +105,7 @@
                                                      :activity/type act-type-e
                                                      :activity/duration duration
                                                      :activity/intensity intensity
+                                                     :activity/start-time (java.util.Date.)
                                                      }
                                                     [:db/add user-e :user/xp new-xp
                                                      ]])})})
@@ -112,3 +113,18 @@
 @(d/transact conn [add-activity-tx])
 ;@(d/transact conn [[:activity/add "Micko" :training 60 3 (java.util.Date.)]])
 @(d/transact conn [[:activity/add "Micko" :training 60 3 ]])
+@(d/transact conn [[:activity/add "Micko" :study 60 3 ]])
+(defn user-activities [username] (d/q '[:find ?a-type ?a-duration ?a-intensity ?a-start-time
+                                        :in $ ?username
+                                        :where  [?u :user/username ?username]
+                                        [?a :activity/user ?u]
+                                        [?a :activity/type ?t]
+                                        [?t :activity-type/name ?a-type]
+                                        [?a :activity/duration ?a-duration]
+                                        [?a :activity/intensity ?a-intensity ]
+                                        [?a :activity/start-time ?a-start-time ]
+                                        ] (d/db conn) username))
+
+
+
+
