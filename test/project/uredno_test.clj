@@ -3,6 +3,7 @@
             [project.uredno :as u]))
 
 
+
 (def sample-users [{:name "Uros" :xp 130 :level 1}
                    {:name "Micko" :xp 70 :level 1}
                    {:name "Milan" :xp 40 :level 0}

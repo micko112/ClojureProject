@@ -2,11 +2,15 @@
   (:require [datomic.api :as d]
             [database.schema :as schema]
             [database.seed :as seed-db])
-  (:import (java.util Date)))
+  (:import (java.util Date)
+           (java.time ZonedDateTime LocalDate ZoneId))
+
+  )
 
 (def db-uri "datomic:dev://localhost:4334/bebetter")
 (d/create-database db-uri)
 (def conn (d/connect db-uri))
+
 
 @(d/transact conn schema/user-schema)
 (def db (d/db conn))
@@ -21,7 +25,7 @@
                                           :user/xp 0
                                               }]))
 ; pokusaj 1
-()
+
 #_(defn add-xp [username xp] @(d/transact conn [(+ xp (d/q '[:find ?xp
                                                      :where [?e :user/username username]
                                                             [?e :user/xp ?xp]
@@ -112,8 +116,8 @@
 
 @(d/transact conn [add-activity-tx])
 ;@(d/transact conn [[:activity/add "Micko" :training 60 3 (java.util.Date.)]])
-@(d/transact conn [[:activity/add "Micko" :training 60 3 ]])
-@(d/transact conn [[:activity/add "Micko" :study 60 3 ]])
+;@(d/transact conn [[:activity/add "Micko" :training 60 3 ]])
+;@(d/transact conn [[:activity/add "Micko" :study 60 3 ]])
 (defn user-activities [username] (d/q '[:find ?a-type ?a-duration ?a-intensity ?a-start-time
                                         :in $ ?username
                                         :where  [?u :user/username ?username]
@@ -125,6 +129,52 @@
                                         [?a :activity/start-time ?a-start-time ]
                                         ] (d/db conn) username))
 
+; chatgpt pomoc za datume i vreme
+(def zone (ZoneId/of "Europe/Belgrade"))
+(defn day-interval [^LocalDate date]
 
+  (let [start (.atStartOfDay date zone)
+        end   (.plusDays start 1)]
+    {:start-day (java.util.Date/from (.toInstant start))
+     :end-day   (java.util.Date/from (.toInstant end))}))
 
+(day-interval (LocalDate/now))
+
+(defn daily-activities-by-user [username date]
+  (let [{:keys [start-day end-day]} ( day-interval date)]
+    (d/q '[:find ?a-start-time ?a-type ?a-duration ?a-intensity
+           :in $ ?username ?start ?end
+           :where [?u :user/username ?username]
+           [?a :activity/user ?u]
+           [?a :activity/type ?t]
+           [?t :activity-type/name ?a-type]
+           [?a :activity/duration ?a-duration]
+           [(>= ?a-start-time ?start)]
+           [(< ?a-start-time ?end)]
+           [?a :activity/intensity ?a-intensity ]
+           [?a :activity/start-time ?a-start-time ]
+           ]
+         (d/db conn) username start-day end-day )
+    )
+  )
+
+(defn daily-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (day-interval date)
+        rows (d/q '[:find ?a-dur ?a-int ?xp-per-min
+                                           :in $ ?username ?start ?end
+                    :where
+                                           [?u :user/username ?username]
+                                           [?a :activity/user ?u]
+                                           [?a :activity/type ?t]
+                                           [?t :activity-type/key ?a-type-key]
+                                           [?t :activity-type/xp-per-minute ?xp-per-min]
+                                           [?a :activity/duration ?a-dur]
+                                           [?a :activity/intensity ?a-int]
+                                           [?a :activity/start-time ?a-start-time]
+                                           [(>= ?a-start-time ?start)]
+                                           [(< ?a-start-time ?end)]
+                                           ]
+                                         (d/db conn) username start-day end-day)]
+    (reduce (fn [sum [dur int xp-by-min]] (+ (* dur int xp-by-min) sum)) 0 rows)
+    ))
 
