@@ -2,13 +2,15 @@
   (:require [datomic.api :as d]
             [database.schema :as schema]
             [database.seed :as seed-db])
-  (:import (java.util Date)
-           (java.time ZonedDateTime LocalDate ZoneId))
+  (:import (java.time.temporal TemporalAdjusters)
+           (java.util Date)
+           (java.time ZonedDateTime LocalDate ZoneId)
+           (java.time Instant LocalDate DayOfWeek MonthDay YearMonth ZoneId))
 
   )
 
 (def db-uri "datomic:dev://localhost:4334/bebetter")
-(d/create-database db-uri)
+;(d/create-database db-uri)
 (def conn (d/connect db-uri))
 
 
@@ -76,11 +78,12 @@
 
 
 
-@(d/transact conn schema/activity-schema)
+;@(d/transact conn schema/activity-schema)
 
 (def db (d/db conn))
 ;@(d/transact conn schema/activity-type-schema)
-@(d/transact conn seed-db/initial-type-activities)
+;@(d/transact conn seed-db/initial-type-activities)
+;@(d/transact conn seed-db/users)
 
 (def add-activity-tx {:db/ident :activity/add
                       :db/fn (d/function '{:lang "clojure"
@@ -109,7 +112,7 @@
                                                      :activity/type act-type-e
                                                      :activity/duration duration
                                                      :activity/intensity intensity
-                                                     :activity/start-time (java.util.Date.)
+                                                     :activity/start-time (Date.)
                                                      }
                                                     [:db/add user-e :user/xp new-xp
                                                      ]])})})
@@ -129,14 +132,15 @@
                                         [?a :activity/start-time ?a-start-time ]
                                         ] (d/db conn) username))
 
+;DAILY FUNCTIONS ------------------------------------
 ; chatgpt pomoc za datume i vreme
 (def zone (ZoneId/of "Europe/Belgrade"))
-(defn day-interval [^LocalDate date]
 
+(defn day-interval [^LocalDate date]
   (let [start (.atStartOfDay date zone)
         end   (.plusDays start 1)]
-    {:start-day (java.util.Date/from (.toInstant start))
-     :end-day   (java.util.Date/from (.toInstant end))}))
+    {:start-day (Date/from (.toInstant start))
+     :end-day   (Date/from (.toInstant end))}))
 
 (day-interval (LocalDate/now))
 
@@ -177,4 +181,90 @@
                                          (d/db conn) username start-day end-day)]
     (reduce (fn [sum [dur int xp-by-min]] (+ (* dur int xp-by-min) sum)) 0 rows)
     ))
+
+; WEEKLY FUNCTIONS ---------------------------------------------
+(defn week-interval [^LocalDate date]
+  (let [start (.with date (TemporalAdjusters/previousOrSame DayOfWeek/MONDAY))
+        start-zdt (.atStartOfDay start  zone)
+        end-zdt (.plusWeeks start-zdt 1)
+        ]
+    {:start-day (Date/from (.toInstant start-zdt))
+     :end-day (Date/from (.toInstant end-zdt))}))
+
+(defn weekly-activities-by-user [username date]
+  (let [{:keys [start-day end-day]} (week-interval date)]
+    (d/q '[:find ?a ?username ?t-key ?name ?duration ?intensity
+           :in $ ?username ?start ?end
+           :where [?u :user/username ?username]
+           [?a :activity/user ?u]
+           [?a :activity/type ?t]
+           [?t :activity-type/name ?name]
+           [?t :activity-type/key ?t-key]
+           [?a :activity/duration ?duration]
+           [?a :activity/intensity ?intensity]
+           [?a :activity/start-time ?start-time]
+           [(>= ?start-time ?start)]
+           [(< ?start-time ?end)]
+           ]
+      (d/db conn) username start-day end-day)))
+
+; Ne stima jer d/q vraca SET Sto znaci da ako imamo dva ista treninga, on racuna samo jedan,
+; dodajemo id jer je on uvek razlicit
+(defn weekly-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (week-interval date)
+        rows (d/q '[:find ?a ?dur ?int ?xp-min
+                    :in $ ?username ?start ?end
+                    :where
+                    [?u :user/username ?username]
+                    [?a :activity/user ?u]
+                    [?a :activity/type ?t]
+                    [?t :activity-type/key ?t-key]
+                    [?t :activity-type/xp-per-minute ?xp-min]
+                    [?a :activity/duration ?dur]
+                    [?a :activity/intensity ?int]
+                    [?a :activity/start-time ?start-time]
+                    [(>= ?start-time ?start)]
+                    [(< ?start-time ?end)]] (d/db conn) username start-day end-day)
+        ]
+    (reduce (fn [sum [_ dur int xp]] (+ (* dur int xp) sum)) 0 ; linija _ znaci da ignorisemo id
+            rows)
+
+    )
+  )
+
+;---------- MONTH
+
+(defn month-interval [^LocalDate date]
+  (let [ym (YearMonth/of(.getYear date) (.getMonthValue date))
+        start (.atDay ym 1)
+        start-zdt (.atStartOfDay start zone)
+        end (.atDay ym (.lengthOfMonth ym))
+        end-zdt (.plusDays (.atStartOfDay end zone) 1)]
+    {:start-day (Date/from (.toInstant start-zdt))
+     :end-day (Date/from (.toInstant end-zdt))
+     }
+    ))
+
+(defn monthly-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (month-interval date)
+        rows (d/q '[:find ?a ?dur ?int ?xp-min
+                    :in $ ?username ?start ?end
+                    :where
+                    [?u :user/username ?username]
+                    [?a :activity/user ?u]
+                    [?a :activity/type ?t]
+                    [?t :activity-type/key ?t-key]
+                    [?t :activity-type/xp-per-minute ?xp-min]
+                    [?a :activity/duration ?dur]
+                    [?a :activity/intensity ?int]
+                    [?a :activity/start-time ?start-time]
+                    [(>= ?start-time ?start)]
+                    [(< ?start-time ?end)]] (d/db conn) username start-day end-day)
+        ]
+    (reduce (fn [sum [_ dur int xp]] (+ (* dur int xp) sum)) 0 ; linija _ znaci da ignorisemo id
+            rows)
+    )
+  )
+
+
 

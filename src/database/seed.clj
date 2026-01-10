@@ -7,6 +7,14 @@
 #_{:db/id [:activity-type/key :work]
  :activity-type/name "Work"
  :activity-type/xp-per-minute 8}
+(def users [{
+             :user/username "Micko"
+             :user/xp 0
+             }
+            {:user/username "Uros"
+             :user/xp 0}
+            {:user/username "Milan"
+             :user/xp 0}])
 
 (def initial-type-activities
   [{:activity-type/key :training
