@@ -245,6 +245,23 @@
      }
     ))
 
+(defn monthly-activities-by-user [username date]
+  (let [{:keys [start-day end-day]} (month-interval date)]
+    (d/q '[:find ?a ?username ?t-key ?name ?duration ?intensity
+           :in $ ?username ?start ?end
+           :where [?u :user/username ?username]
+           [?a :activity/user ?u]
+           [?a :activity/type ?t]
+           [?t :activity-type/name ?name]
+           [?t :activity-type/key ?t-key]
+           [?a :activity/duration ?duration]
+           [?a :activity/intensity ?intensity]
+           [?a :activity/start-time ?start-time]
+           [(>= ?start-time ?start)]
+           [(< ?start-time ?end)]
+           ] (d/db conn) username start-day end-day)))
+
+
 (defn monthly-xp-per-user [username date]
   (let [{:keys [start-day end-day]} (month-interval date)
         rows (d/q '[:find ?a ?dur ?int ?xp-min
