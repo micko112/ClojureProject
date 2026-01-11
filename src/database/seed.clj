@@ -14,6 +14,12 @@
             {:user/username "Uros"
              :user/xp 0}
             {:user/username "Milan"
+             :user/xp 0}
+            {:user/username "Pavel"
+             :user/xp 0}
+            {:user/username "Toda"
+             :user/xp 0}
+            {:user/username "Vule"
              :user/xp 0}])
 
 (def initial-type-activities
@@ -33,3 +39,4 @@
     :activity-type/name "Hobby / Yard work"
     :activity-type/xp-per-minute 7}])
 
+(def all-seed-data (concat users initial-type-activities))

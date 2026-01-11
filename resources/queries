@@ -8,3 +8,9 @@
        [?a :activity/intensity ?a-intensity ]
        [?a :activity/start-time ?a-start-time ]
              ] (d/db conn) "Micko")
+
+
+;(d/create-database db-uri)
+
+
+

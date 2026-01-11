@@ -63,3 +63,4 @@
                             :db/doc "Xp per minute"}
                            ])
 ;@(d/transact conn activity-type-schema)
+(def all-schemas (concat user-schema activity-schema activity-type-schema))
