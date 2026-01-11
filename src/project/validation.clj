@@ -5,11 +5,11 @@
 
 
 (defn valid-username? [name]
-    (fn [name] (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" name)
+    (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" name)
                              (not (re-matches #"^\d+$" name))
                              (not (.startsWith name "."))
                              (not (.endsWith name "."))
-                             (not (.contains name ".."))))))
+                             (not (.contains name "..")))))
   (def Username
     [:and
      [:string {:min 1 :max 30}]
@@ -17,7 +17,7 @@
 
 (def CreateUserInput
   [:map
-   :username Username])
+   [:username Username]])
 
 (def Type-key keyword?)
 
@@ -38,6 +38,6 @@
 (defn validate! [schema data]
   (when-not (m/validate schema data)
     (throw (ex-info "Validation failed" {:errors (me/humanize (m/explain schema data))})))
-       :data data)
+        data)
 
 

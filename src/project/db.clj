@@ -4,9 +4,10 @@
             [database.seed :as seed-db]
             [clojure.string :as str]
             [project.time :as t]
-            [project.system :refer [conn]]
-
+            [project.validation :as v]
+            [project.connection :refer [conn]]
             [malli.core :as m])
+
   (:import (java.time.temporal TemporalAdjusters)
            (java.util Date)
            (java.time ZonedDateTime LocalDate ZoneId)
@@ -25,9 +26,11 @@
 (defn get-all-users [db] (d/q '[:find (pull ?e [*])
                      :where [?e :user/username]] db))
 
-(defn create-user! [name] @(d/transact conn [{:user/username name
-                                          :user/xp 0
-                                              }]))
+(defn create-user! [name]
+  (v/validate! v/CreateUserInput {:username name})
+  @(d/transact conn [{:user/username name
+                      :user/xp 0
+                      }]))
 
 (defn add-xp [conn db username xp-to-add]
   (let [[e current-xp]
@@ -86,6 +89,10 @@
                                                      ]])})})
 
 (defn add-activity! [conn username activity-key duration intensity]
+  (v/validate! v/AddActivityInput {:username username
+                                   :activity-type activity-key
+                                   :duration duration
+                                   :intensity intensity})
   @(d/transact conn [[:activity/add username activity-key duration intensity]]))
 
 (def all-tx-functions [add-xp-tx add-activity-tx])
