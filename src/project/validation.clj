@@ -4,14 +4,16 @@
             [malli.error :as me]))
 
 
-(def Username
-  [:and
-   [:string {:min 1 :max 30}]
-   [:fn (fn [word] (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" word)
-                        (not (re-matches #"^\d+$" word))
-                                 (not (.startsWith word "."))
-                                 (not (.endsWith word "."))
-                                 (not (.contains word "..")))))]])
+(defn valid-username? [name]
+    (fn [name] (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" name)
+                             (not (re-matches #"^\d+$" name))
+                             (not (.startsWith name "."))
+                             (not (.endsWith name "."))
+                             (not (.contains name ".."))))))
+  (def Username
+    [:and
+     [:string {:min 1 :max 30}]
+     [:fn valid-username?]])
 
 (def CreateUserInput
   [:map
@@ -33,6 +35,9 @@
    [:duration Duration]
    [:intensity Intensity]])
 
-(mg/generate AddActivityInput)
+(defn validate! [schema data]
+  (when-not (m/validate schema data)
+    (throw (ex-info "Validation failed" {:errors (me/humanize (m/explain schema data))})))
+       :data data)
 
 
