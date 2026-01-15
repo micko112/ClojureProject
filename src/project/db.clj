@@ -26,6 +26,8 @@
 (defn get-all-users [db] (d/q '[:find (pull ?e [*])
                      :where [?e :user/username]] db))
 
+
+
 (defn create-user! [name]
   (v/validate! v/CreateUserInput {:username name})
   @(d/transact conn [{:user/username name
@@ -137,15 +139,51 @@
         rows (get-activities-in-interval username start-day end-day)]
     (calculate-xp-from-rows rows)))
 
+(defn usernames-xp [db] (vec (d/q '[:find ?username ?xp
+                                       :where [?u :user/username ?username]
+                                                [?u :user/xp ?xp]] db)))
+
+
+#_(defn get-all-users-daily-xp [db date]
+  (let [[username xp] (usernames-xp db)]
+    (reduce (fn [acc [userna]]
+              (if (> (daily-xp-per-user elm date) 0)
+                (conj acc elm) acc))
+            [] username)))
+
+(defn get-all-users-daily-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (daily-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
+
 (defn weekly-xp-per-user [username date]
   (let [{:keys [start-day end-day]} (t/week-interval date)
         rows (get-activities-in-interval username start-day end-day)]
     (calculate-xp-from-rows rows)))
 
+(defn get-all-users-weekly-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (weekly-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
+
 (defn monthly-xp-per-user [username date]
   (let [{:keys [start-day end-day]} (t/month-interval date)
         rows (get-activities-in-interval username start-day end-day)]
     (calculate-xp-from-rows rows)))
+
+(defn get-all-users-monthly-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (monthly-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
 
 (defn clean-username! [conn username]
   (let [user (d/pull (d/db conn) "[*]" [:user/username username])
