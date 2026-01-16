@@ -50,3 +50,9 @@
   [db date]
   (print-table
     (sort-by :user/xp > (db/get-all-users-monthly-xp db date))))
+(defn
+  leaderboard-all-time
+  "ALL TIME LEADERBOARD"
+  [db]
+  (print-table
+    (sort-by :user/xp > (db/get-all-users-all-time-xp db))))

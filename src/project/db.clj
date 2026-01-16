@@ -100,14 +100,16 @@
 (def all-tx-functions [add-xp-tx add-activity-tx])
 
 
-(defn user-activities [username]
-  (d/q '[:find ?a-type ?a-duration ?a-intensity ?a-start-time
+(defn get-user-activities [username]
+  (d/q '[:find ?a-start-time ?a-type ?a-duration ?a-intensity ?xp-per-min
          :in $ ?username
          :where  [?u :user/username ?username]
          [?a :activity/user ?u]
          [?a :activity/type ?t]
          [?t :activity-type/name ?a-type]
          [?a :activity/intensity ?a-intensity ]
+         [?a :activity/duration ?a-duration]
+         [?t :activity-type/xp-per-minute ?xp-per-min]
          [?a :activity/start-time ?a-start-time ]
          ] (d/db conn) username))
 
@@ -180,6 +182,18 @@
 (defn get-all-users-monthly-xp [db date]
   (reduce (fn [acc [username _]]
             (let [xp (monthly-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
+
+(defn all-time-xp-per-user [username]
+  (let [rows (get-user-activities username)]
+    (calculate-xp-from-rows rows)))
+
+(defn get-all-users-all-time-xp [db]
+  (reduce (fn [acc [username _]]
+            (let [xp (all-time-xp-per-user username)]
               (if (> xp 0)
                 (conj acc {:user/username username :user/xp xp})
                 acc)))
