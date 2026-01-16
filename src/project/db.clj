@@ -136,14 +136,33 @@
           0
           rows))
 
+(def period-interval
+  {:daily t/day-interval
+   :weekly t/week-interval
+   :monthly t/month-interval
+   :all     nil})
+
+(defn usernames-xp [db] (vec (d/q '[:find ?username ?xp
+                                    :where [?u :user/username ?username]
+                                    [?u :user/xp ?xp]] db)))
+
+(defn xp-per-user [username period date]
+  (let [{:keys [start-day end-day]} ((get period-interval period) date)
+        rows (get-activities-in-interval username start-day end-day)]
+    (calculate-xp-from-rows rows)
+    ))
+
+(defn get-all-users-xp-per-period [db period date]
+  (reduce (fn [acc [username _]]
+            (let [xp (xp-per-user username period date)]
+              ())) [] (usernames-xp db)))
+
 (defn daily-xp-per-user [username date]
   (let [{:keys [start-day end-day]} (t/day-interval date)
         rows (get-activities-in-interval username start-day end-day)]
     (calculate-xp-from-rows rows)))
 
-(defn usernames-xp [db] (vec (d/q '[:find ?username ?xp
-                                       :where [?u :user/username ?username]
-                                                [?u :user/xp ?xp]] db)))
+
 
 
 #_(defn get-all-users-daily-xp [db date]

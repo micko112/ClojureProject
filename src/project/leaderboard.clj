@@ -21,38 +21,15 @@
   [users]
   (sort-by :user/xp desc (map first users)))
 
-
-(defn
-  leaderboard-daily
-  "DAILY - users Leaderboard by earned XP"
-  [db date]
-  (print-table
-    (sort-by :user/xp > (db/get-all-users-daily-xp db date))))
-
-(defn prettify-leaderboard [users]
-  (map-indexed
-    (fn [idx user]
-      {:rank (inc idx)
-       :username (:user/username user)
-       :xp (:user/xp user)})
-    users))
-
-(defn
-  leaderboard-weekly
-  "WEEKLY - users leaderboard by earned xp"
-  [db date]
-  (print-table
-    (sort-by :user/xp > (db/get-all-users-weekly-xp db date))))
-
-(defn
-  leaderboard-monthly
-  "MONTHLY - users leaderboard by earned xp"
-  [db date]
-  (print-table
-    (sort-by :user/xp > (db/get-all-users-monthly-xp db date))))
+(defn leaderboard [db period date]
+  (sort-by :xp > (filter #(pos? (:xp %)) (map (fn [user]
+                                                {:user/username (:user/username user)
+                                                 :xp (db/xp-per-user (:user/username user) period date)})
+                                              (map first (db/get-all-users db))))))
 (defn
   leaderboard-all-time
   "ALL TIME LEADERBOARD"
   [db]
   (print-table
     (sort-by :user/xp > (db/get-all-users-all-time-xp db))))
+
