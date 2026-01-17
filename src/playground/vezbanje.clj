@@ -259,3 +259,56 @@
                     :level 0})]
     (conj users user))
   )
+(defn get-all-users-xp-per-period [db period date]
+  (reduce (fn [acc [username _]]
+            (let [xp (xp-per-user username period date)]
+              ())) [] (usernames-xp db)))
+
+(defn daily-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (t/day-interval date)
+        rows (get-activities-in-interval username start-day end-day)]
+    (calculate-xp-from-rows rows)))
+
+
+
+
+#_(defn get-all-users-daily-xp [db date]
+    (let [[username xp] (usernames-xp db)]
+      (reduce (fn [acc [userna]]
+                (if (> (daily-xp-per-user elm date) 0)
+                  (conj acc elm) acc))
+              [] username)))
+
+(defn get-all-users-daily-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (daily-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
+
+(defn weekly-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (t/week-interval date)
+        rows (get-activities-in-interval username start-day end-day)]
+    (calculate-xp-from-rows rows)))
+
+(defn get-all-users-weekly-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (weekly-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))
+
+(defn monthly-xp-per-user [username date]
+  (let [{:keys [start-day end-day]} (t/month-interval date)
+        rows (get-activities-in-interval username start-day end-day)]
+    (calculate-xp-from-rows rows)))
+
+(defn get-all-users-monthly-xp [db date]
+  (reduce (fn [acc [username _]]
+            (let [xp (monthly-xp-per-user username date)]
+              (if (> xp 0)
+                (conj acc {:user/username username :user/xp xp})
+                acc)))
+          [] (usernames-xp db)))

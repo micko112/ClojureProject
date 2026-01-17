@@ -6,7 +6,9 @@
 
 (def db-uri "datomic:dev://localhost:4334/bebetter")
 
-(defn reset-db! [all-tx-functions]
+(defonce conn (d/connect db-uri))
+
+(defn reset-db! [all-tx-functions db-uri]
     (d/delete-database db-uri)
     (d/create-database db-uri)
     (let [conn (d/connect db-uri)]

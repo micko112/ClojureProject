@@ -22,14 +22,9 @@
   (sort-by :user/xp desc (map first users)))
 
 (defn leaderboard [db period date]
-  (sort-by :xp > (filter #(pos? (:xp %)) (map (fn [user]
-                                                {:user/username (:user/username user)
-                                                 :xp (db/xp-per-user (:user/username user) period date)})
-                                              (map first (db/get-all-users db))))))
-(defn
-  leaderboard-all-time
-  "ALL TIME LEADERBOARD"
-  [db]
-  (print-table
-    (sort-by :user/xp > (db/get-all-users-all-time-xp db))))
+  (sort-by :user/xp > (map (fn [user]
+                        {:user/username (:user/username user)
+                         :user/xp (db/xp-per-user db (:user/username user) period date)})
+                      (db/get-all-users db))))
+
 
