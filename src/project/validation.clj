@@ -10,10 +10,10 @@
                              (not (.startsWith name "."))
                              (not (.endsWith name "."))
                              (not (.contains name "..")))))
-  (def Username
-    [:and
-     [:string {:min 1 :max 30}]
-     [:fn valid-username?]])
+(def Username
+  [:and
+   [:string {:min 1 :max 30}]
+   [:fn valid-username?]])
 
 (def CreateUserInput
   [:map
@@ -34,6 +34,18 @@
    [:activity-type Type-key]
    [:duration Duration]
    [:intensity Intensity]])
+
+(def Period
+  [:enum
+   :daily
+   :weekly
+   :monthly
+   :all])
+
+(def Report-input
+  [:map
+   [:username Username]
+   [:period Period]])
 
 (defn validate! [schema data]
   (when-not (m/validate schema data)

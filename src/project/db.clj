@@ -22,14 +22,16 @@
   @(d/transact conn [[:activity/add username activity-key duration intensity]]))
 
 
-(def user-ids (d/q '[:find ?e .
-                     :where [?e :user/username]] (d/db conn)))
+(defn user-ids [db] (d/q '[:find ?e .
+                     :where [?e :user/username]] db))
 
 (defn get-all-users [db] (map first (d/q '[:find (pull ?e [*])
                      :where [?e :user/username]] db)))
 
 (defn get-user-by-name [db username]
-  (d/pull db "[*]" [:user/username username]))
+  (let [result (d/pull db "[*]" [:user/username username])]
+    (if (:db/id result) result (throw (ex-info "User not found" {:user/username username})  ))
+    ))
 
 (defn get-user-activities [db username]
   (d/q '[:find ?a-start-time ?a-type ?a-duration ?a-intensity ?xp-per-min
@@ -84,12 +86,6 @@
         new-xp (+ current-xp xp-to-add)]
     @(d/transact conn [[:db/add e :user/xp new-xp]])
     ))
-
-
-
-
-
-
 
 (def add-xp-tx {:db/ident :user/add-xp
                 :db/fn (d/function
@@ -148,9 +144,7 @@
     (:user/xp (get-user-by-name db username))
     (let [{:keys [start-day end-day]} ((get period-interval period) date)
           rows (get-activities-in-interval db username start-day end-day)]
-                        (calculate-xp-from-rows rows))
-                      )
-  )
+                        (calculate-xp-from-rows rows))))
 
 
 

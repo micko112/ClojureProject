@@ -1,13 +1,10 @@
 (ns project.uredno-test
   (:require [midje.sweet :refer :all]
-            [project.uredno :as u]
             [project.db :as db]
             [project.leaderboard :as lb]
             [datomic.api :as d]
-            [project.connection :refer [conn]]
             [database.schema :as schema]
             [database.seed :as seed]
-            [project.system :as sys]
             )
   (:import (java.time.temporal TemporalAdjusters)
            (java.util Date)
@@ -56,8 +53,7 @@
             _ (db/add-activity! conn "A" :training 60 2)
             _ (db/add-activity! conn "B" :training 60 3)
             _ (db/add-activity! conn "C" :training 60 1)
-            lb (lb/leaderboard (d/db conn) :daily (LocalDate/now))
-            ]
+            lb (lb/leaderboard (d/db conn) :daily (LocalDate/now))]
         (map :user/username lb))
       => ["B" "A" "C"])
 
