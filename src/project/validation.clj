@@ -44,8 +44,7 @@
 
 (def Report-input
   [:map
-   [:username Username]
-   [:period Period]])
+   [:username Username]])
 
 (defn validate! [schema data]
   (when-not (m/validate schema data)

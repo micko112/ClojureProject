@@ -22,6 +22,7 @@
     {:start-day (Date/from (.toInstant start-zdt))
      :end-day (Date/from (.toInstant end-zdt))}))
 
+
 (defn month-interval [^LocalDate date]
   (let [ym (YearMonth/of(.getYear date) (.getMonthValue date))
         start (.atDay ym 1)
@@ -30,3 +31,8 @@
         end-zdt (.plusDays (.atStartOfDay end zone) 1)]
     {:start-day (Date/from (.toInstant start-zdt))
      :end-day (Date/from (.toInstant end-zdt))}))
+
+(defn instant->local [^Date d]
+  (-> d
+      .toInstant
+      (.atZone zone)))

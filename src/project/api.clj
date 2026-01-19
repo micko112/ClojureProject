@@ -24,15 +24,13 @@
   (v/validate! v/Period period)
   (lb/leaderboard (d/db conn) period (LocalDate/now)))
 
-(defn get-daily-report [username]
-  #_(v/validate! v/Report-input {:username username
-                               :period period})
-  (let [db (d/db conn)
-        today (LocalDate/now)]
-    (db/get-activities-in-interval db username (:start-day (t/day-interval today))
-                                                (:end-day (t/day-interval today)))))
+(defn get-daily-report [username date]
+  (v/validate! v/Report-input {:username username})
+  (db/report-daily-in-period (d/db conn) username date))
 
 ; HOCU DA DODAM FN KOJA RADI REPORT ALI PO DANIMA, STAVIM PERIOD I STAVI MI PO DANIMA
 ; STA JE KORISNIK RADIO, AKTIVNOSTI I DAILY-XP I NA KRAJU UKUPNO XP
 
+; vraca mapu: VREME (odnosno dan kad je aktivnost), A-NAME, DURATION, INTENSITY, XP-TOTAL-FOR-DAY
+; (xp-per-user vraca total xp za period sto je super jer moze da vrati daily xp)
 

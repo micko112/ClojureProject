@@ -3,9 +3,9 @@
             [clojure.string :as str]
             [project.time :as t]
             [project.validation :as v]
+            [project.system :refer [conn]]
             )
-
-  (:import (java.util Date)))
+  (:import (java.time LocalDate)))
 
 
 (defn create-user! [conn name]
@@ -140,11 +140,30 @@
                                     [?u :user/xp ?xp]] db)))
 
 (defn xp-per-user [db username period date]
+  ; slucaj kad je samo all
   (if (= period :all)
     (:user/xp (get-user-by-name db username))
+    ;---------------------
     (let [{:keys [start-day end-day]} ((get period-interval period) date)
           rows (get-activities-in-interval db username start-day end-day)]
                         (calculate-xp-from-rows rows))))
 
+(defn report-daily-in-period [db username date]
 
+  ;total xp u danu
+  (let [{:keys [start-day end-day]} ((get period-interval :daily) date)
+        rows (get-activities-in-interval db username start-day end-day)
+        activities-xp (map (fn [[start-time a-type dur int xp-per-min]]
+                               {:activity/time (.toLocalTime (t/instant->local start-time))
+                                :activity/type a-type
+                                :activity/duration dur
+                                :activity/intensity int
+                                :activity/xp (* dur int xp-per-min)})rows)
+        total-xp (calculate-xp-from-rows rows)]
 
+    {
+     :date date
+     :username username
+     :activities activities-xp
+     :total-xp total-xp
+     }))
