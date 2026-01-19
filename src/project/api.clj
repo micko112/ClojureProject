@@ -22,7 +22,7 @@
   "Leaderboard prima :daily, :weekly, :monthly, :all"
   [period]
   (v/validate! v/Period period)
-  (lb/leaderboard-rank-ties (d/db conn) period (LocalDate/now)))
+  ))
 
 (defn get-daily-report [username date]
   (v/validate! v/Report-input {:username username})

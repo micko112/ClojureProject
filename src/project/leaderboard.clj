@@ -13,33 +13,9 @@
 (defn desc [a b] ; nasao sam na guglu kako se sortira od najveceg ka najmanjem.
   (compare b a))
 
-;leadreboard for all users
-; (db/get-all-users (d/db conn))
-(defn
-  leaderboard
-  "users Leaderboard by earned XP"
-  [users]
-  (sort-by :user/xp desc (map first users)))
 
-(defn leaderboard [db period date]
-  (sort-by :user/xp > (map (fn [user]
-                             {:user/username (:user/username user)
-                              :user/xp (db/xp-per-user db (:user/username user) period date)})
-                           (db/get-all-users db)))
-    )
 
-(defn leaderboard-rank [db period date]
-  (let [users (db/get-all-users db)
-        users-with-xp (map (fn [user]
-                             {:user/username (:user/username user)
-                              :user/xp (db/xp-per-user db (:user/username user) period date)})
-                           users)
-        sorted-users-with-xp (sort-by :user/xp > users-with-xp)
-        ]
-    (map-indexed (fn [idx itm] (assoc itm
-                                 :rank (inc idx))) sorted-users-with-xp)
 
-    ))
 
 (defn leaderboard-rank-ties [db period date]
   (let [users (db/get-all-users db)
@@ -73,11 +49,11 @@
 
 ; leaderboard delta pokazuje koliko je koji user promenio rank
 
-(defn leaderoard-delta [old-lb new-lb]
-  (let [old-ranks (into {} (map (fn [{:user/keys [username rank]}]
+(defn leaderboard-delta [old-lb new-lb]
+  (let [old-ranks (into {} (map (fn[{:user/keys [username] :keys [rank]}]
                                [username rank])
                              old-lb))
-        new-ranks (into {} (map (fn [{:user/keys [username rank]}]
+        new-ranks (into {} (map (fn [{:user/keys [username] :keys [rank]}]
                                [username rank])
                              new-lb))]
     (map (fn [username]
@@ -86,6 +62,26 @@
              {:user/username username
               :delta (- old-r new-r)}))
          (keys new-ranks))))
+
+(defn leaderboard [db period date]
+
+  (let [
+        previous-date (case period
+                        :daily (.minusDays date 1)
+                        :weekly (.minusWeeks date 1)
+                        :monthly (.minusMonths date 1)
+                        date)
+        old-lb (leaderboard-rank-ties db period date)
+        new-lb (leaderboard-rank-ties db period previous-date)
+        delta (leaderboard-delta old-lb new-lb)
+        delta-map (into {} (map (fn [{:user/keys [username] :keys [delta]}]
+                                  [username delta])
+                                delta))
+        ]
+    (map (fn [user-rank]
+           (assoc user-rank :delta (get delta-map (:user/username user-rank) 0)))
+         new-lb)))
+
 
 
 
