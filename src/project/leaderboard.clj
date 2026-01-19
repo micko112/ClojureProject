@@ -49,7 +49,6 @@
                            users)
         sorted-users-with-xp (sort-by :user/xp > users-with-xp)
         ]
-
     (loop [users-left sorted-users-with-xp
            result []
            current-rank 1
@@ -70,16 +69,23 @@
                      (conj result (assoc user :rank new-rank))
                      new-rank
                      user-xp
-                     1)
-              )
-            )
-          )
-        )
-      )
-    )
-  )
+                     1))))))))
 
+; leaderboard delta pokazuje koliko je koji user promenio rank
 
+(defn leaderoard-delta [old-lb new-lb]
+  (let [old-ranks (into {} (map (fn [{:user/keys [username rank]}]
+                               [username rank])
+                             old-lb))
+        new-ranks (into {} (map (fn [{:user/keys [username rank]}]
+                               [username rank])
+                             new-lb))]
+    (map (fn [username]
+           (let [old-r (get old-ranks username)
+                 new-r (get new-ranks username)]
+             {:user/username username
+              :delta (- old-r new-r)}))
+         (keys new-ranks))))
 
 
 
