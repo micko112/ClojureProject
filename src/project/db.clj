@@ -167,3 +167,5 @@
      :activities activities-xp
      :total-xp total-xp
      }))
+
+(defn get-all-users)

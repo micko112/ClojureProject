@@ -48,6 +48,15 @@
                      1))))))))
 
 ; leaderboard delta pokazuje koliko je koji user promenio rank
+(defn get-all-names [lb]
+  (let [names (map (fn [{:user/keys [username]}]
+                     username)lb)]
+    names)
+  )
+(defn new-user-check [old-lb new-lb]
+  (let [old-names (set(get-all-names old-lb)) new-names (set(get-all-names new-lb))]
+    (filter (complement old-names) new-names))
+  )
 
 (defn leaderboard-delta [old-lb new-lb]
   (let [old-ranks (into {} (map (fn[{:user/keys [username] :keys [rank]}]
@@ -59,9 +68,45 @@
     (map (fn [username]
            (let [old-r (get old-ranks username)
                  new-r (get new-ranks username)]
-             {:user/username username
-              :delta (- old-r new-r)}))
+
+               {:user/username username
+                :delta (- old-r new-r)}
+               {:user/username username
+                :delta (- old-r new-r)}
+               )
+             ))
+         (keys new-ranks)))
+
+(defn leaderboard-delta-edge-case [old-lb new-lb]
+  (let [old-ranks (into {} (map (fn[{:user/keys [username] :keys [rank]}]
+                                  [username rank])
+                                old-lb))
+        new-ranks (into {} (map (fn [{:user/keys [username] :keys [rank]}]
+                                  [username rank])
+                                new-lb))
+        new-users (set (new-user-check old-lb new-lb))
+        last-old-rank (if (seq old-ranks)
+                        (apply max (vals old-ranks))
+                        0)
+        ]
+    (map (fn [username]
+           (let [old-r (get old-ranks username)
+                 new-r (get new-ranks username)]
+             (cond
+               (new-users username)
+               {:user/username username
+                :delta (- (inc last-old-rank) new-r)
+                :status :new}
+
+               (and old-r new-r)
+               {:user/username username
+                :delta (- old-r new-r)}
+
+               :else
+               {:user/username username
+                :delta 0})))
          (keys new-ranks))))
+
 
 (defn leaderboard [db period date]
 

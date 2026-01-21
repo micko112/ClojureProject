@@ -20,9 +20,10 @@
 
 (defn get-leaderboard
   "Leaderboard prima :daily, :weekly, :monthly, :all"
-  [period]
+  [period date]
   (v/validate! v/Period period)
-  ))
+  (lb/leaderboard (d/db conn) period date)
+  )
 
 (defn get-daily-report [username date]
   (v/validate! v/Report-input {:username username})
