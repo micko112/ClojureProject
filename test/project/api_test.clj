@@ -19,9 +19,9 @@
    ])
 (def new-lb
   [{:user/username "A" :rank 2}
-   {:user/username "B" :rank 1}
+   {:user/username "B" :rank 4}
     {:user/username "C" :rank 3}
-   {:user/username "D" :user/xp 4}
+   {:user/username "D" :rank 1}
    ])
 (def users
   [{:user/username "A" :user/xp 300}
@@ -31,12 +31,14 @@
    ])
 ()
 (fact "test delta funkcije"
-  (let [delta (lb/leaderboard-delta old-lb new-lb)]
+  (let [delta (lb/leaderboard-delta-edge-case old-lb new-lb)]
     delta)
   => [{:user/username "A" :delta -1 }
-      {:user/username "B" :delta 1 }
-      {:user/username "C" :delta 0 }]
+      {:user/username "B" :delta -2 }
+      {:user/username "C" :delta 0 }
+      {:user/username "D" :delta 3 }]
 )
+
 (fact "New user check"
       (lb/new-user-check old-lb new-lb)
       => )

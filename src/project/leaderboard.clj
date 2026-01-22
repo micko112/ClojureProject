@@ -96,7 +96,7 @@
                (new-users username)
                {:user/username username
                 :delta (- (inc last-old-rank) new-r)
-                :status :new}
+                }
 
                (and old-r new-r)
                {:user/username username
