@@ -116,9 +116,9 @@
                         :weekly (.minusWeeks date 1)
                         :monthly (.minusMonths date 1)
                         date)
-        old-lb (leaderboard-rank-ties db period date)
-        new-lb (leaderboard-rank-ties db period previous-date)
-        delta (leaderboard-delta old-lb new-lb)
+        old-lb (leaderboard-rank-ties db period previous-date)
+        new-lb (leaderboard-rank-ties db period date)
+        delta (leaderboard-delta-edge-case old-lb new-lb)
         delta-map (into {} (map (fn [{:user/keys [username] :keys [delta]}]
                                   [username delta])
                                 delta))
