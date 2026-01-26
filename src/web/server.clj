@@ -1,65 +1,93 @@
 (ns web.server
-  (:require [project.api :as api]
-            [ring.adapter.jetty :as jetty]
+  (:require [ring.adapter.jetty :as jetty]
             [reitit.ring :as ring]
-            [hiccup.page :refer [html5]
-             ]
-            )
-  (:import (java.time LocalDate)))
+            [reitit.ring.middleware.parameters :as parameters]
+            [hiccup.page :refer [html5]]
+            [project.api :as api]
+            [datomic.api :as d]
+            [project.system :as sys]
+            [clojure.string :as str])
+  (:import (java.time LocalDate LocalTime Duration ZoneId)
+           (java.time.format DateTimeFormatter)))
 
 (def port 3000)
-(defn common-layout [content]
+(defn parse-date [date-str]
+  (if (or (empty? date-str) (= "today" date-str))
+    (LocalDate/now)
+    (try (LocalDate/parse date-str)
+         (catch Exception _ (LocalDate/now)))))
+
+(defn format-date [date]
+  (.format date (DateTimeFormatter/ofPattern "yyyy-MM-dd")))
+
+(defn nice-date [date]
+  (.format date (DateTimeFormatter/ofPattern "EEEE, dd. MMMM yyyy.")))
+
+(defn get-next-day [date]
+   (.plusDays date 1))
+(defn get-previous-day [date]
+  (.minusDays date 1))
+
+(defn insant->minutes-from-midnight [inst]
+  (let [zdt (.atZone (.toInsant inst) (project.time/zone))
+        hour (.getHour zdt)
+        minute (.getMinute zdt)
+        (+ (* hour 60) minute)]))
+
+(defn common-layout [& content]
   (html5
     [:head
      [:title "BeBetter"]
      [:meta {:charset "UTF-8"}]
      [:script {:src "https://unpkg.com/htmx.org@1.9.10"}]
-     [:style "body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .btn { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }"]]
+     [:style "
+       { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+      .header { background: #2c3e50; color: white; padding: 1rem; }
+      .main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+      .footer { background: #34495e; color: white; padding: 1rem; text-align: center; }
+      .nav a { color: white; margin-right: 1rem; text-decoration: none; }
+      .nav a:hover { text-decoration: underline; }
+      .htmx-indicator { display: none; }
+      .htmx-request .htmx-indicator { display: inline-block; }"]]
     [:body
-     [:h1 "BeBetter"]
-     [:hr]
-     content]
-    ))
-(defn leaderboard-table [data]
-  [:div
-   [:h2 "Rank list "]
-   [:table
-    [:thead
-     [:tr
-      [:th "Rank"]
-      [:th "Username"]
-      [:th "XP"]
-      [:th "Delta"]]]
-    [:tbody
-     (for [user data]
-       [:tr
-        [:td (:rank user)]
-        [:td (:user/username user)]
-        [:td (:user/xp user)]
-        [:td (let [d (:delta user)]
-               (cond
-                 (pos? d) [:span {:style "color:green"} (str "▲ " d)]
-                 (neg? d) [:span {:style "color:red"} (str "▼ " (Math/abs d))]
-                 :else    [:span {:style "color:gray"} "-"]))]
+     [:nav-sidebar
+      [:div.logo "BeBetter"]
+      [:a.nav-link {:hx-get "/planner" }] [:span "Planner"]]
+     [:main.main-content
+      content]
+     [:footer.footer
+      [:p "© 2024 BeBetter - Clojure + HTMX"]]]
 
-        ])]
-    ]]
-  )
+    ))
 (defn home-page [request]
 
-  (let [leaderboard-data (api/get-leaderboard :weekly (LocalDate/now))]
   {:status 200
    :headers {"Content-Type" "text/html"}
-   :body (common-layout (leaderboard-table leaderboard-data))}))
+   :body
+           (common-layout
+             [:div
+              [:div "Nista se ne desava"
+              [:button {:hx-post "/klik"
+                        :hx-target "this"
+                        :hx-swap "innerHTML"
+                        :hx-indicator ".spinner"
+                      }
+               [:span.btn-text "BUTTON"]
+               [:span.spinner.htmx-indicator
+                {:style "margin-left:10px"}
+                "Loading..."]]
+              ]
+             ])
+           })
 
 (defn click-handler [request]
   {:status 200
    :headers {"Content-Type" "text/html"}
-   :body (html5 [:div [:h2 {:style "color: blue"} "Server radi"]])})
+   :body
+   (html5 [:p {:style "color: blue; font-weight: bold;"}
+    "click done"])
+   })
 
 (def app
   (ring/ring-handler
@@ -77,10 +105,7 @@
     (reset! server (jetty/run-jetty #'app {:port port :join? false}))
     (println "server pokrenut na http://localhost:3000")))
 
-(defn start-server []
-  (reset! server (jetty/run-jetty (fn [req] {:status 200 :body "Hello" :headers {}})  ;; a really basic handler
-                   {:port 3000      ;; listen on port 3001
-                    :join? false})))
+
 
 (defn stop-server []
   (when-some [s @server] ;; check if there is an object in the atom
