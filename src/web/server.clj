@@ -2,6 +2,7 @@
   (:require [ring.adapter.jetty :as jetty]
             [reitit.ring :as ring]
             [reitit.ring.middleware.parameters :as parameters]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [hiccup.page :refer [html5]]
             [project.api :as api]
             [datomic.api :as d]
@@ -49,7 +50,10 @@
       .nav a { color: white; margin-right: 1rem; text-decoration: none; }
       .nav a:hover { text-decoration: underline; }
       .htmx-indicator { display: none; }
-      .htmx-request .htmx-indicator { display: inline-block; }"]]
+      .htmx-request .htmx-indicator { display: inline-block; }
+      .day-column {\n  border: 1px solid #ccc; padding: 1rem;\n  cursor: pointer;  transition: background 0.2s;}
+      .day-column:hover {background: #f0f0f0;}
+      .day-column.selected {background: #2c3e50; color: white; border-color: #2c3e50;}"]]
     [:body
      [:nav-sidebar
       [:div.logo "BeBetter"]
@@ -60,6 +64,34 @@
       [:p "© 2024 BeBetter - Clojure + HTMX"]]]
 
     ))
+(def days ["Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"])
+(defn day-column [selected-day]
+  [:div {:id "days-container"
+         :style "display: flex, gap: 1rem;"}
+   (for [d days]
+     [:div.day-column
+      {:class (when (= d selected-day) "selected")
+       :hx-post "/select-day"
+       :hx-vals (str "{ \"day\": \"" d "\" }")
+       :hx-target "#days-container"
+       :hx-swap "outerHTML"}
+      d]
+     )]
+  )
+[:div.calendar
+ [:div.day-column
+  {:style "position: relative; height: 1440px;"}
+  (for [hour (range 24)]
+    [:div.hour-line
+     {:style (str "position: absolute; top: " (* hour 60) "px;")}
+     (str hour ":00")])]]
+(defn calendar [request]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body
+   (html5 (
+
+            ))})
 (defn home-page [request]
 
   {:status 200
@@ -67,6 +99,9 @@
    :body
            (common-layout
              [:div
+              [:h2 "Calendar"]
+              (day-column nil)
+
               [:div "Nista se ne desava"
               [:button {:hx-post "/klik"
                         :hx-target "this"
@@ -78,9 +113,39 @@
                 {:style "margin-left:10px"}
                 "Loading..."]]
               ]
-             ])
+              [:form {:hx-post "/activity" :hx-target "#activity-result" :hx-trigger "submit"}
+               [:input#title {:name "title" :type "text" :placeholder "Title"}]
+               [:input#duration {:name "duration" :type "text" :placeholder "Duration"}]
+               [:button {:type "submit"} "Submit"]]
+             ]
+             [:div#activity-result])
            })
 
+(defn title-handler [request]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body (html5 [:small "Title updated"])})
+
+(defn duration-handler [request]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body (html5 [:small "Duration updated"])})
+
+(defn activity-handler [request]
+  (let [title (get-in request [:params :title])
+        duration (get-in request [:params :duration])]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+    :body
+    (html5 [:p "Activity: " title ", duration: " duration])
+     })
+  )
+(defn select-day-handler [request]
+  (let [day (get-in request [:param "day"])]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body (html5 (day-column day) )})
+  )
 (defn click-handler [request]
   {:status 200
    :headers {"Content-Type" "text/html"}
@@ -94,7 +159,13 @@
     (ring/router [
                   ["/" {:get home-page}]
                   ["/klik" {:post click-handler}]
-                                   ])
+                  ["/title" {:post title-handler}]
+                  ["/duration" {:post duration-handler}]
+                  ["/activity" {:post activity-handler}]
+                  ["/select-day" {:post select-day-handler}]]
+                 {:data {:middleware [parameters/parameters-middleware
+                                      wrap-keyword-params
+                                      ]}})
     (ring/create-default-handler)))
 
 
