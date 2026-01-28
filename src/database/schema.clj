@@ -1,17 +1,15 @@
 (ns database.schema
-  (:require [datomic.api :as d ]))
-
+  (:require [datomic.api :as d]))
 
 (def user-schema [{:db/ident       :user/username
-                  :db/valueType   :db.type/string
-                  :db/cardinality :db.cardinality/one
-                  :db/unique      :db.unique/identity
-                  :db/doc         "Username"}
-                 {:db/ident       :user/xp
-                  :db/valueType   :db.type/long
-                  :db/cardinality :db.cardinality/one
-                  :db/doc         "Experience of user"}
-                 ])
+                   :db/valueType   :db.type/string
+                   :db/cardinality :db.cardinality/one
+                   :db/unique      :db.unique/identity
+                   :db/doc         "Username"}
+                  {:db/ident       :user/xp
+                   :db/valueType   :db.type/long
+                   :db/cardinality :db.cardinality/one
+                   :db/doc         "Experience of user"}])
 ;@(d/transact conn user-shema)
 (def activity-schema [{:db/ident :activity/user
                        :db/valueType :db.type/ref
@@ -43,10 +41,8 @@
                        :db/valueType :db.type/instant
                        :db/cardinality :db.cardinality/one
                        :db/index true
-                       :db/doc "When activity happened"}
-                      ])
+                       :db/doc "When activity happened"}])
 ;@(d/transact conn activity-schema)
-
 
 (def activity-type-schema [{:db/ident :activity-type/key
                             :db/valueType :db.type/keyword
@@ -60,7 +56,6 @@
                            {:db/ident :activity-type/xp-per-minute
                             :db/valueType :db.type/long
                             :db/cardinality :db.cardinality/one
-                            :db/doc "Xp per minute"}
-                           ])
+                            :db/doc "Xp per minute"}])
 ;@(d/transact conn activity-type-schema)
 (def all-schemas (concat user-schema activity-schema activity-type-schema))

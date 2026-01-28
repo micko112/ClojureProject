@@ -12,7 +12,8 @@
                 ]
 
   :profiles {:dev {:dependencies [[midje "1.10.10"]]}}
-  :plugins [[lein-midje "3.2.1"]]
+  :plugins [[lein-midje "3.2.1"]
+            [dev.weavejester/lein-cljfmt "0.15.6"]]
   :main project.core)
 
 

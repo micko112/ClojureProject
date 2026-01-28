@@ -1,16 +1,12 @@
 (ns database.seed
-  (:require [datomic.api :as d ]))
-
-
+  (:require [datomic.api :as d]))
 
 ; ovako se update/insert nesto
 #_{:db/id [:activity-type/key :work]
- :activity-type/name "Work"
- :activity-type/xp-per-minute 8}
-(def users [{
-             :user/username "Micko"
-             :user/xp 0
-             }
+   :activity-type/name "Work"
+   :activity-type/xp-per-minute 8}
+(def users [{:user/username "Micko"
+             :user/xp 0}
             {:user/username "Uros"
              :user/xp 0}
             {:user/username "Milan"

@@ -4,13 +4,11 @@
             [project.leaderboard :as lb]
             [datomic.api :as d]
             [database.schema :as schema]
-            [database.seed :as seed]
-            )
+            [database.seed :as seed])
   (:import (java.time.temporal TemporalAdjusters)
            (java.util Date)
            (java.time ZonedDateTime LocalDate ZoneId)
            (java.time Instant LocalDate DayOfWeek MonthDay YearMonth ZoneId)))
-
 
 (def test-uri "datomic:mem://bebetter-test")
 
@@ -29,14 +27,13 @@
             db (d/db conn)]
         (db/create-user! conn "Test")
         (db/add-activity! conn "Test" :training 60 3)
-        (reduce (fn [acc elm] (+ acc elm))(map :user/xp (db/get-all-users (d/db conn))
-                                               ))
+        (reduce (fn [acc elm] (+ acc elm)) (map :user/xp (db/get-all-users (d/db conn))))
         => pos?))
 
 (defn find-user [db username]
   (first
-    (filter #(= (:user/username %) username)
-            (db/get-all-users db))))
+   (filter #(= (:user/username %) username)
+           (db/get-all-users db))))
 
 (fact "user gets xp from activity"
       (let [conn (fresh-conn)]

@@ -3,13 +3,12 @@
             [malli.generator :as mg]
             [malli.error :as me]))
 
-
 (defn valid-username? [name]
-    (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" name)
-                             (not (re-matches #"^\d+$" name))
-                             (not (.startsWith name "."))
-                             (not (.endsWith name "."))
-                             (not (.contains name "..")))))
+  (boolean (and (re-matches #"^[a-zA-Z0-9._]+$" name)
+                (not (re-matches #"^\d+$" name))
+                (not (.startsWith name "."))
+                (not (.endsWith name "."))
+                (not (.contains name "..")))))
 (def Username
   [:and
    [:string {:min 1 :max 30}]
@@ -22,8 +21,7 @@
 (def Type-key keyword?)
 
 (def Duration
-  [:int {:min 1}]
-  )
+  [:int {:min 1}])
 
 (def Intensity
   [:int {:min 1 :max 5}])
@@ -49,6 +47,6 @@
 (defn validate! [schema data]
   (when-not (m/validate schema data)
     (throw (ex-info "Validation failed" {:errors (me/humanize (m/explain schema data))})))
-        data)
+  data)
 
 
