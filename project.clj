@@ -9,6 +9,8 @@
                  [ring/ring-defaults "0.3.4"]
                  [hiccup "2.0.0-RC2"]
                  [metosin/reitit "0.7.1"]
+
+                 [cheshire "5.11.0"]
                 ]
 
   :profiles {:dev {:dependencies [[midje "1.10.10"]]}}
