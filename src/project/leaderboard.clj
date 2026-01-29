@@ -50,24 +50,6 @@
   (let [old-names (set (get-all-names old-lb)) new-names (set (get-all-names new-lb))]
     (filter (complement old-names) new-names)))
 
-(defn leaderboard-delta [old-lb new-lb]
-  (let [old-ranks (into {} (map (fn [{:user/keys [username] :keys [rank]}]
-                                  [username rank])
-                                old-lb))
-        new-ranks (into {} (map (fn [{:user/keys [username] :keys [rank]}]
-                                  [username rank])
-                                new-lb))]
-    (map (fn [username]
-           (let [old-r (get old-ranks username)
-                 new-r (get new-ranks username)]
-
-             {:user/username username
-              :delta (- old-r new-r)}
-             {:user/username username
-              :delta (- old-r new-r)})))
-
-    (keys new-ranks)))
-
 (defn leaderboard-delta-edge-case [old-lb new-lb]
   (let [old-ranks (into {} (map (fn [{:user/keys [username] :keys [rank]}]
                                   [username rank])

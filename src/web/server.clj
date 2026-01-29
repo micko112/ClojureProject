@@ -94,7 +94,9 @@
           .day-column:hover { background: #f0f0f0; }
           .day-column.selected { background: #2c3e50; color: white; border-color: #2c3e50; }
 
-          .calendar-container { border: 1px solid #dbdbdb; background: white; border-radius: 3px; }
+          .calendar-container { border: 10px solid #dbdbdb; background: black; border-radius: 3px; }
+
+          .hour-slot:hover { background: #f7f7f7;}
        "]]
 
    [:body
@@ -102,7 +104,7 @@
      [:div.logo-wrapper
       [:div.logo "BeBetter"]]
      [:ul.sidebar-menu
-      [:li [:a.nav-link {:href "#"} [:span "📅"] [:span "Planer"]]]
+      [:li [:a.nav-link {:href "#"} [:span "\uD83C\uDFE0"] [:span "Feed"]]]
       [:li [:a.nav-link {:href "#"} [:span "⚡"] [:span "Aktivnost"]]]
       [:li [:a.nav-link {:href "#"} [:span "🏆"] [:span "Rang Lista"]]]
       [:li [:a.nav-link {:href "#"} [:span "🔍"] [:span "Pretraga"]]]
@@ -145,36 +147,49 @@
    [:h3 (str "Day: " (or day "none"))]
    [:div {:style "position:relative; height:1440px; border:1px solid #ccc;"}
     (for [hour (range 24)]
-      [:div {:style (str "position:absolute; top:" (* hour 60) "px;")}
+      [:div.hour-slot
+       {:style (str "position:absolute; top:" (* hour 60) "px; left: 0; right: 0;
+       height:60px; border-top:1px solid #eee; cursor:pointer;")
+        :hx-get "/slot-form"
+        :hx-vals (str "{\"hour\": " hour "}")
+        :hx-target "this"
+        :hx-swap "innerHTML"
+        }
        (str hour ":00")])]])
 
+(defn slot-form [day-time]
+  [:form {:hx-post "/add-activity"
+          :hx-target "closest .hour-slot"
+          :hx-swap "innerHTML"
+          :hx-indicator ".spinner"}
+   [:input {:type "hidden"
+            :name "day-time"
+            :value day-time}]
+
+   [:select {:name "title"}
+    [:option {:value "" :disabled true :selected true} "Choose intensity"]
+    [:option {:value "training"} "Training"]
+    [:option {:value "study"} "Study"]
+    [:option {:value "work"} "Work"]]
+
+   [:select {:name "intensity" :id "intensity"}
+    [:option {:value "" :disabled true :selected true} "Choose intensity"]
+    [:option {:value "low"} "Low"]
+    [:option {:value "mid"} "Mid"]
+    [:option {:value "high"} "High"]]
+
+   [:button {:type "submit"} "Save"]])
+
 (defn home-page [{:keys [session]}]
-  (let [selected-day (:select-day session)] {:status 200
-                                             :headers {"Content-Type" "text/html"}
-                                             :body
-                                             (common-layout
-                                              [:div
-                                               [:h2 "Calendar"]
-                                               (day-column selected-day)
-                                               (calendar-view selected-day)])}))
-
-(defn title-handler [request]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body (html5 [:small "Title updated"])})
-
-(defn duration-handler [request]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body (html5 [:small "Duration updated"])})
-
-(defn activity-handler [request]
-  (let [title (get-in request [:params :title])
-        duration (get-in request [:params :duration])]
+  (let [selected-day (:select-day session)]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body
-     (html5 [:p "Activity: " title ", duration: " duration])}))
+     (common-layout
+       [:div
+        [:h2 "Calendar"]
+        (day-column selected-day)
+        (calendar-view selected-day)])}))
 
 (defn select-day-handler [{:keys [params session]}]
   (let [day (:day params)]
@@ -184,14 +199,37 @@
      :body (str (h/html (calendar-view day))
                 (h/html [:div {:id "day-nav" :hx-swap-oob "true"}
                          (h/html (day-column day))]))}))
-(defn dummy-handler [request]
-  {:status 200 :body "OK"})
+
+(defn slot-form-handler [{:keys [params]}]
+  (let [hour (:hour params)]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body (str (h/html (slot-form hour)))
+     }))
+
+(defn add-activity-handler [{:keys [params]}]
+  (println "PARAMS:" params)
+  (let [title (:title params)
+        intensity (:intensity params)
+        hour  (:day-time params)]
+
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body
+     (str
+       (h/html
+         [:div {:style "background:#2c3e50; color:white; padding:4px; border-radius:4px;"}
+          (str title " @ " hour " [" intensity "]")]))}))
+
+
 
 (def app
   (wrap-session
    (ring/ring-handler
     (ring/router [["/" {:get home-page}]
-                  ["/select-day" {:post select-day-handler}]]
+                  ["/select-day" {:post select-day-handler}]
+                  ["/slot-form" {:get slot-form-handler}]
+                  ["/add-activity" {:post add-activity-handler}]]
                  {:data {:middleware [parameters/parameters-middleware
                                       wrap-keyword-params]}}))))
 
