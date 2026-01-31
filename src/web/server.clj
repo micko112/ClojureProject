@@ -46,7 +46,70 @@
     [:title "BeBetter"]
     [:meta {:charset "UTF-8"}]
     [:script {:src "https://unpkg.com/htmx.org@1.9.10"}]
-    ""
+    [:script "
+      document.addEventListener('DOMContentLoaded', function() {
+        // Function to handle form visibility
+        function handleFormVisibility() {
+          const formContainer = document.querySelector('.slot-form-container');
+          const calendarScroll = document.querySelector('.calendar-scroll');
+          const allHourRows = document.querySelectorAll('.hour-row');
+          const allHourSlots = document.querySelectorAll('.hour-slot');
+          
+          if (formContainer) {
+            // Form is visible - disable pointer events on all hour-rows/slots except the one with form
+            allHourRows.forEach(row => {
+              if (!row.contains(formContainer)) {
+                row.style.pointerEvents = 'none';
+                row.style.zIndex = '1';
+              } else {
+                row.style.pointerEvents = 'auto';
+                row.style.zIndex = '9999';
+              }
+            });
+            allHourSlots.forEach(slot => {
+              if (!slot.contains(formContainer)) {
+                slot.style.pointerEvents = 'none';
+                slot.style.zIndex = '1';
+              } else {
+                slot.style.pointerEvents = 'auto';
+                slot.style.zIndex = '9999';
+              }
+            });
+          } else {
+            // Form is not visible - re-enable all pointer events
+            allHourRows.forEach(row => {
+              row.style.pointerEvents = '';
+              row.style.zIndex = '';
+            });
+            allHourSlots.forEach(slot => {
+              slot.style.pointerEvents = '';
+              slot.style.zIndex = '';
+            });
+          }
+        }
+        
+        // Use MutationObserver to watch for form appearance/disappearance
+        const observer = new MutationObserver(function(mutations) {
+          handleFormVisibility();
+        });
+        
+        // Observe the calendar-scroll for changes
+        const calendarScroll = document.querySelector('.calendar-scroll');
+        if (calendarScroll) {
+          observer.observe(calendarScroll, {
+            childList: true,
+            subtree: true
+          });
+        }
+        
+        // Also listen to HTMX events
+        document.body.addEventListener('htmx:afterSwap', handleFormVisibility);
+        document.body.addEventListener('htmx:afterSettle', handleFormVisibility);
+        
+        // Initial check
+        handleFormVisibility();
+      });
+    "]
     [:style
      "
         /* RESET & BASE */
@@ -74,14 +137,18 @@
         .calendar-wrapper { position: relative; background: white; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .calendar-scroll { height: 70vh; overflow-y: auto; position: relative; } /* Skroluje samo kalendar */
 
-        .hour-row { height: 60px; border-bottom: 1px solid #f0f0f0; position: relative; display: flex; align-items: center; }
-        .hour-label { width: 60px; text-align: right; padding-right: 15px; color: #999; font-size: 12px; font-weight: 500; user-select: none; }
-        .hour-slot { flex: 1; height: 100%; cursor: pointer; transition: background 0.1s; position: relative; border-left: 1px solid #f0f0f0; }
+        .hour-row { height: 60px; border-bottom: 1px solid #f0f0f0; position: relative; display: flex; align-items: center; z-index: 1; }
+        .hour-label { width: 60px; text-align: right; padding-right: 15px; color: #999; font-size: 12px; font-weight: 500; user-select: none;}
+        .hour-slot { flex: 1; height: 100%; cursor: pointer; transition: background 0.1s; position: relative; border-left: 1px solid #f0f0f0; z-index: 1; }
         .hour-slot:hover { background-color: #fcfcfc; }
 
         /* FORMA U SLOTU */
-        .slot-form-container { padding: 10px; background: white; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #e0e0e0; z-index: 100; position: absolute; top: 5px; left: 5px; width: 300px; animation: fadeIn 0.2s; }
-        .slot-form { display: flex; gap: 8px; flex-wrap: wrap; }
+        .slot-form-container { padding: 10px; background: white; border-radius: 6px; z-index: 10000;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #e0e0e0; position: absolute;
+        top: 5px; left: 5px; width: 600px; animation: fadeIn 0.2s; pointer-events: auto;
+        isolation: isolate; transform: translateZ(0); }
+        .slot-form { display: flex; gap: 8px; flex-wrap: wrap; flex-direction: column; }
+        .slot-form-row { display: flex; gap: 8px; width: 100%; }
         .slot-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; flex: 1; font-size: 13px; }
         .slot-form button { padding: 8px 15px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; }
         .slot-form button:hover { background: #34495e; }
@@ -94,7 +161,7 @@
             font-size: 13px; font-weight: 500;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             cursor: pointer; transition: transform 0.1s;
-            z-index: 20; pointer-events: auto;
+            z-index: 30; pointer-events: auto;
             display: flex; align-items: center; justify-content: space-between;
         }
         .activity-block:hover { transform: scale(1.01); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -145,13 +212,33 @@
        :hx-target "#calendar-view"
        :hx-swap "outerHTML"}
       d])])
+(defn activity->block [{:keys [id title intensity duration hour]}]
+  (let [top (* 60 hour)
+        height (* duration 60)]
+    [:div.activity-block
+     {:id id
+      :hx-get "/activity-edit"
+      :hx-target "this"
+      :hx-swap "outerHTML"
+      :hx-vals (generate-string {:id id})
+      :style (str "position:absolute;"
+                  "top:" top "px;"
+                  "left:0;"
+                  "right:0;"
+                  "height:" height "px;"
+                  "background:#2c3e50;"
+                  "color:white;"
+                  "border-radius:6px;"
+                  "padding:6px;"
+                  "pointer-events: auto;"
+                  )}
+     (str title " [" intensity "]")]))
 
-(defn calendar-view [day]
+(defn calendar-view [day activities]
   [:div#calendar-view.calendar
-   [:h3 (str "Day: " (or day "none"))]
+   [:h3 (str "Day: " (or day "Monday"))]
    [:div.calendar-wrapper
     [:div.calendar-scroll
-     [:div#calendar-layer {:style "position:absolute; inset:0; pointer-events: none; z-index: 10;"}]
      (for [hour (range 24)]
        [:div.hour-row
         [:div.hour-label (str hour ":00")]
@@ -160,41 +247,54 @@
           :hx-vals (generate-string {:hour hour})
           :hx-target "this"
           :hx-swap "innerHTML"
-          :hx-trigger "click once"}]])]
+          :hx-trigger "click once"
+          }]])
+     [:div#calendar-layer {:style "position:absolute;
+          top:0;
+          left:0;
+          right:0;
+          height:1440px;
+          z-index:20;
+          pointer-events: none"}
+      (for [a activities]
+        (activity->block a))]
+     ]
     ]])
 
-(defn slot-form [day-time]
-  [:form {:hx-post "/add-activity"
-          :hx-target "#calendar-layer"
-          :hx-swap "beforeend"
-          :onclick "event.stopPropagation()"
-          :style "display: flex; gap: 10px; align-items: center;"}
+
+(defn slot-form [hour]
+  [:div.slot-form-container {:onclick "event.stopPropagation()"}
+   [:form.slot-form
+    {:hx-post "/add-activity"
+     :hx-target "#calendar-layer"
+     :hx-swap "beforeend"
+     :style "position: relative; z-index: 10000;"
+     }
    [:input {:type "hidden"
-            :name "day-time"
-            :value day-time}]
+            :name "hour"
+            :value hour}]
 
-   [:div {:style "margin-bottom: 5px;"}
-   [:select {:name "title" :required true }
-    [:option {:value "" :selected true :disabled true :hidden true} "Choose Activity"]
-    [:option {:value "training"} "Training"]
-    [:option {:value "study"} "Study"]
-    [:option {:value "work"} "Work"]]]
+    [:div.slot-form-row
+     [:select {:name "title" :required true }
+      [:option {:value "" :selected true :disabled true :hidden true} "Choose Activity"]
+      [:option {:value "training"} "Training"]
+      [:option {:value "study"} "Study"]
+      [:option {:value "work"} "Work"]]
 
-   [:div {:style "margin-bottom: 5px;"}
-    [:select {:name "intensity" :required true }
-     [:option {:value "" :selected true :disabled true :hidden true} "Choose Intensity"]
-     [:option {:value "low"} "Low"]
-     [:option {:value "mid"} "Mid"]
-     [:option {:value "high"} "High"]]
-    ]
-   [:div {:style "margin-bottom: 5px;"}
-    [:select {:name "duration"}
-     [:option {:value "1"} "1h"]
-     [:option {:value "2"} "2h"]
-     [:option {:value "3"} "3h"]
-     [:option {:value "4"} "4h"]]]
+     [:select {:name "intensity" :required true }
+      [:option {:value "" :selected true :disabled true :hidden true} "Choose Intensity"]
+      [:option {:value "low"} "Low"]
+      [:option {:value "mid"} "Mid"]
+      [:option {:value "high"} "High"]]]
 
-   [:button {:type "submit" } "Save"]])
+    [:div.slot-form-row
+     [:select {:name "duration"}
+      [:option {:value "1"} "1h"]
+      [:option {:value "2"} "2h"]
+      [:option {:value "3"} "3h"]
+      [:option {:value "4"} "4h"]]
+
+     [:button {:type "submit" } "Save"]]]])
 
   (defn activity-edit-view [id]
     [:div {:style "background:#fff; border:1px solid #ccc; padding:6px; border-radius:6px;"}
@@ -204,8 +304,11 @@
                :hx-swap "outerHTML"}
       "Delete"]])
 
+
+
 (defn home-page [{:keys [session]}]
-  (let [selected-day (:select-day session)]
+  (let [selected-day (:select-day session "Mon")
+        activities (get-in session [:activities selected-day] [])]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body
@@ -213,50 +316,51 @@
        [:div
         [:h2 "Calendar"]
         (day-column selected-day)
-        (calendar-view selected-day)])}))
+        (calendar-view selected-day activities)])}))
 
 (defn select-day-handler [{:keys [params session]}]
-  (let [day (:day params)]
+  (let [day (:day params)
+        activities (get-in session [:activities day] [])]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :session (assoc session :select-day day)
-     :body (str (h/html (calendar-view day))
-                (h/html [:div {:id "day-nav" :hx-swap-oob "true"}
-                         (h/html (day-column day))]))}))
+     :body (str (str (h/html (calendar-view day activities)))
+                (str (h/html [:div {:id "days-nav" :hx-swap-oob "true"}
+                         (for [d days]
+                           [:div.day-column
+                            {:class (when (= d day) "selected")
+                             :hx-post "/select-day"
+                             :hx-vals (generate-string {:day d})
+                             :hx-target "#calendar-view"
+                             :hx-swap "outerHTML"}
+                            d])])))}))
 
 (defn slot-form-handler [{:keys [params]}]
   (let [hour (:hour params)]
-    {:status 200
+    {:status  200
      :headers {"Content-Type" "text/html"}
-     :body (str (h/html (slot-form hour)))
+     :body    (str (h/html (slot-form hour)))
      }))
 
-(defn add-activity-handler [{:keys [params]}]
+(defn add-activity-handler [{:keys [params session]}]
   (println "PARAMS:" params)
-  (let [title (:title params)
-        intensity (:intensity params)
-        hour  (Integer/parseInt (:day-time params))
-        duration (Integer/parseInt (:duration params))
-        top (* hour 60)
-        height (* duration 60)
+  (let [day (:select-day session "Mon")
         id (str (UUID/randomUUID))
+        new-activity {:id id
+                    :title (:title params)
+                    :duration (Integer/parseInt (:duration params))
+                    :intensity (:intensity params)
+                    :hour (Integer/parseInt (:hour params)  )}
+        new-session (update-in session [:activities day] (fnil conj []) new-activity)
         ]
+
 
     {:status 200
      :headers {"Content-Type" "text/html"}
+     :session new-session
      :body
      (str
-       (h/html
-         [:div.activity-block
-          {:id (str "act-" id)
-           :hx-get "/activity-edit"
-           :hx-vals (generate-string {:id id})
-           :hx-target "this"
-           :hx-swap "outerHTML"
-           :style (str "position:absolute;" "top:" top "px;" "left:4px;" "right:4px;" "height:" height "px;"
-           "background:#2c3e50;" "color:white;" "border-radius:6px;" "padding:6px;" "z-index:10;
-                   pointer-events: auto;")}
-          (str title " [" intensity "]")]))}))
+       (h/html (activity->block new-activity)))}))
 
   (defn activity-edit-handler [{:keys [params]}]
     (let [id (:id params)]
