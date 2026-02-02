@@ -3,7 +3,8 @@
             [clojure.string :as str]
             [project.time :as t]
             [project.validation :as v]
-            [project.system :refer [conn]])
+            [project.system :as s]
+            [project.connection :as conn])
   (:import (java.time LocalDate)))
 
 (defn create-user! [conn name]
@@ -11,12 +12,13 @@
   @(d/transact conn [{:user/username name
                       :user/xp 0}]))
 
-(defn add-activity! [conn username activity-key duration intensity]
+(defn add-activity! [conn username activity-key duration intensity start-time]
   (v/validate! v/AddActivityInput {:username username
                                    :activity-type activity-key
                                    :duration duration
-                                   :intensity intensity})
-  @(d/transact conn [[:activity/add username activity-key duration intensity]]))
+                                   :intensity intensity
+                                   :start-time start-time})
+  @(d/transact conn [[:activity/add username activity-key duration intensity start-time]]))
 
 (defn user-ids [db] (d/q '[:find ?e .
                            :where [?e :user/username]] db))
@@ -94,7 +96,7 @@
   {:db/ident :activity/add
    :db/fn (d/function
            '{:lang "clojure"
-             :params [db username activity-type-key duration intensity]
+             :params [db username activity-type-key duration intensity start-time]
              :code (let [user-e
                          (d/q '[:find ?e .
                                 :in $ ?username
@@ -116,7 +118,7 @@
                        :activity/type act-type-e
                        :activity/duration duration
                        :activity/intensity intensity
-                       :activity/start-time (java.util.Date.)}
+                       :activity/start-time start-time}
                       [:db/add user-e :user/xp new-xp]])})})
 
 (def get-all-tx-functions [add-xp-tx add-activity-tx])
@@ -135,7 +137,6 @@
       (calculate-xp-from-rows rows))))
 
 (defn report-daily-in-period [db username date]
-
   ;total xp u danu
   (let [{:keys [start-day end-day]} ((get period-interval :daily) date)
         rows (get-activities-in-interval db username start-day end-day)

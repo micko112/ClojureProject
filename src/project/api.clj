@@ -7,8 +7,8 @@
             [project.validation :as v])
   (:import (java.time LocalDate)))
 
-(defn log-activity! [username a-key duration intensity]
-  (db/add-activity! conn username a-key duration intensity))
+(defn log-activity! [username a-key duration intensity start-time]
+  (db/add-activity! conn username a-key duration intensity start-time))
 
 (defn register-user! [username]
   (v/validate! v/Username username)

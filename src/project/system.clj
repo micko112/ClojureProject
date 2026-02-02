@@ -7,11 +7,12 @@
 
 (defonce conn (d/connect db-uri))
 
-(defn reset-db! [all-tx-functions db-uri]
+(defn reset-db! [all-tx-functions]
   (d/delete-database db-uri)
   (d/create-database db-uri)
-  (let [conn (d/connect db-uri)]
-    @(d/transact conn schema/all-schemas)
-    @(d/transact conn seed-db/all-seed-data)
-    @(d/transact conn all-tx-functions)
-    conn))
+  (let [new-conn (d/connect db-uri)]
+    @(d/transact new-conn schema/all-schemas)
+    @(d/transact new-conn seed-db/all-seed-data)
+    @(d/transact new-conn all-tx-functions)
+    (alter-var-root #'conn (constantly new-conn))
+    new-conn))

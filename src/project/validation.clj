@@ -31,7 +31,8 @@
    [:username Username]
    [:activity-type Type-key]
    [:duration Duration]
-   [:intensity Intensity]])
+   [:intensity Intensity]
+   [:start-time inst?]])
 
 (def Period
   [:enum

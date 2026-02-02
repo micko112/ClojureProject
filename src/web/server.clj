@@ -7,7 +7,7 @@
             [hiccup2.core :as h]
             [project.api :as api]
             [datomic.api :as d]
-            [project.system :as sys]
+            [project.system :as s]
             [clojure.string :as str]
             [ring.middleware.session :refer [wrap-session]]
             [cheshire.core :refer :all]
@@ -34,7 +34,7 @@
 (defn get-previous-day [date]
   (.minusDays date 1))
 
-(defn insant->minutes-from-midnight [inst]
+#_(defn instant->minutes-from-midnight [inst]
   (let [zdt (.atZone (.toInsant inst) (project.time/zone))
         hour (.getHour zdt)
         minute (.getMinute zdt)
@@ -69,13 +69,13 @@
          .day-column:hover { background-color: #f8f9fa; color: #333; }
          .day-column.selected { background-color: #2c3e50; color: white; box-shadow: 0 4px 6px rgba(44, 62, 80, 0.2); }
 
-         /* KALENDAR GRID */
-         .calendar-wrapper { position: relative; background: white; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-         .calendar-scroll { height: 70vh; overflow-y: auto; position: relative; } /* Skroluje samo kalendar */
-
-         .hour-row { height: 60px; border-bottom: 1px solid #f0f0f0; position: relative; display: flex; align-items: center; z-index: 1; }
-         .hour-label { width: 60px; text-align: right; padding-right: 15px; color: #999; font-size: 12px; font-weight: 500; user-select: none;}
-         .hour-slot { flex: 1; height: 100%; cursor: pointer; transition: background 0.1s; position: relative; border-left: 1px solid #f0f0f0; z-index: 1; }
+         .calendar-scroll { height: 75vh; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; background: white; position: relative; }
+         .calendar-grid { display: flex; min-height: 1440px; position: relative; }
+         .time-labels { width: 60px; border-right: 1px solid #f0f0f0; background: #fafafa; flex-shrink: 0; }
+         .hour-label { height: 60px; border-bottom: 1px solid #eee; text-align: right; padding-right: 10px; color: #999; font-size: 12px; padding-top: 5px; }
+         .time-label { height: 60px; border-bottom: 1px solid #eee; text-align: right; padding-right: 10px; color: #999; font-size: 12px; padding-top: 5px; }
+         .day-grid { flex-grow: 1; position: relative; }
+         .hour-slot { height: 60px; border-bottom: 1px solid #f5f5f5; cursor: pointer; position: relative; z-index: 1; }
          .hour-slot:hover { background-color: #fcfcfc; }
 
          /* FORMA U SLOTU */
@@ -90,25 +90,7 @@
          .slot-form button:hover { background: #34495e; }
 
          /* AKTIVNOST BLOK */
-         .activity-block {
-             position: absolute; left: 125px; right: 10px;
-             background: #e3f2fd; border-left: 4px solid #2196f3;
-             color: #1565c0; padding: 8px 12px; border-radius: 4px;
-             font-size: 13px; font-weight: 500;
-             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-             cursor: pointer; transition: transform 0.1s;
-             z-index: 30; pointer-events: auto;
-             display: flex; align-items: center; justify-content: space-between;
-         }
-         .activity-block:hover { transform: scale(1.01); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-         .activity-actions button { background: none; border: none; cursor: pointer; color: #d32f2f; font-size: 12px; font-weight: bold; }
-
-          .activity-actions {}
-          .activity-actions button {padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
-          transition: all 0.2s ease; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;}
-          .activity-actions button:first-child {background: #ff4757; color: white;}
-          .activity-actions button:first-child:hover {background: #ff3838; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3);}
-
+         .activity-block {position: absolute; left: 5px; right: 10px; background-color: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0; padding: 5px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; z-index: 20; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; overflow: hidden;}
          @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
       "]]
 
@@ -144,8 +126,7 @@
 (def days ["Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"])
 
 (defn day-column [selected-day]
-  [:div {:id "days-nav"
-         :style "display: flex; gap: 1rem; margin-bottom: 20px;"}
+  [:div {:id "days-nav"}
    (for [d days]
      [:div.day-column
       {:class (when (= d selected-day) "selected")
@@ -154,10 +135,31 @@
        :hx-target "#calendar-view"
        :hx-swap "outerHTML"}
       d])])
+; DOBRO
+(defn get-hour-from-instant [inst]
+  (if inst
+    (let [zdt (.atZone (.toInstant inst) (ZoneId/of "Europe/Belgrade"))]
+      (.getHour zdt))
+    0))
 
+(defn db-activity->view-model [db-activity]
+  {:id (:db/id db-activity)
+   :title (if (:activity/type db-activity)
+            (name (:activity/type db-activity)) "unknown")
+   :intensity (:activity/intensity db-activity)
+   :duration (:activity/duration db-activity)
+   :hour (get-hour-from-instant (:activity/start-time db-activity))})
+
+(defn get-activities-for-date [username date-str]
+  (let [date (parse-date date-str)
+        report (project.api/get-daily-report username date)
+        db-activities (:activities report)]
+    (map db-activity->view-model db-activities)))
+;------
 (defn activity->block [{:keys [id title intensity duration hour]}]
-  (let [top (* 60 hour)
-        height (* duration 60)]
+  (let [top (+ (* hour 60) 1)    ;; Sat * 60px = Pozicija
+        height (- duration 3)]   ;; Trajanje (u minutima) = Visina u px. ODUZMI 3px za marginu/border.
+
     [:div.activity-block
      {:id (str "activity-" id)
       :hx-get "/activity-edit"
@@ -166,7 +168,7 @@
       :hx-vals (generate-string {:id id})
       :style (str "position:absolute;"
                   "top:" top "px;"
-                  "left:60px;"
+                  "left:0;"
                   "right:0;"
                   "height:" height "px;"
                   "background:#2c3e50;"
@@ -176,44 +178,44 @@
                   "pointer-events: auto;"
                   )}
      [:div.activity-content
-      (str title "  " intensity "  " duration "h")]]))
+      (str title "  " intensity "  " duration "min")] ;; Promenio sam "h" u "min" jer prikazujes minute
+     [:button {:hx-delete "/activity"
+               :hx-vals (generate-string {:id id})
+               :hx-target (str "#act-" id)
+               :hx-swap "outerHTML"
+               :style "background:none; border:none; cursor:pointer; color:red;"}
+      "✕"]]))
 
 (defn calendar-view [day activities]
   [:div#calendar-view.calendar
    [:h3 (str "Day: " (or day "Monday"))]
-   [:div.calendar-wrapper
-    [:div.calendar-scroll
-     [:div#slots-layer
+   [:div.calendar-scroll
+    [:div.calendar-grid
+     ; leva kolona za vreme
+     [:div.time-labels
       (for [hour (range 24)]
-       [:div.hour-row
-        [:div.hour-label (str hour ":00")]
+        [:div.hour-label (str hour ":00")])]
+     ;desna kolona
+     [:div.day-grid
+      (for [hour (range 24)]
         [:div.hour-slot
-         {:hx-get "/slot-form"
+         {:hx-get "slot-form"
           :hx-vals (generate-string {:hour hour})
           :hx-target "this"
           :hx-swap "innerHTML"
-          :hx-trigger "click once"
+          :hx-trigger "click once"}
+         ])
 
-          }]])]
-     [:div#calendar-form-layer {:style "position:absolute;
-          top:0;
-          left:0;
-          right:0;
-          height:1440px;
-          z-index:20;
-          pointer-events: none"}
-      (for [a activities]
-        (activity->block a))]
-     ]
-    ]])
-
+      [:div#calendar-layer {:style "position: absolute; inset: 0; pointer-events: none; z-index: 10;"}
+       (for [a activities]
+        (activity->block a))]]]]])
 
 (defn slot-form [hour]
   [:div.slot-form-container  {:style "position:absolute; top:5px; left:5px; z-index:1000;"
                               :onclick "event.stopPropagation()"}
    [:form.slot-form
     {:hx-post "/add-activity"
-     :hx-target "#calendar-form-layer"
+     :hx-target "#calendar-layer"
      :hx-swap "beforeend"
      :hx-on:after-request "this.closest('.slot-form-container').remove()"
      :onsubmit "this.querySelector('button[type=submit]').disabled = true;"
@@ -230,15 +232,16 @@
 
     [:select {:name "intensity" :required true }
      [:option {:value "" :selected true :disabled true :hidden true} "Choose Intensity"]
-     [:option {:value "low"} "Low"]
-     [:option {:value "mid"} "Mid"]
-     [:option {:value "high"} "High"]]
+     [:option {:value "1"} "Low"]
+     [:option {:value "3"} "Mid"]
+     [:option {:value "5"} "High"]]
 
     [:select {:name "duration"}
-     [:option {:value "1"} "1h"]
-     [:option {:value "2"} "2h"]
-     [:option {:value "3"} "3h"]
-     [:option {:value "4"} "4h"]]
+     [:option {:value "30"} "30min"]
+     [:option {:value "60"} "1h"]
+     [:option {:value "120"} "2h"]
+     [:option {:value "180"} "3h"]
+     [:option {:value "240"} "4h"]]
 
     [:button {:type "submit" } "Save"]
     [:button {:type "button"
@@ -262,34 +265,26 @@
      :hx-swap "innerHTML"}
     "Cancel"]])
 
-(defn home-page [{:keys [session]}]
-  (let [selected-day (:select-day session "Mon")
-        activities (get-in session [:activities selected-day] [])]
+(defn home-page [request]
+  (let [today-str (format-date (LocalDate/now))
+        activities (get-activities-for-date "Micko" today-str)]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body
      (common-layout
        [:div
         [:h2 "Calendar"]
-        (day-column selected-day)
-        (calendar-view selected-day activities)])}))
+        (day-column today-str)
+        (calendar-view today-str activities)])}))
 
-(defn select-day-handler [{:keys [params session]}]
+(defn select-day-handler [{:keys [params]}]
   (let [day (:day params)
-        activities (get-in session [:activities day] [])]
+        today-str (format-date (LocalDate/now))
+        activities (get-activities-for-date "Micko" day)]
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :session (assoc session :select-day day)
      :body (str (str (h/html (calendar-view day activities)))
-                (str (h/html [:div {:id "days-nav" :hx-swap-oob "true"}
-                              (for [d days]
-                                [:div.day-column
-                                 {:class (when (= d day) "selected")
-                                  :hx-post "/select-day"
-                                  :hx-vals (generate-string {:day d})
-                                  :hx-target "#calendar-view"
-                                  :hx-swap "outerHTML"}
-                                 d])])))}))
+                (str (h/html (day-column day))))}))
 
 (defn slot-form-handler [{:keys [params]}]
   (let [hour (:hour params)]
@@ -298,25 +293,33 @@
      :body    (str (h/html (slot-form hour)))
      }))
 
-(defn add-activity-handler [{:keys [params session]}]
-  (println "PARAMS:" params)
-  (let [day (:select-day session "Mon")
-        id (str (UUID/randomUUID))
-        new-activity {:id id
-                      :title (:title params)
-                      :duration (Integer/parseInt (:duration params))
-                      :intensity (:intensity params)
-                      :hour (Integer/parseInt (:hour params)  )}
-        new-session (update-in session [:activities day] (fnil conj []) new-activity)
-        ]
+(defn add-activity-handler [{:keys [params]}]
+  (println "UPISUJEM U BAZU: " params)
+  (let [username "Micko"
+        title (keyword (:title params))
+        intensity (Integer/parseInt (:intensity params))
+        duration (Integer/parseInt (:duration params))
+        hour (Integer/parseInt (:hour params))
+        date-str (or (:date params (format-date (LocalDate/now))))
+
+        local-date (parse-date date-str)
+        local-time (LocalTime/of hour 0)
+        start-time (java.util.Date/from (.toInstant (.atZone (.atTime local-date local-time) (ZoneId/of "Europe/Belgrade"))))]
 
 
+    @(d/transact s/conn
+                 [[:activity/add username title duration intensity start-time]])
+
+    (let [new-activity-view {:id "temp-id"
+                             :title (name title)
+                             :intensity intensity
+                             :duration duration
+                             :hour hour}]
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :session new-session
      :body
      (str
-       (h/html (activity->block new-activity)))}))
+       (h/html (activity->block new-activity-view)))})))
 
 (defn activity-edit-handler [{:keys [params]}]
   (let [id (:id params)]
