@@ -103,6 +103,12 @@
          .activity-block:hover { transform: scale(1.01); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
          .activity-actions button { background: none; border: none; cursor: pointer; color: #d32f2f; font-size: 12px; font-weight: bold; }
 
+          .activity-actions {}
+          .activity-actions button {padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+          transition: all 0.2s ease; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;}
+          .activity-actions button:first-child {background: #ff4757; color: white;}
+          .activity-actions button:first-child:hover {background: #ff3838; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3);}
+
          @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
       "]]
 
@@ -153,10 +159,10 @@
   (let [top (* 60 hour)
         height (* duration 60)]
     [:div.activity-block
-     {:id id
+     {:id (str "activity-" id)
       :hx-get "/activity-edit"
-      :hx-target "this"
-      :hx-swap "outerHTML"
+      :hx-target (str "#activity-" id)
+      :hx-swap "innerHTML"
       :hx-vals (generate-string {:id id})
       :style (str "position:absolute;"
                   "top:" top "px;"
@@ -169,7 +175,8 @@
                   "padding:6px;"
                   "pointer-events: auto;"
                   )}
-     (str title " [" intensity "]")]))
+     [:div.activity-content
+      (str title "  " intensity "  " duration "h")]]))
 
 (defn calendar-view [day activities]
   [:div#calendar-view.calendar
@@ -239,12 +246,21 @@
               :style "background: #ccc; color: black;"} "X"]]])
 
 (defn activity-edit-view [id]
-  [:div {:style "background:#fff; border:1px solid #ccc; padding:6px; border-radius:6px;"}
-   [:button {:hx-delete "/activity"
-             :hx-vals (generate-string {:id id})
-             :hx-target "closest .activity-block"
-             :hx-swap "outerHTML"}
-    "Delete"]])
+  [:div.activity-edit
+   {:style "background:#fff; border:1px solid #ccc; padding:6px; border-radius:6px;"}
+   [:span "Edit mode"]
+   [:div.activity-actions
+    [:button {:hx-delete "/activity"
+              :hx-vals (generate-string {:id id})
+              :hx-target (str "#activity-" id)
+              :hx-swap "delete"}]
+    "Delete"]
+   [:button
+    {:hx-get "/activity-view"
+     :hx-vals (generate-string {:id id})
+     :hx-target "closest .activity-block"
+     :hx-swap "innerHTML"}
+    "Cancel"]])
 
 (defn home-page [{:keys [session]}]
   (let [selected-day (:select-day session "Mon")
@@ -309,10 +325,33 @@
      :body (str (h/html (activity-edit-view id)))})
   )
 
-(defn activity-delete-handler [_]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body ""})
+(defn activity-view-handler [{:keys [params session]}]
+  (let [id (:id params)
+        day (:select-day session)
+        activity (first (filter #(= (:id %) id)
+                                (get-in session [:activities day])))]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body (str (h/html [:div {:hx-get "/activity-edit"
+                               :hx-vals (generate-string {:id id})
+                               :hx-target (str "#activity-" id)
+                               :hx-swap "innerHTML"
+                               :style "height:100%; cursor:pointer;"}
+                         (str (:title activity) "  "
+                              (:intensity activity) "  "
+                              (:duration activity) "h")]) )}))
+
+(defn activity-delete-handler [{:keys [params session]}]
+  (let [id (:id params)
+        day (:select-day session)]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :session (update-in session [:activities day]
+                         (fn [acts]
+                           (vec (remove #(= (:id %) id) acts))))
+     :body ""}
+    )
+  )
 
 (def app
   (wrap-session
@@ -324,6 +363,7 @@
                     ["/activity-edit" {:get activity-edit-handler}]
                     ["/activity" {:delete activity-delete-handler}]
                     ["/favicon.ico" {:get (fn [_] {:status 204 :body ""})}]
+                    ["/activity-view" {:get activity-view-handler}]
                     ]
                    {:data {:middleware [parameters/parameters-middleware
                                         wrap-keyword-params]}}))))
@@ -339,8 +379,3 @@
   (when-some [s @server] ;; check if there is an object in the atom
     (.stop s)
     (reset! server nil)))     ; https://ericnormand.me/guide/clojure-web-tutorial
-
-(defn stop-server []
-  (when-some [s @server] ;; check if there is an object in the atom
-    (.interrupt s)
-    (reset! server nil)))
