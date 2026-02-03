@@ -79,7 +79,6 @@
          (keys new-ranks))))
 
 (defn leaderboard [db period date]
-
   (let [previous-date (case period
                         :daily (.minusDays date 1)
                         :weekly (.minusWeeks date 1)

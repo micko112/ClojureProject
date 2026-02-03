@@ -10,8 +10,7 @@
             [project.system :as sys]
             [clojure.string :as str]
             [ring.middleware.session :refer [wrap-session]]
-            [cheshire.core :refer :all]
-            )
+            [cheshire.core :refer :all])
   (:import (java.time LocalDate LocalTime Duration ZoneId)
            (java.time.format DateTimeFormatter)
            (java.util UUID)))
@@ -118,7 +117,6 @@
     [:a.nav-link
      [:li [:span "My Profile"]]]]])
 
-
 (defn hamburger-btn []
   [:button.button.button--icon.button--secondary.mobile-only
    [:svg {:xmlns        "http://www.w3.org/2000/svg"
@@ -129,7 +127,6 @@
     [:line {:x1 4 :x2 20 :y1 6 :y2 6}]
     [:line {:x1 4 :x2 20 :y1 18 :y2 18}]]])
 
-
 (defn nav-arrows []
   [:div.nav__arrows
    [:button.button.button--icon.button--secondary "←"]
@@ -138,12 +135,11 @@
 (defn nav-date-info [date]
   [:div.nav__date-info
    [:div.nav__controls
-   [:button.button.button--secondary.desktop-only
-    {:hx-get "/today"}
-    "Today"]
-   (nav-arrows)]
-   [:time.nav__date date]]
-  )
+    [:button.button.button--secondary.desktop-only
+     {:hx-get "/today"}
+     "Today"]
+    (nav-arrows)]
+   [:time.nav__date date]])
 (defn view-select [current]
   [:div.select.desktop-only
    [:select.select__select
@@ -153,10 +149,10 @@
        (clojure.string/capitalize v)])]])
 
 (defn nav [{:keys [date view]}]
-   [:div.nav
-    (hamburger-btn)
-    (nav-date-info date)
-    (view-select view)] )
+  [:div.nav
+   (hamburger-btn)
+   (nav-date-info date)
+   (view-select view)])
 (def days-of-the-week
   ["Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"])
 
@@ -165,49 +161,40 @@
 
    [:ul.month-calendar__day-of-week-list
     (for [d days-of-the-week]
-      [:li.month-calendar__day-of-week d])
-    ]
+      [:li.month-calendar__day-of-week d])]
    [:div.month-calendar__day-list-wrapper
     [:ul.month-calendar__day-list
      (for [num (range 31)]
        [:li.month-calendar__day
         [:button.month-calendar__day-label (inc num)]
         [:div.month-calendar__event-list-wrapper
-         [:ul.event-list]]]
-       )
+         [:ul.event-list]]])
      (for [num (range 4)]
        [:li.month-calendar__day
         [:button.month-calendar__day-label (inc num)]
         [:div.month-calendar__event-list-wrapper
-         [:ul.event-list]]]
-       )
-     ]]])
+         [:ul.event-list]]])]]])
 
 (defn common-layout [& content]
   (html5
-    [:head
-     [:title "BeBetter"]
-     [:meta {:charset "UTF-8"}]
-     [:script {:src "https://unpkg.com/htmx.org@1.9.10"}]
-     [:style css-styles]]
-    [:body
-     [:div.app
-      [:div (sidebar)]
-      [:main.main
-       [:div (nav {:date (LocalDate/now) :view "week"})]
-       content]]
-     ]
-    )
-  )
-(defn home-page [{:keys [session]}]
-    {:status 200
-     :headers {"Content-Type" "text/html"}
-     :body
-     (common-layout
-        (calendar)
+   [:head
+    [:title "BeBetter"]
+    [:meta {:charset "UTF-8"}]
+    [:script {:src "https://unpkg.com/htmx.org@1.9.10"}]
+    [:style css-styles]]
+   [:body
+    [:div.app
+     [:div (sidebar)]
+     [:main.main
+      [:div (nav {:date (LocalDate/now) :view "week"})]
+      content]]]))
 
-       )
-     })
+(defn home-page [{:keys [session]}]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body
+   (common-layout
+    (calendar))})
 
 (defn nav-handler [request]
   {:status 200
@@ -216,11 +203,10 @@
 
 (def app
   (wrap-session
-    (ring/ring-handler
-      (ring/router [["/" {:get home-page}]
-                    ]
-                   {:data {:middleware [parameters/parameters-middleware
-                                        wrap-keyword-params]}}))))
+   (ring/ring-handler
+    (ring/router [["/" {:get home-page}]]
+                 {:data {:middleware [parameters/parameters-middleware
+                                      wrap-keyword-params]}}))))
 
 (defonce server (atom nil))
 
@@ -237,18 +223,18 @@
 (defn hx
   [{:keys [get post delete target swap trigger vals on oob]}]
   (cond-> {}
-          get     (assoc :hx-get get)
-          post    (assoc :hx-post post)
-          delete  (assoc :hx-delete delete)
-          target  (assoc :hx-target target)
-          swap    (assoc :hx-swap (name swap))
-          trigger (assoc :hx-trigger trigger)
-          vals    (assoc :hx-vals (generate-string vals))
-          oob     (assoc :hx-swap-oob "true")
-          (and on (map? on))
-          (merge (reduce-kv (fn [m k v]
-                              (assoc m
-                                (keyword (str "hx-on:" (name k)))
-                                v))
-                            {}
-                            on))))
+    get     (assoc :hx-get get)
+    post    (assoc :hx-post post)
+    delete  (assoc :hx-delete delete)
+    target  (assoc :hx-target target)
+    swap    (assoc :hx-swap (name swap))
+    trigger (assoc :hx-trigger trigger)
+    vals    (assoc :hx-vals (generate-string vals))
+    oob     (assoc :hx-swap-oob "true")
+    (and on (map? on))
+    (merge (reduce-kv (fn [m k v]
+                        (assoc m
+                               (keyword (str "hx-on:" (name k)))
+                               v))
+                      {}
+                      on))))
