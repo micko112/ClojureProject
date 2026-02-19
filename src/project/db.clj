@@ -31,7 +31,7 @@
     (if (:db/id result) result (throw (ex-info "User not found" {:user/username username})))))
 
 (defn get-user-activities [db username]
-  (d/q '[:find ?a-start-time ?a-type ?a-duration ?a-intensity ?xp-per-min
+  (sort-by first (d/q '[:find ?a-start-time ?a-type ?a-duration ?a-intensity ?xp-per-min
          :in $ ?username
          :where  [?u :user/username ?username]
          [?a :activity/user ?u]
@@ -40,7 +40,8 @@
          [?a :activity/intensity ?a-intensity]
          [?a :activity/duration ?a-duration]
          [?t :activity-type/xp-per-minute ?xp-per-min]
-         [?a :activity/start-time ?a-start-time]] db username))
+         [?a :activity/start-time ?a-start-time]] db username)))
+
 
 (defn get-activities-in-interval
   [db username start-day end-day]

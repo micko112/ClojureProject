@@ -116,7 +116,7 @@
 
 (def days ["Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"])
 
-(defn get-current-week-days []
+(defn get-current-week-days []  ;<--- AI
   (let [today (LocalDate/now)
         monday (.with today (java.time.temporal.TemporalAdjusters/previousOrSame java.time.DayOfWeek/MONDAY))]
     (for [i (range 7)]
@@ -152,17 +152,19 @@
             (name (:activity/type db-activity)) "unknown")
    :intensity (:activity/intensity db-activity)
    :duration (:activity/duration db-activity)
-   :hour (get-hour-from-instant (:activity/start-time db-activity))})
+   :hour (cond (:activity/time db-activity ) (.getHour (:activity/time db-activity))
+               (:activity/start-time db-activity)  (get-hour-from-instant (:activity/start-time db-activity))
+               :else 0)})
 
 (defn get-activities-for-date [username date-str]
   (let [date (parse-date date-str)
         report (project.api/get-daily-report username date)
         db-activities (:activities report)]
     (map db-activity->view-model db-activities)))
-  ;------
+
 (defn activity->block [{:keys [id title intensity duration hour]}]
-  (let [top (+ (* hour 60) 1)    ;; Sat * 60px = Pozicija
-        height (- duration 3)]   ;; Trajanje (u minutima) = Visina u px. ODUZMI 3px za marginu/border.
+  (let [top (+ (* hour 60) 1)
+        height (- duration 3)]
 
     [:div.activity-block
      {:id (str "activity-" id)
@@ -181,7 +183,7 @@
                   "padding:6px;"
                   "pointer-events: auto;")}
      [:div.activity-content
-      (str title "  " intensity "  " duration "min")] ;; Promenio sam "h" u "min" jer prikazujes minute
+      (str title "  " intensity "  " duration "min")]
      [:button {:hx-delete "/activity"
                :hx-vals (generate-string {:id id})
                :hx-target (str "#act-" id)
@@ -192,7 +194,8 @@
 (defn calendar-view [day activities]
   [:div#calendar-view.calendar
    [:h3 (str "Day: " (or day "Monday"))]
-   [:div.calendar-scroll
+   [:div#scroll-container.calendar-scroll
+    [:script (h/raw "document.getElementById('scroll-container').scrollTop = 360;")]
     [:div.calendar-grid
        ; leva kolona za vreme
      [:div.time-labels

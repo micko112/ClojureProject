@@ -6,7 +6,7 @@
 
 (def zone (ZoneId/of "Europe/Belgrade"))
 
-(defn day-interval [^LocalDate date]
+(defn day-interval [^LocalDate date]                        ; <---- AI je uradio sve za vreme, prekucao sam sta mi je poslao
   (let [start (.atStartOfDay date zone)
         end   (.plusDays start 1)]
     {:start-day (Date/from (.toInstant start))

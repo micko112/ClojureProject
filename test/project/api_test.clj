@@ -71,4 +71,6 @@
           {:user/username "C" :delta 0}
           {:user/username "D" :delta 3}])))
 
+(deftest get-leaderboard-test
+  (is (= (lb/leaderboard ))))
 
