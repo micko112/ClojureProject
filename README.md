@@ -29,21 +29,7 @@ Active Development
 
 Core Daily Planner, XP system, Leaderboard and ranking logic implemented.  
 
-## Technology
-
-- **Language:** Clojure (Leiningen)
-- **Database:** Datomic Pro  
-- **Frontend:** HTMX, Hiccup  
-- **Server:** Ring, Reitit, Jetty  
-- **Testing:** clojure.test  
-- **Validation:** Malli  
-
-## Getting Started
-
-#### Prerequisites
-- Java JDK (8 or newer)
-- Leiningen (Clojure build tool)
-- Datomic Pro files (unzipped locally)
+## Usage 
 
 ### Running the Application
 
@@ -64,6 +50,64 @@ bin/transactor config/dev-transactor.properties
 lein clean
 lein run
 ```
+Once the server is running, open your web browser and navigate to:
+http://localhost:3000
+
+### 1. The Daily Planner
+Upon loading the application, you are presented with the Interactive Planner.
+- Timeline: The center of the screen shows a vertical timeline of the current day (00:00 - 23:00).
+- Navigation: Click on dates in navbar to view activities on different dates.
+- 
+### 2. Logging an Activity
+To log a completed activity:
+1. Click on any empty time slot in the calendar (e.g. 14:00)
+2. A form will apear in that slot
+3. Select details:
+   - Activity Type (e.g. Training, Study).
+   - Intensity: Rate how hard you worked (1-5).
+   - Duration: Put how long the activity lasted.
+4. Click Save.
+5. The activity will be visible over selected time slot painted with blue color 
+
+### 3. The Leaderboard
+> [!NOTE] 
+> Soon to be publsihed.
+
+## Developement
+
+### Technology
+
+- **Language:** Clojure (Leiningen)
+- **Database:** Datomic Pro  
+- **Frontend:** HTMX, Hiccup  
+- **Server:** Ring, Reitit, Jetty  
+- **Testing:** clojure.test  
+- **Validation:** Malli  
+
+### Prerequisites
+- Java JDK (8 or newer)
+- Leiningen (Clojure build tool)
+- Datomic Pro files (unzipped locally)
+
+### File Structure 
+
+```text
+src/
+  ├── database/
+  │   ├── schema.clj       
+  │   └── seed.clj          
+  │
+  ├── project/
+  │   ├── api.clj     
+  │   ├── db.clj             
+  │   ├── leaderboard.clj    
+  │   ├── system.clj         
+  │   ├── time.clj          
+  │   └── validation.clj     
+  │
+  └── web/
+      └── server.clj        
+```
 
 ## Authors
 
@@ -72,3 +116,4 @@ lein run
 **Master Student of Faculty of Organizational Sciences**
 
 *Software Engineering and Artificial Intelligence*
+
