@@ -1,0 +1,275 @@
+<div class="feed-page">
+
+  <!-- ── STORY OVERLAY ────────────────────────────────────── -->
+  @if (storyOpen && currentStory) {
+    <div class="story-overlay" (click)="closeStory()">
+      <div class="story-progress" (click)="$event.stopPropagation()">
+        @for (s of stories; track s.username; let i = $index) {
+          <div class="progress-bar">
+            <div class="progress-fill" [class.done]="i < storyIndex" [class.active]="i === storyIndex"></div>
+          </div>
+        }
+      </div>
+      <div class="story-header" (click)="$event.stopPropagation()">
+        <div class="story-user">
+          <div class="avatar story-av" [style.background]="avatarColor(currentStory.username)">
+            {{ currentStory.username[0].toUpperCase() }}
+          </div>
+          <div>
+            <div class="story-username">{{ currentStory.username }}</div>
+            <div class="story-date">{{ activityTimeAgo(currentStory.date) }}</div>
+          </div>
+        </div>
+        <button class="story-close" (click)="closeStory()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="story-body" (click)="$event.stopPropagation()">
+        <div class="story-card" [style.background]="storyGradient(currentStory.username)">
+          <div class="story-xp-badge">⚡ {{ currentStory.totalXp }} XP</div>
+          <div class="story-activities">
+            @for (a of currentStory.activities; track a.time) {
+              <div class="story-act">
+                <span class="story-act-emoji">{{ typeEmoji(a.type) }}</span>
+                <div class="story-act-info">
+                  <span class="story-act-type">{{ a.type }}</span>
+                  <span class="story-act-meta">{{ a.duration }}min · ×{{ a.intensity }}</span>
+                </div>
+                <span class="story-act-xp">+{{ a.xp }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="story-tap-left"  (click)="prevStory(); $event.stopPropagation()"></div>
+      <div class="story-tap-right" (click)="nextStory(); $event.stopPropagation()"></div>
+    </div>
+  }
+
+  <!-- ── CREATE POST MODAL ─────────────────────────────────── -->
+  @if (showComposer) {
+    <div class="composer-backdrop" (click)="closeComposer()">
+      <div class="composer-modal" (click)="$event.stopPropagation()">
+        <div class="composer-header">
+          <div class="composer-user">
+            <div class="avatar comp-av" [style.background]="avatarColor(auth.currentUser()?.username || '')">
+              {{ auth.currentUser()?.username?.[0]?.toUpperCase() }}
+            </div>
+            <span class="comp-username">{{ auth.currentUser()?.username }}</span>
+          </div>
+          <button class="btn-icon" (click)="closeComposer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <textarea
+          class="composer-textarea"
+          [(ngModel)]="postContent"
+          placeholder="Šta si postigao danas? Podeli sa ekipom..."
+          rows="4"
+          maxlength="280"
+          autofocus
+        ></textarea>
+
+        <div class="composer-tags">
+          <span class="tag-label">Označi aktivnost:</span>
+          <div class="tag-chips">
+            <button class="tag-chip" [class.active]="postTag === ''"
+                    (click)="postTag = ''">None</button>
+            @for (t of activityTypes; track t.key) {
+              <button class="tag-chip" [class.active]="postTag === t.name"
+                      (click)="postTag = t.name">
+                {{ typeEmoji(t.name) }} {{ t.name }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="composer-footer">
+          <span class="char-count" [class.limit]="postContent.length > 250">
+            {{ postContent.length }}/280
+          </span>
+          <div class="composer-actions">
+            <button class="btn btn-ghost" (click)="closeComposer()">Otkaži</button>
+            <button class="btn btn-primary" (click)="submitPost()"
+                    [disabled]="!postContent.trim() || posting">
+              @if (posting) { <div class="spin" style="width:14px;height:14px;border-width:2px"></div> }
+              Objavi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── FEED HEADER ───────────────────────────────────────── -->
+  <div class="feed-header">
+    <div class="feed-title-row">
+      <h1 class="feed-title">Feed</h1>
+      <div class="header-right">
+        <div class="period-toggle">
+          <button [class.active]="period==='daily'"  (click)="setPeriod('daily')">Daily</button>
+          <button [class.active]="period==='weekly'" (click)="setPeriod('weekly')">Weekly</button>
+        </div>
+        <button class="btn btn-primary btn-sm create-btn" (click)="openComposer()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova objava
+        </button>
+      </div>
+    </div>
+    <div class="date-row">
+      <button class="btn-icon" (click)="prevDay()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="date-label">{{ periodLabel }}</span>
+      <button class="btn-icon" (click)="nextDay()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      @if (!isToday()) {
+        <button class="btn btn-ghost btn-sm" (click)="today()">Today</button>
+      }
+    </div>
+  </div>
+
+  <!-- ── STORIES ROW ───────────────────────────────────────── -->
+  @if (stories.length > 0) {
+    <div class="stories-row">
+      <div class="stories-scroll">
+        @for (story of stories; track story.username; let i = $index) {
+          <button class="story-thumb" (click)="openStory(i)"
+                  [class.no-story]="story.activities.length === 0"
+                  [class.is-me]="isMe(story.username)">
+            <div class="story-ring" [style.border-color]="story.activities.length ? avatarColor(story.username) : 'transparent'">
+              <div class="avatar story-thumb-av" [style.background]="avatarColor(story.username)">
+                {{ story.username[0].toUpperCase() }}
+              </div>
+            </div>
+            <span class="story-name">{{ isMe(story.username) ? 'You' : story.username }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ── FEED CONTENT ──────────────────────────────────────── -->
+  <div class="feed-content">
+    @if (loading) {
+      <div class="loader"><div class="spin"></div></div>
+    } @else if (error) {
+      <div class="feed-empty">{{ error }}</div>
+    } @else {
+      <div class="posts-list">
+
+        <!-- POSTS (social posts) -->
+        @for (post of posts; track post.id) {
+          <div class="post-card fade-up post-social">
+            <div class="post-header">
+              <a [routerLink]="['/profile', post.username]" class="post-av-wrap">
+                <div class="avatar post-av" [style.background]="avatarColor(post.username)">
+                  {{ post.username[0].toUpperCase() }}
+                </div>
+              </a>
+              <div class="post-meta">
+                <div class="post-username">
+                  <a [routerLink]="['/profile', post.username]">{{ post.username }}</a>
+                  @if (isMe(post.username)) { <span class="you-tag">you</span> }
+                  @if (post.activityTag) {
+                    <span class="activity-tag-badge">{{ typeEmoji(post.activityTag) }} {{ post.activityTag }}</span>
+                  }
+                </div>
+                <div class="post-time">{{ timeAgo(post.createdAt) }}</div>
+              </div>
+            </div>
+
+            <div class="post-body">
+              <p class="post-text">{{ post.content }}</p>
+            </div>
+
+            <div class="post-actions">
+              <button class="like-btn" [class.liked]="iLiked(post)"
+                      (click)="toggleLike(post)">
+                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     [attr.fill]="iLiked(post) ? 'currentColor' : 'none'"
+                     style="width:16px;height:16px">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>{{ post.likes.length || '' }}</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ACTIVITY SUMMARIES -->
+        @if (groups.length === 0 && posts.length === 0) {
+          <div class="feed-empty">
+            <div class="empty-icon">😴</div>
+            <p>No activity {{ period === 'weekly' ? 'this week' : 'today' }}</p>
+            <p class="empty-sub">Be the first one.</p>
+          </div>
+        }
+
+        @if (groups.length > 0) {
+          <div class="section-divider">
+            <span>Activity log</span>
+          </div>
+        }
+
+        @for (group of groups; track group.username + group.date) {
+          <div class="post-card fade-up" [class.is-me]="isMe(group.username)">
+            <div class="post-header">
+              <a [routerLink]="['/profile', group.username]" class="post-av-wrap">
+                <div class="avatar post-av" [style.background]="avatarColor(group.username)">
+                  {{ group.username[0].toUpperCase() }}
+                </div>
+              </a>
+              <div class="post-meta">
+                <div class="post-username">
+                  <a [routerLink]="['/profile', group.username]">{{ group.username }}</a>
+                  @if (isMe(group.username)) { <span class="you-tag">you</span> }
+                </div>
+                <div class="post-time">{{ activityTimeAgo(group.date) }} {{ period === 'weekly' ? '· ' + group.date : '' }}</div>
+              </div>
+              <div class="xp-badge">+{{ group.totalXp }} XP</div>
+            </div>
+
+            <div class="post-activities">
+              @for (item of group.items; track item.time) {
+                <div class="act-row">
+                  <div class="act-color-bar" [style.background]="typeColor(item.type)"></div>
+                  <span class="act-emoji">{{ typeEmoji(item.type) }}</span>
+                  <div class="act-details">
+                    <span class="act-name">{{ item.type }}</span>
+                    <span class="act-meta">{{ item.time.slice(0,5) }} · {{ item.duration }}min · {{ intensityLabel(item.intensity) }}</span>
+                  </div>
+                  <span class="act-xp" [style.color]="typeColor(item.type)">+{{ item.xp }}</span>
+                </div>
+              }
+            </div>
+
+            @if (!isMe(group.username) || totalReactions(group) > 0) {
+              <div class="reactions-bar">
+                @for (e of emojis; track e.emoji) {
+                  @if (!isMe(group.username) || reactionCount(group, e.emoji) > 0) {
+                    <button class="rxn-btn"
+                            [class.reacted]="iReacted(group, e.emoji)"
+                            [class.has-count]="reactionCount(group, e.emoji) > 0"
+                            [disabled]="isMe(group.username)"
+                            (click)="toggleReaction(group, e.emoji)"
+                            [title]="e.label">
+                      <span>{{ e.emoji }}</span>
+                      @if (reactionCount(group, e.emoji) > 0) {
+                        <span class="rxn-count">{{ reactionCount(group, e.emoji) }}</span>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

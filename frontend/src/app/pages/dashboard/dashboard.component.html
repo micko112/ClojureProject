@@ -1,0 +1,217 @@
+<div class="dashboard">
+
+  <!-- Top bar -->
+  <div class="cal-topbar">
+    <div class="cal-nav">
+      <button class="btn-icon" (click)="navigate(-1)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="period-label">{{ viewMode === 'week' ? weekLabel() : monthLabel() }}</span>
+      <button class="btn-icon" (click)="navigate(1)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <div class="cal-controls">
+      @if (!isCurrentPeriod()) {
+        <button class="btn btn-ghost btn-sm" (click)="goToday()">Today</button>
+      }
+      <div class="view-toggle">
+        <button [class.active]="viewMode==='week'" (click)="switchView('week')">Week</button>
+        <button [class.active]="viewMode==='month'" (click)="switchView('month')">Month</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading bar -->
+  @if (loading) {
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+  }
+
+  <!-- ── WEEK VIEW ─────────────────────────────────────────── -->
+  @if (viewMode === 'week') {
+    <div class="week-view" [class]="slideAnim">
+
+      <!-- Day header row -->
+      <div class="week-header">
+        <div class="time-gutter"></div>
+        @for (day of weekDays; track day.toISOString()) {
+          <div class="day-header" [class.today]="isToday(day)">
+            <span class="day-name">{{ day.toLocaleDateString('en-US',{weekday:'short'}) }}</span>
+            <span class="day-num" [class.today-circle]="isToday(day)">{{ day.getDate() }}</span>
+            @if (dayXp(day) > 0) {
+              <span class="day-xp">{{ dayXp(day) }} xp</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Time grid -->
+      <div class="week-grid-wrap">
+        <div class="week-grid">
+
+          <!-- Time labels column -->
+          <div class="time-col">
+            @for (h of hours; track h) {
+              <div class="time-label">{{ h > 0 ? formatHour(h) : '' }}</div>
+            }
+          </div>
+
+          <!-- Day columns -->
+          @for (day of weekDays; track day.toISOString()) {
+            <div class="day-col">
+              <!-- Hour slots (click targets) -->
+              @for (h of hours; track h) {
+                <div class="hour-cell" (click)="onSlotClick(day, h, $event)"></div>
+              }
+
+              <!-- Current time indicator -->
+              @if (isToday(day)) {
+                <div class="now-line" [style.top.px]="nowTop()">
+                  <div class="now-dot"></div>
+                </div>
+              }
+
+              <!-- Activity blocks -->
+              @for (a of dayActivities(day); track a.id) {
+                <div class="activity-block"
+                     [style]="activityStyle(a)"
+                     [class.selected]="selectedActivity?.id === a.id"
+                     (click)="onActivityClick(a, dk(day), $event)"
+                     [title]="a.type + ' — ' + a.duration + 'min'">
+                  <span class="ab-type">{{ a.type }}</span>
+                  <span class="ab-meta">{{ a.duration }}min · ×{{ a.intensity }}</span>
+                  <span class="ab-xp">+{{ a.xp }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── MONTH VIEW ────────────────────────────────────────── -->
+  @if (viewMode === 'month') {
+    <div class="month-view" [class]="slideAnim">
+      <!-- Weekday header -->
+      <div class="month-header">
+        @for (d of MONTH_DAYS; track d) {
+          <div class="month-day-name">{{ d }}</div>
+        }
+      </div>
+      <!-- Day grid -->
+      <div class="month-grid">
+        @for (day of monthDays; track day.dateStr) {
+          <div class="month-cell"
+               [class.today]="day.isToday"
+               [class.other-month]="!day.isCurrentMonth"
+               [class.has-activities]="day.activities.length > 0"
+               (click)="onDayClick(day)">
+            <div class="mc-header">
+              <span class="mc-num" [class.today-circle]="day.isToday">{{ day.date.getDate() }}</span>
+              @if (day.totalXp > 0) {
+                <span class="mc-xp">{{ day.totalXp }}</span>
+              }
+            </div>
+            @if (day.activities.length > 0) {
+              <div class="mc-dots">
+                @for (a of day.activities.slice(0,3); track a.id) {
+                  <span class="mc-dot" [style.background]="typeColor(a.type)"></span>
+                }
+                @if (day.activities.length > 3) {
+                  <span class="mc-more">+{{ day.activities.length - 3 }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ── ADD ACTIVITY MODAL ───────────────────────────────── -->
+  @if (showModal) {
+    <div class="modal-overlay" (click)="stopProp($event)">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title">New Activity</div>
+            <div class="modal-sub">{{ modalDateLabel() }} · {{ formatHour(modalHour) }}</div>
+          </div>
+          <button class="btn-icon" (click)="closeAll()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Activity type</label>
+            <div class="type-grid">
+              @for (t of activityTypes; track t.key) {
+                <button class="type-chip"
+                        [class.active]="formType === t.key"
+                        (click)="formType = t.key; stopProp($event)">
+                  <span>{{ typeEmoji(t.name) }}</span>
+                  <span class="chip-name">{{ t.name }}</span>
+                  <span class="chip-xp">{{ t.xpPerMinute }}xp/m</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Duration</label>
+              <div class="input-unit">
+                <input type="number" [(ngModel)]="formDuration" min="5" max="480" step="5"
+                       (click)="stopProp($event)" />
+                <span class="unit">min</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Intensity</label>
+              <div class="intensity-btns">
+                @for (n of [1,2,3,4,5]; track n) {
+                  <button class="int-btn" [class.active]="formIntensity == n"
+                          (click)="formIntensity = n; stopProp($event)">{{ n }}</button>
+                }
+              </div>
+              <div class="intensity-label">{{ intensityLabel(formIntensity) }}</div>
+            </div>
+          </div>
+
+          @if (formType) {
+            <div class="xp-preview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;color:var(--gold)"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>~{{ previewXp() }} XP earned</span>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-ghost" (click)="closeAll()">Cancel</button>
+          <button class="btn btn-primary" (click)="submitActivity($event)" [disabled]="!formType || submitting">
+            @if (submitting) { <div class="spin" style="width:14px;height:14px;border-width:2px"></div> }
+            Log Activity
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── DELETE POPUP ─────────────────────────────────────── -->
+  @if (selectedActivity) {
+    <div class="delete-popup" (click)="stopProp($event)">
+      <div class="dp-info">
+        <span class="dp-emoji">{{ typeEmoji(selectedActivity.type) }}</span>
+        <div>
+          <div class="dp-type">{{ selectedActivity.type }}</div>
+          <div class="dp-meta">{{ selectedActivity.time }} · {{ selectedActivity.duration }}min · ×{{ selectedActivity.intensity }} · +{{ selectedActivity.xp }} XP</div>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" (click)="deleteActivity($event)">Delete</button>
+    </div>
+  }
+
+</div>

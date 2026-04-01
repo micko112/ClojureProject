@@ -1,0 +1,263 @@
+.login-page {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ── Hero side ────────────────────────────────────────────── */
+.hero-side {
+  flex: 1;
+  background: linear-gradient(145deg, #0d0d1a 0%, #111124 50%, #0d0d0d 100%);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-side::before {
+  content: '';
+  position: absolute;
+  top: -100px; left: -100px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(124,106,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-side::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; right: -80px;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-content {
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.logo-mark {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; color: #fff;
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+.hero-logo span {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.hero-headline {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -1.5px;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.hero-sub {
+  font-size: 15px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+
+.stat-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent-hover);
+  letter-spacing: -1px;
+}
+
+.stat-lbl {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Auth side ────────────────────────────────────────────── */
+.auth-side {
+  width: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.auth-card {
+  width: 100%;
+  animation: fadeUp 0.3s var(--ease);
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--r);
+  color: var(--text-2);
+  transition: all 0.15s var(--ease);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.tab.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--r);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.alert-error {
+  background: var(--red-dim);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+.alert-success {
+  background: var(--green-dim);
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,0.2);
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.user-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-card);
+  width: 100%;
+  text-align: left;
+  transition: all 0.14s var(--ease);
+  cursor: pointer;
+}
+
+.user-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  border-color: var(--border-mid);
+  transform: translateX(3px);
+}
+
+.user-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.user-av {
+  width: 38px; height: 38px;
+  font-size: 14px; font-weight: 700;
+  color: #fff;
+}
+
+.user-details { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+.user-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.user-xp {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.arrow-icon {
+  width: 15px; height: 15px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Register tab ─────────────────────────────────────────── */
+.register-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.register-input { font-size: 14px; }
+
+.input-hint {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-top: -6px;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 11px;
+  font-size: 14px;
+  border-radius: var(--r);
+}
+
+.register-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+@media (max-width: 768px) {
+  .hero-side { display: none; }
+  .auth-side { width: 100%; padding: 24px; }
+}

@@ -1,0 +1,94 @@
+<div class="login-page">
+  <!-- Hero side -->
+  <div class="hero-side">
+    <div class="hero-content">
+      <div class="hero-logo">
+        <div class="logo-mark">B</div>
+        <span>BeBetter</span>
+      </div>
+      <h1 class="hero-headline">Track effort.<br>Build discipline.<br>Stay consistent.</h1>
+      <p class="hero-sub">Log activities. Earn XP. Compete with friends. Build habits that matter.</p>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-val">5+</span>
+          <span class="stat-lbl">Activity types</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">∞</span>
+          <span class="stat-lbl">XP to earn</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">4</span>
+          <span class="stat-lbl">Leaderboards</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth side -->
+  <div class="auth-side">
+    <div class="auth-card">
+      <div class="tabs">
+        <button class="tab" [class.active]="tab === 'signin'" (click)="tab='signin'; error=''; success=''">Sign In</button>
+        <button class="tab" [class.active]="tab === 'register'" (click)="tab='register'; error=''; success=''">Create Account</button>
+      </div>
+
+      @if (error) {
+        <div class="alert alert-error">{{ error }}</div>
+      }
+      @if (success) {
+        <div class="alert alert-success">{{ success }}</div>
+      }
+
+      <!-- Sign In -->
+      @if (tab === 'signin') {
+        <div class="section-label">Choose your profile</div>
+        <div class="user-list">
+          @for (user of users; track user.username) {
+            <button class="user-btn" (click)="login(user.username)" [disabled]="loading">
+              <div class="avatar user-av" [style.background]="avatarColor(user.username)">
+                {{ user.username[0].toUpperCase() }}
+              </div>
+              <div class="user-details">
+                <span class="user-name">{{ user.username }}</span>
+                <span class="user-xp">{{ user.xp | number }} XP</span>
+              </div>
+              @if (loading) {
+                <div class="spin" style="width:16px;height:16px;border-width:2px;margin-left:auto"></div>
+              } @else {
+                <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              }
+            </button>
+          }
+          @empty {
+            <div class="loader"><div class="spin"></div> Loading...</div>
+          }
+        </div>
+      }
+
+      <!-- Register -->
+      @if (tab === 'register') {
+        <div class="register-section">
+          <div class="section-label">Choose a username</div>
+          <input
+            [(ngModel)]="newUsername"
+            placeholder="e.g. Nikola, Stefan..."
+            (keyup.enter)="register()"
+            class="register-input"
+            autofocus
+          />
+          <p class="input-hint">Alphanumeric, dots, underscores. 1–30 characters.</p>
+          <button class="btn btn-primary register-btn" (click)="register()" [disabled]="registering || !newUsername.trim()">
+            @if (registering) {
+              <div class="spin" style="width:15px;height:15px;border-width:2px"></div> Creating...
+            } @else {
+              Create account
+            }
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

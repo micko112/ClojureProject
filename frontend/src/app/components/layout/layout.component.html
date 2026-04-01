@@ -1,0 +1,208 @@
+<div class="app-shell">
+  <nav class="sidebar">
+    <div class="logo">
+      <span class="logo-mark">B</span>
+      <span class="logo-text">BeBetter</span>
+    </div>
+
+    <ul class="nav-links">
+      <li>
+        <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact:false}">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span>Aktivnosti</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/feed" routerLinkActive="active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Feed</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/leaderboard" routerLinkActive="active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Rang Lista</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- User area with options menu -->
+    @if (auth.currentUser(); as user) {
+      <div class="sidebar-bottom">
+        <div class="user-menu-wrap">
+          <!-- Dropdown menu (above user card) -->
+          @if (menuOpen()) {
+            <div class="user-dropdown">
+              <a [routerLink]="['/profile', user.username]" class="dropdown-item" (click)="menuOpen.set(false)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="di-icon">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                Moj profil
+              </a>
+              <button class="dropdown-item" (click)="openSettings()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="di-icon">
+                  <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Podešavanja
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item danger" (click)="logout()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="di-icon">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Odjavi se
+              </button>
+            </div>
+          }
+
+          <!-- User card (click to open menu) -->
+          <button class="user-card" (click)="toggleMenu(); $event.stopPropagation()">
+            <div class="avatar user-avatar" [style.background]="avatarColor(user.username)">
+              {{ user.username[0].toUpperCase() }}
+            </div>
+            <div class="user-info">
+              <div class="user-name">{{ user.username }}</div>
+              <div class="user-xp">
+                <span class="xp-dot"></span>
+                {{ user.xp | number }} XP
+                <span class="sidebar-rank" [style.color]="rankFor(user.xp).color">· {{ rankFor(user.xp).icon }} {{ rankFor(user.xp).name }}</span>
+              </div>
+            </div>
+            <svg class="chevron" [class.open]="menuOpen()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    }
+  </nav>
+
+  <!-- Settings modal -->
+  @if (settingsOpen()) {
+    <div class="settings-backdrop" (click)="closeSettings()">
+      <div class="settings-modal" (click)="$event.stopPropagation()">
+        <div class="settings-header">
+          <h2 class="settings-title">Podešavanja</h2>
+          <button class="btn-icon" (click)="closeSettings()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        @if (auth.currentUser(); as user) {
+          <!-- Profile section -->
+          <div class="settings-section">
+            <div class="settings-section-title">Profil</div>
+            <div class="settings-profile">
+              <div class="avatar settings-av" [style.background]="avatarColor(user.username)">
+                {{ user.username[0].toUpperCase() }}
+              </div>
+              <div>
+                <div class="settings-username">{{ user.username }}</div>
+                <div class="settings-xp-row">
+                  <span class="xp-badge">{{ user.xp | number }} XP</span>
+                  <span class="settings-rank-pill" [style.color]="rankFor(user.xp).color">
+                    {{ rankFor(user.xp).icon }} {{ rankFor(user.xp).name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats section -->
+          @if (stats) {
+            <div class="settings-section">
+              <div class="settings-section-title">Statistike</div>
+              <div class="settings-stats">
+                <div class="ss-item">
+                  <span class="ss-icon">🔥</span>
+                  <div class="ss-info">
+                    <div class="ss-val">{{ stats.streak }}-day</div>
+                    <div class="ss-lbl">Streak</div>
+                  </div>
+                </div>
+                <div class="ss-item">
+                  <span class="ss-icon">📅</span>
+                  <div class="ss-info">
+                    <div class="ss-val">{{ stats.activeDaysThisMonth }}</div>
+                    <div class="ss-lbl">Active this month</div>
+                  </div>
+                </div>
+                <div class="ss-item">
+                  <span class="ss-icon">⚡</span>
+                  <div class="ss-info">
+                    <div class="ss-val">{{ stats.weeklyXp | number }}</div>
+                    <div class="ss-lbl">XP this week</div>
+                  </div>
+                </div>
+                <div class="ss-item">
+                  <span class="ss-icon">🏆</span>
+                  <div class="ss-info">
+                    <div class="ss-val">{{ stats.totalXp | number }}</div>
+                    <div class="ss-lbl">Total XP</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          } @else if (statsLoading) {
+            <div class="loader" style="padding:20px"><div class="spin"></div></div>
+          }
+
+          <!-- Account section -->
+          <div class="settings-section">
+            <div class="settings-section-title">Nalog</div>
+            <div class="settings-row">
+              <div class="sr-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--text-2)">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                Username
+              </div>
+              <span class="sr-val">{{ user.username }}</span>
+            </div>
+            <div class="settings-row">
+              <div class="sr-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--text-2)">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                Ukupni XP
+              </div>
+              <span class="sr-val accent">{{ user.xp | number }} XP</span>
+            </div>
+          </div>
+
+          <!-- About section -->
+          <div class="settings-section">
+            <div class="settings-section-title">O aplikaciji</div>
+            <div class="settings-about">
+              <div class="about-logo">
+                <div class="logo-mark">B</div>
+                <span>BeBetter</span>
+              </div>
+              <p class="about-desc">Track effort. Build discipline. Stay consistent.</p>
+              <p class="about-version">Demo v1.0 · Clojure + Angular</p>
+            </div>
+          </div>
+
+          <div class="settings-footer">
+            <button class="btn btn-danger" (click)="logout()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Odjavi se
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

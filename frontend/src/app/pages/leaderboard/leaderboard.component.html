@@ -1,0 +1,122 @@
+<div class="lb-page">
+
+  <div class="lb-header">
+    <div>
+      <h1 class="lb-title">Leaderboard</h1>
+      <p class="lb-sub">{{ periodLabel() }}</p>
+    </div>
+    <div class="period-tabs">
+      <button [class.active]="period==='daily'"   (click)="setPeriod('daily')">Today</button>
+      <button [class.active]="period==='weekly'"  (click)="setPeriod('weekly')">Week</button>
+      <button [class.active]="period==='monthly'" (click)="setPeriod('monthly')">Month</button>
+      <button [class.active]="period==='all'"     (click)="setPeriod('all')">All time</button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loader"><div class="spin"></div></div>
+  }
+
+  @if (!loading) {
+    <!-- Podium top 3 -->
+    @if (entries.length >= 3) {
+      <div class="podium">
+        <!-- 2nd -->
+        <div class="podium-item p2">
+          <a [routerLink]="['/profile', entries[1].username]">
+            <div class="podium-av" [style.background]="avatarColor(entries[1].username)">
+              {{ entries[1].username[0].toUpperCase() }}
+            </div>
+          </a>
+          <div class="podium-medal">🥈</div>
+          <div class="podium-name">{{ entries[1].username }}</div>
+          <div class="podium-rank" [style.color]="rankFor(entries[1].totalXp).color">
+            {{ rankFor(entries[1].totalXp).icon }} {{ rankFor(entries[1].totalXp).name }}
+          </div>
+          <div class="podium-xp">{{ entries[1].xp | number }} XP</div>
+          <div class="podium-block p2-block"></div>
+        </div>
+        <!-- 1st -->
+        <div class="podium-item p1">
+          <div class="crown">👑</div>
+          <a [routerLink]="['/profile', entries[0].username]">
+            <div class="podium-av big" [style.background]="avatarColor(entries[0].username)">
+              {{ entries[0].username[0].toUpperCase() }}
+            </div>
+          </a>
+          <div class="podium-medal">🥇</div>
+          <div class="podium-name">{{ entries[0].username }}</div>
+          <div class="podium-rank" [style.color]="rankFor(entries[0].totalXp).color">
+            {{ rankFor(entries[0].totalXp).icon }} {{ rankFor(entries[0].totalXp).name }}
+          </div>
+          <div class="podium-xp accent">{{ entries[0].xp | number }} XP</div>
+          <div class="podium-block p1-block"></div>
+        </div>
+        <!-- 3rd -->
+        <div class="podium-item p3">
+          <a [routerLink]="['/profile', entries[2].username]">
+            <div class="podium-av" [style.background]="avatarColor(entries[2].username)">
+              {{ entries[2].username[0].toUpperCase() }}
+            </div>
+          </a>
+          <div class="podium-medal">🥉</div>
+          <div class="podium-name">{{ entries[2].username }}</div>
+          <div class="podium-rank" [style.color]="rankFor(entries[2].totalXp).color">
+            {{ rankFor(entries[2].totalXp).icon }} {{ rankFor(entries[2].totalXp).name }}
+          </div>
+          <div class="podium-xp">{{ entries[2].xp | number }} XP</div>
+          <div class="podium-block p3-block"></div>
+        </div>
+      </div>
+    }
+
+    <!-- Full list -->
+    <div class="lb-list">
+      @for (e of entries; track e.username; let i = $index) {
+        <div class="lb-row fade-up"
+             [class.me]="e.username === auth.currentUser()?.username"
+             [class.top1]="e.rank === 1">
+          <div class="lb-rank">
+            @if (e.rank <= 3) {
+              <span class="medal">{{ e.rank===1?'🥇':e.rank===2?'🥈':'🥉' }}</span>
+            } @else {
+              <span class="rank-num">{{ e.rank }}</span>
+            }
+          </div>
+
+          <a [routerLink]="['/profile', e.username]" class="lb-av-link">
+            <div class="avatar lb-av" [style.background]="avatarColor(e.username)">
+              {{ e.username[0].toUpperCase() }}
+            </div>
+          </a>
+
+          <div class="lb-user">
+            <div class="lb-username">
+              {{ e.username }}
+              @if (e.username === auth.currentUser()?.username) {
+                <span class="you-tag">you</span>
+              }
+              <span class="lb-rank-pill" [style.color]="rankFor(e.totalXp).color">
+                {{ rankFor(e.totalXp).icon }} {{ rankFor(e.totalXp).name }}
+              </span>
+            </div>
+            <div class="lb-bar-wrap">
+              <div class="lb-bar" [style.width.%]="entries[0]?.xp > 0 ? (e.xp / entries[0].xp) * 100 : 0"
+                   [style.background]="avatarColor(e.username)"></div>
+            </div>
+          </div>
+
+          <div class="lb-xp">{{ e.xp | number }}<span class="xp-lbl"> XP</span></div>
+
+          <div class="lb-delta" [class]="deltaClass(e.delta)">
+            {{ deltaText(e.delta) }}
+          </div>
+        </div>
+      }
+
+      @empty {
+        <div class="feed-empty">No data for this period.</div>
+      }
+    </div>
+  }
+</div>
