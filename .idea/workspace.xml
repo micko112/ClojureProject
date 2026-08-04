@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4d338447-6f3a-43e8-ab8c-95e214f36644" name="Changes" comment="Time table now shows">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.nrepl-port" beforeDir="false" afterPath="$PROJECT_DIR$/.nrepl-port" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/project.clj" beforeDir="false" afterPath="$PROJECT_DIR$/project.clj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/database/schema.clj" beforeDir="false" afterPath="$PROJECT_DIR$/src/database/schema.clj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/database/seed.clj" beforeDir="false" afterPath="$PROJECT_DIR$/src/database/seed.clj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/project/db.clj" beforeDir="false" afterPath="$PROJECT_DIR$/src/project/db.clj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/web/server.clj" beforeDir="false" afterPath="$PROJECT_DIR$/src/web/server.clj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/META-INF/maven/ProjectV1/ProjectV1/pom.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/META-INF/maven/ProjectV1/ProjectV1/pom.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/repl-port" beforeDir="false" afterPath="$PROJECT_DIR$/target/repl-port" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/stale/leiningen.core.classpath.extract-native-dependencies" beforeDir="false" afterPath="$PROJECT_DIR$/target/stale/leiningen.core.classpath.extract-native-dependencies" afterDir="false" />
-    </list>
+    <list default="true" id="4d338447-6f3a-43e8-ab8c-95e214f36644" name="Changes" comment="Time table now shows" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -234,6 +223,7 @@
       <workItem from="1771502553739" duration="611000" />
       <workItem from="1785760002733" duration="2990000" />
       <workItem from="1785780825447" duration="2660000" />
+      <workItem from="1785871061870" duration="157000" />
     </task>
     <task id="LOCAL-00001" summary="Ucitan je Datomic, sad vezbam koriscenje kroz dokumentaciju">
       <option name="closed" value="true" />
