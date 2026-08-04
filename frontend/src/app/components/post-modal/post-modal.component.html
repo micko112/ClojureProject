@@ -1,0 +1,133 @@
+<div class="pm-overlay" (click)="close()">
+  <button class="pm-close-btn" (click)="close()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  @if (loading) {
+    <div class="pm-loading"><div class="pm-spin"></div></div>
+  } @else if (post) {
+    <div class="pm-container" (click)="$event.stopPropagation()">
+
+      <!-- ── LEFT: media ── -->
+      <div class="pm-media-col" [class.no-media]="!post.mediaUrl">
+        @if (post.mediaUrl) {
+          @if (isVideo(post.mediaUrl)) {
+            <video [src]="post.mediaUrl" controls class="pm-media"></video>
+          } @else {
+            <img [src]="post.mediaUrl" class="pm-media" alt="" />
+          }
+        } @else {
+          <div class="pm-no-media">
+            <span>{{ post.caption }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- ── RIGHT: sidebar ── -->
+      <div class="pm-sidebar">
+
+        <!-- Author header -->
+        <div class="pm-header">
+          <a [routerLink]="['/profile', post.author?.username]" class="pm-author-row" (click)="close()">
+            <div class="pm-avatar">
+              @if (post.author?.profilePic) {
+                <img [src]="post.author.profilePic" alt="" />
+              } @else {
+                <span>{{ initials(post.author) }}</span>
+              }
+            </div>
+            <div class="pm-author-meta">
+              <span class="pm-author-name">{{ post.author?.displayName || post.author?.username }}</span>
+              @if (post.activityTag) {
+                <span class="pm-tag">{{ post.activityTag }}</span>
+              }
+            </div>
+          </a>
+        </div>
+
+        <!-- Caption as first "comment" -->
+        @if (post.caption && post.mediaUrl) {
+          <div class="pm-caption-row">
+            <div class="pm-avatar sm">
+              @if (post.author?.profilePic) {
+                <img [src]="post.author.profilePic" alt="" />
+              } @else {
+                <span>{{ initials(post.author) }}</span>
+              }
+            </div>
+            <div class="pm-caption-body">
+              <span class="pm-c-name">{{ post.author?.displayName || post.author?.username }}</span>
+              <span class="pm-c-text"> {{ post.caption }}</span>
+              <div class="pm-c-time">{{ timeAgo(post.createdAt) }}</div>
+            </div>
+          </div>
+        }
+
+        <!-- Comments list -->
+        <div class="pm-comments">
+          @for (c of comments; track c.id) {
+            <div class="pm-comment-row">
+              <a [routerLink]="['/profile', c.author?.username]" class="pm-avatar sm" (click)="close()">
+                @if (c.author?.profilePic) {
+                  <img [src]="c.author.profilePic" alt="" />
+                } @else {
+                  <span>{{ initials(c.author) }}</span>
+                }
+              </a>
+              <div class="pm-c-body">
+                <span class="pm-c-name">{{ c.author?.displayName || c.author?.username }}</span>
+                <span class="pm-c-text"> {{ c.content }}</span>
+                <div class="pm-c-time">{{ timeAgo(c.createdAt) }}</div>
+              </div>
+              @if (c.author?.username === auth.currentUser()?.username) {
+                <button class="pm-del-btn" (click)="deleteComment(c.id)"><span class="material-icons md-18">close</span></button>
+              }
+            </div>
+          }
+          @if (!comments.length) {
+            <div class="pm-no-comments">No comments yet. Be the first!</div>
+          }
+        </div>
+
+        <!-- Actions bar -->
+        <div class="pm-actions">
+          <div class="pm-action-row">
+            <button class="pm-like-btn" [class.liked]="iLiked()" (click)="like()">
+              @if (iLiked()) {
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#e74c3c"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              } @else {
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              }
+            </button>
+            <button class="pm-comment-icon-btn" (click)="focusComment()">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+          </div>
+          <div class="pm-like-count">
+            @if (likeCount() > 0) {
+              <strong>{{ likeCount() }}</strong> {{ likeCount() === 1 ? 'like' : 'likes' }}
+            }
+          </div>
+          <div class="pm-post-time">{{ timeAgo(post.createdAt) }}</div>
+        </div>
+
+        <!-- Add comment -->
+        <div class="pm-add-comment">
+          <input #commentInput
+                 class="pm-comment-input"
+                 [(ngModel)]="commentText"
+                 placeholder="Add a comment..."
+                 (keydown.enter)="addComment()" />
+          <button class="pm-post-btn"
+                  [disabled]="!commentText.trim() || submitting"
+                  (click)="addComment()">
+            {{ submitting ? '...' : 'Post' }}
+          </button>
+        </div>
+
+      </div><!-- /sidebar -->
+    </div><!-- /container -->
+  }
+</div>

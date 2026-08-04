@@ -1,0 +1,66 @@
+<div class="search-page">
+  <div class="search-header">
+    <h1 class="search-title">Search</h1>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="search-icon">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        [(ngModel)]="query"
+        (ngModelChange)="onInput()"
+        placeholder="Search people..."
+        class="search-input"
+        autofocus
+      />
+      @if (loading) {
+        <div class="spin" style="width:16px;height:16px;border-width:2px;flex-shrink:0"></div>
+      }
+    </div>
+  </div>
+
+  <div class="search-body">
+    @if (!searched && !query) {
+      <div class="empty-state">
+        <div class="empty-icon"><span class="material-icons md-48">search</span></div>
+        <div class="empty-text">Find people to follow</div>
+        <div class="empty-sub">Search by username</div>
+      </div>
+    } @else if (searched && results.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><span class="material-icons md-48">sentiment_dissatisfied</span></div>
+        <div class="empty-text">No results for "{{ query }}"</div>
+        <div class="empty-sub">Try a different search</div>
+      </div>
+    } @else {
+      <div class="results-list">
+        @for (user of results; track user.username) {
+          <div class="user-card">
+            <a [routerLink]="['/profile', user.username]" class="user-link">
+              <div class="avatar" [style.background]="avatarColor(user.username)">
+                @if (user.profilePic) {
+                  <img [src]="user.profilePic" class="avatar-img">
+                } @else {
+                  {{ user.username[0].toUpperCase() }}
+                }
+              </div>
+              <div class="user-info">
+                <div class="user-display">{{ user.displayName || user.username }}</div>
+                @if (user.displayName) {
+                  <div class="user-handle">{{"@" + user.username}}</div>
+                }
+                <div class="user-xp">{{ user.xp | number }} XP</div>
+              </div>
+            </a>
+            @if (user.username !== me) {
+              <button class="follow-btn"
+                      [class.following]="isFollowing(user.username)"
+                      (click)="toggleFollow(user)">
+                {{ isFollowing(user.username) ? 'Following' : 'Follow' }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

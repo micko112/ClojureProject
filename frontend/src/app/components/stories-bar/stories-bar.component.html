@@ -1,0 +1,98 @@
+<div class="stories-container">
+  <div class="stories-scroll">
+
+    <!-- My story bubble -->
+    <div class="story-bubble my-bubble" (click)="openMyStory()">
+      <div class="ring-wrap" [class.has-stories]="myGroup?.stories?.length > 0" [class.all-viewed]="myGroup && !myGroup.hasUnviewed">
+        <div class="s-avatar">
+          @if (auth.currentUser()?.profilePic) {
+            <img [src]="auth.currentUser()!.profilePic" alt="" />
+          } @else {
+            <span>{{ (auth.currentUser()?.displayName || auth.currentUser()?.username || '?').charAt(0).toUpperCase() }}</span>
+          }
+        </div>
+        @if (!myGroup || myGroup.stories.length === 0) {
+          <div class="add-badge">+</div>
+        } @else {
+          <div class="add-badge add-more" (click)="addToMyStory(); $event.stopPropagation()">+</div>
+        }
+      </div>
+      <span class="s-label">Your story</span>
+    </div>
+
+    <!-- Others' stories -->
+    @for (group of groups; track group.username) {
+      @if (!group.isMe) {
+        <div class="story-bubble" (click)="openGroup(group)">
+          <div class="ring-wrap has-stories" [class.all-viewed]="!group.hasUnviewed">
+            <div class="s-avatar">
+              @if (group.profilePic) {
+                <img [src]="group.profilePic" alt="" />
+              } @else {
+                <span>{{ initials(group) }}</span>
+              }
+            </div>
+          </div>
+          <span class="s-label">{{ group.displayName || group.username }}</span>
+        </div>
+      }
+    }
+
+  </div>
+</div>
+
+<!-- Create Story Modal -->
+@if (showCreate) {
+  <div class="modal-overlay" (click)="cancelCreate()">
+    <div class="create-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>New Story</h3>
+        <button class="x-btn" (click)="cancelCreate()"><span class="material-icons">close</span></button>
+      </div>
+
+      <!-- Preview -->
+      <div class="story-preview" [style.background]="storyBgColor">
+        @if (storyPreview) {
+          @if (previewIsVideo) {
+            <video [src]="storyPreview" autoplay muted loop class="preview-media"></video>
+          } @else {
+            <img [src]="storyPreview" class="preview-media" alt="" />
+          }
+        }
+        @if (storyText) {
+          <div class="preview-text">{{ storyText }}</div>
+        }
+        @if (!storyPreview && !storyText) {
+          <div class="preview-empty">Your story preview</div>
+        }
+      </div>
+
+      <!-- Colour palette (for text-only stories) -->
+      <div class="palette">
+        @for (c of bgColors; track c) {
+          <button class="swatch" [style.background]="c"
+                  [class.active]="storyBgColor === c"
+                  (click)="storyBgColor = c"></button>
+        }
+      </div>
+
+      <textarea [(ngModel)]="storyText"
+                placeholder="Add text to your story..."
+                class="text-input"
+                maxlength="200"
+                rows="3"></textarea>
+
+      <label class="upload-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+        {{ storyFile ? storyFile.name : 'Add Photo / Video' }}
+        <input type="file" accept="image/*,video/*" (change)="onFileChange($event)" hidden />
+      </label>
+
+      <button class="share-btn"
+              [disabled]="creating || (!storyText.trim() && !storyFile)"
+              (click)="createStory()">
+        {{ creating ? 'Sharing...' : 'Share Story' }}
+      </button>
+    </div>
+  </div>
+}

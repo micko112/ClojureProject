@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>BeBetter</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BeBetter - Track effort. Build discipline. Stay consistent. Log activities, earn XP, compete with friends.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- OAuth SDKs — replace the IDs below with your own app credentials -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({ appId: 'REPLACE_WITH_FACEBOOK_APP_ID', cookie: true, xfbml: false, version: 'v19.0' });
+    };
+  </script>
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+</head>
+<body>
+  <app-root></app-root>
+  <noscript>Please enable JavaScript to use BeBetter.</noscript>
+</body>
+</html>

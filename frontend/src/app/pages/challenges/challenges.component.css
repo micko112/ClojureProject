@@ -1,0 +1,122 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.challenges-page {
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ch-header { display: flex; align-items: center; justify-content: space-between; }
+
+.ch-title { font-size: 22px; font-weight: 700; color: var(--text); }
+
+.ch-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ch-card.active { border-color: var(--accent); }
+.ch-card.done { opacity: 0.65; }
+
+.new-ch { border-style: dashed; }
+
+.ch-card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.ch-send-row { display: flex; gap: 8px; }
+
+.ch-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+
+.ch-input:focus { border-color: var(--accent); }
+
+.ch-desc { font-size: 11px; color: var(--text-2); margin: 0; }
+
+.ch-alert { font-size: 12px; padding: 6px 10px; border-radius: var(--r); }
+.ch-error { background: rgba(255,255,255,0.04); color: #888; }
+.ch-success { background: rgba(255,255,255,0.04); color: #aaa; }
+
+.ch-loading, .ch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ch-top { display: flex; align-items: center; justify-content: space-between; }
+
+.ch-players { display: flex; align-items: center; gap: 8px; }
+
+.ch-player {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ch-player:hover { text-decoration: underline; }
+
+.ch-vs {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ch-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.status-pending  { background: rgba(245,158,11,0.15); color: var(--gold); }
+.status-active   { background: rgba(124,106,255,0.15); color: var(--accent); }
+.status-completed { background: rgba(255,255,255,0.06); color: #aaa; }
+.status-declined { background: rgba(107,114,128,0.15); color: var(--text-2); }
+
+.ch-dates { font-size: 11px; color: var(--text-2); }
+
+.ch-winner { font-size: 13px; color: var(--gold); }
+
+.ch-respond { display: flex; gap: 8px; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .challenges-page { padding: 14px 12px; gap: 12px; }
+  .ch-header { flex-wrap: wrap; gap: 8px; }
+  .ch-title { font-size: 18px; }
+  .ch-send-row { flex-direction: column; }
+  .ch-top { flex-wrap: wrap; gap: 6px; }
+}
+
+@media (max-width: 480px) {
+  .challenges-page { padding: 10px; }
+  .ch-card { padding: 12px; }
+}

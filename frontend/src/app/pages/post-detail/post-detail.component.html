@@ -1,0 +1,86 @@
+<div class="post-detail-page">
+  @if (loading) {
+    <div class="pd-loading"><div class="spin"></div></div>
+  } @else if (!post) {
+    <div class="pd-empty">Post not found.</div>
+  } @else {
+    <div class="pd-card">
+      <div class="pd-header">
+        <a [routerLink]="['/profile', post.author?.username]" class="pd-av-wrap">
+          <div class="avatar pd-av" [style.background]="avatarColor(post.author?.username || '')">
+            @if (post.author?.profilePic) {
+              <img [src]="post.author!.profilePic" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+            } @else {
+              {{ (post.author?.username || '?')[0].toUpperCase() }}
+            }
+          </div>
+        </a>
+        <div class="pd-meta">
+          <a [routerLink]="['/profile', post.author?.username]" class="pd-username">
+            {{ post.author?.displayName || post.author?.username }}
+          </a>
+          <span class="pd-time">{{ timeAgo(post.createdAt) }}</span>
+          @if (post.activityTag) {
+            <span class="pd-tag">{{ post.activityTag }}</span>
+          }
+        </div>
+      </div>
+
+      @if (post.mediaUrl) {
+        <div class="pd-media">
+          @if (isVideo(post.mediaUrl)) {
+            <video [src]="post.mediaUrl" controls class="pd-media-el"></video>
+          } @else {
+            <img [src]="post.mediaUrl" class="pd-media-el" alt="Post media" />
+          }
+        </div>
+      }
+
+      @if (post.caption) {
+        <div class="pd-content">
+          <p class="pd-text">{{ post.caption }}</p>
+        </div>
+      }
+
+      <div class="pd-actions">
+        <button class="like-btn" [class.liked]="iLiked()" (click)="toggleLike()">
+          <span class="material-icons md-18">{{ iLiked() ? 'favorite' : 'favorite_border' }}</span>
+          <span>{{ post.likes.length }} like{{ post.likes.length !== 1 ? 's' : '' }}</span>
+        </button>
+        <span class="pd-comment-count">{{ comments.length }} comment{{ comments.length !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <div class="pd-comments">
+        @for (c of comments; track c.id) {
+          <div class="pd-comment-row">
+            <div class="avatar pd-c-av" [style.background]="avatarColor(c.author?.username || '')">
+              @if (c.author?.profilePic) {
+                <img [src]="c.author.profilePic" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+              } @else {
+                {{ (c.author?.username || '?')[0].toUpperCase() }}
+              }
+            </div>
+            <div class="pd-c-body">
+              <span class="pd-c-author">{{ c.author?.displayName || c.author?.username }}</span>
+              <span class="pd-c-text"> {{ c.content }}</span>
+              <div class="pd-c-meta">{{ timeAgo(c.createdAt) }}</div>
+            </div>
+            @if (c.author?.username === auth.currentUser()?.username) {
+              <button class="pd-c-del" (click)="deleteComment(c.id)"><span class="material-icons md-18">close</span></button>
+            }
+          </div>
+        }
+
+        <div class="pd-add-comment">
+          <input class="pd-c-input" placeholder="Add a comment..."
+                 [(ngModel)]="commentInput"
+                 (keyup.enter)="addComment()" />
+          <button class="pd-c-submit" (click)="addComment()"
+                  [disabled]="!commentInput.trim() || commentSubmitting">
+            {{ commentSubmitting ? '...' : 'Post' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

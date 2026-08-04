@@ -1,0 +1,32 @@
+.profile-page { padding: 24px; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.loading, .empty { text-align: center; padding: 48px; color: var(--text-muted); }
+.profile-hero { display: flex; gap: 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+.profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; flex-shrink: 0; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+h2 { font-size: 20px; font-weight: 700; }
+.profile-username { color: var(--text-muted); font-size: 13px; }
+.profile-bio { font-size: 14px; line-height: 1.5; }
+.profile-website { font-size: 13px; color: #4a9eff; }
+.profile-stats { display: flex; gap: 16px; font-size: 13px; color: var(--text-muted); }
+.profile-stats strong { color: var(--text); }
+.profile-actions { display: flex; gap: 8px; }
+.btn-primary { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 8px 18px; font-weight: 600; font-size: 13px; }
+.btn-primary.following { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; }
+.badges-section h3, .activities-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.badges-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; }
+.activity-list { display: flex; flex-direction: column; gap: 6px; }
+.activity-item { display: flex; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--text-muted); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 300; }
+.modal { background: var(--bg2); border-radius: 12px; width: 480px; max-width: calc(100vw - 32px); border: 1px solid var(--border); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.modal-header button { background: none; border: none; color: var(--text-muted); font-size: 18px; }
+.modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.form-group input, .form-group textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; resize: none; width: 100%; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.btn-secondary { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 20px; }

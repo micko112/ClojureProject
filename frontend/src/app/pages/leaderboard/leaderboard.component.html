@@ -1,0 +1,32 @@
+<div class="leaderboard-page">
+  <div class="lb-header">
+    <h2>Leaderboard</h2>
+    <div class="filter-tabs">
+      <button [class.active]="filter === 'global'" (click)="setFilter('global')">Global</button>
+      <button [class.active]="filter === 'friends'" (click)="setFilter('friends')">Friends</button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loading">Loading...</div>
+  } @else if (!entries.length) {
+    <div class="empty">No entries yet.</div>
+  } @else {
+    <div class="lb-list">
+      @for (entry of entries; track entry.username; let i = $index) {
+        <a [routerLink]="['/profile', entry.username]" class="lb-entry" [class.me]="isMe(entry)">
+          <div class="rank">{{ i + 1 }}</div>
+          <div class="lb-avatar">
+            @if (entry.profilePic) { <img [src]="entry.profilePic" alt="" /> }
+            @else { <span>{{ initials(entry) }}</span> }
+          </div>
+          <div class="lb-info">
+            <div class="lb-name">{{ entry.displayName || entry.username }}</div>
+            <div class="lb-username">{{ '@' + entry.username }}</div>
+          </div>
+          <div class="lb-xp">{{ entry.xp || 0 }} XP</div>
+        </a>
+      }
+    </div>
+  }
+</div>

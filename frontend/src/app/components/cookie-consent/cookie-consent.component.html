@@ -1,0 +1,12 @@
+@if (visible()) {
+  <div class="cookie-banner">
+    <div class="cookie-content">
+      <p>We use a session cookie to keep you logged in. No tracking cookies are used.</p>
+      <div class="cookie-links">
+        <a routerLink="/privacy">Privacy Policy</a>
+        <a routerLink="/terms">Terms of Service</a>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" (click)="accept()">Got it</button>
+  </div>
+}

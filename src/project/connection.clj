@@ -1,7 +1,7 @@
 (ns project.connection
-  (:require [datomic.api :as d]))
+  (:require [datomic.api :as d]
+            [project.system :as s]))
 
-(def db-uri "datomic:dev://localhost:4334/bebetter")
+(def db-uri s/db-uri)
 
-(defonce conn
-  (d/connect db-uri))
+(def conn s/conn)

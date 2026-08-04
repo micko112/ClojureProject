@@ -1,0 +1,69 @@
+<div class="challenges-page">
+  <div class="ch-header">
+    <h1 class="ch-title">Challenges</h1>
+  </div>
+
+  <!-- New challenge -->
+  <div class="ch-card new-ch">
+    <div class="ch-card-title"><span class="material-icons md-24">sports_kabaddi</span> Challenge someone</div>
+    <div class="ch-send-row">
+      <input type="text" [(ngModel)]="newChallenged"
+             placeholder="Username to challenge..."
+             class="ch-input" (keyup.enter)="sendChallenge()" />
+      <button class="btn btn-primary btn-sm" (click)="sendChallenge()"
+              [disabled]="!newChallenged.trim() || sending">
+        @if (sending) { <div class="spin" style="width:12px;height:12px;border-width:2px"></div> }
+        @else { Send }
+      </button>
+    </div>
+    @if (sendError) { <div class="ch-alert ch-error">{{ sendError }}</div> }
+    @if (sendSuccess) { <div class="ch-alert ch-success">{{ sendSuccess }}</div> }
+    <p class="ch-desc">7-day XP challenge. Most XP earned in the period wins!</p>
+  </div>
+
+  @if (loading) {
+    <div class="ch-loading"><div class="spin"></div></div>
+  } @else if (challenges.length === 0) {
+    <div class="ch-empty">
+      <span class="material-icons md-48">sports_kabaddi</span>
+      <p>No challenges yet. Challenge someone to a 7-day XP battle!</p>
+    </div>
+  } @else {
+    @for (c of challenges; track c.id) {
+      <div class="ch-card" [class.active]="isActive(c)" [class.done]="isDone(c)">
+        <div class="ch-top">
+          <div class="ch-players">
+            <a [routerLink]="['/profile', c.challenger.username]" class="ch-player">
+              {{ c.challenger.displayName || c.challenger.username }}
+            </a>
+            <span class="ch-vs">vs</span>
+            <a [routerLink]="['/profile', c.challenged.username]" class="ch-player">
+              {{ c.challenged.displayName || c.challenged.username }}
+            </a>
+          </div>
+          <span class="ch-status" [class]="statusClass(c)">{{ statusLabel(c) }}</span>
+        </div>
+
+        <div class="ch-dates">
+          {{ c.startDate }} → {{ c.endDate }} · sent {{ timeAgo(c.createdAt) }}
+        </div>
+
+        @if (c.status === 'completed' && c.winner) {
+          <div class="ch-winner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:middle;margin-right:4px">
+              <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+            </svg>
+            Winner: <strong>{{ c.winner }}</strong>
+          </div>
+        }
+
+        @if (isPending(c) && isChallenged(c)) {
+          <div class="ch-respond">
+            <button class="btn btn-primary btn-sm" (click)="respond(c.id, 'accept')">Accept</button>
+            <button class="btn btn-ghost btn-sm" (click)="respond(c.id, 'decline')">Decline</button>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

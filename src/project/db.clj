@@ -61,10 +61,10 @@
        db username start-day end-day))
 
 (defn calculate-xp-from-rows [rows]
-  (reduce (fn [total-xp [_ _ dur int xp-per-min]]
-            (+ total-xp (* dur int xp-per-min)))
-          0
-          rows))
+  (long (reduce (fn [total-xp [_ _ dur int xp-per-min]]
+                  (+ total-xp (* (double dur) (double int) (double xp-per-min))))
+                0.0
+                rows)))
 
 (def period-interval
   {:daily t/day-interval
@@ -108,10 +108,8 @@
                                        :in $ ?type
                                        :where [?e :activity-type/key ?type]
                                        [?e :activity-type/xp-per-minute ?xp-per-minute]] db activity-type-key))
-                         gained-xp (* duration xp-per-min intensity)
-
+                         gained-xp (long (Math/round (* (double duration) (double intensity) (double xp-per-min))))
                          current-xp (or (:user/xp (d/entity db user-e)) 0)
-
                          new-xp (+ current-xp gained-xp)
                          activity-id (d/tempid :db.part/user)]
                      [{:db/id activity-id

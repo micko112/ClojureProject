@@ -1,0 +1,216 @@
+<div class="comp-detail-page" *ngIf="!loading && comp">
+
+  <!-- Hero banner -->
+  <div class="comp-hero" [style.border-bottom-color]="themeColor()">
+    <div class="hero-bg" *ngIf="comp.bannerUrl">
+      <img [src]="comp.bannerUrl" alt="">
+      <div class="hero-overlay"></div>
+    </div>
+    <div class="hero-bg no-banner" *ngIf="!comp.bannerUrl"
+         [style.background]="'linear-gradient(135deg, ' + themeColor() + '33, ' + themeColor() + '11)'">
+    </div>
+
+    <div class="hero-content">
+      <a [routerLink]="['/competitions']" class="back-link">← Competitions</a>
+      <div class="comp-theme-badge" [style.background]="themeColor()">{{ themeLabel() }}</div>
+      <h1 class="comp-title">{{ comp.name }}</h1>
+      <p class="comp-desc" *ngIf="comp.description">{{ comp.description }}</p>
+      <div class="comp-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:middle;margin-right:3px">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>{{ formatDate(comp.startDate) }} – {{ formatDate(comp.endDate) }}
+        </span>
+        <span class="days-left" [style.color]="themeColor()">{{ daysLeft() }}</span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:middle;margin-right:3px">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>{{ comp.memberCount }} members
+        </span>
+      </div>
+      <div class="hero-actions">
+        <button *ngIf="!isMember()" class="btn-join" [style.background]="themeColor()" (click)="toggleMembership()">
+          Join Competition
+        </button>
+        <button *ngIf="isMember() && !isCreator()" class="btn-leave" (click)="toggleMembership()">
+          Leave
+        </button>
+        <button class="btn-code" (click)="copyInviteCode()" title="Copy invite code">
+          <span class="material-icons md-18">link</span> {{ comp.inviteCode }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="comp-body">
+
+    <!-- Tab nav -->
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab === 'feed'" (click)="activeTab = 'feed'">Feed</button>
+      <button class="tab" [class.active]="activeTab === 'rules'" (click)="activeTab = 'rules'">Info & Rules</button>
+      <button class="tab" [class.active]="activeTab === 'members'" (click)="activeTab = 'members'">
+        Members ({{ comp.memberCount }})
+      </button>
+    </div>
+
+    <div class="tab-content">
+
+      <!-- Feed tab -->
+      <div *ngIf="activeTab === 'feed'" class="feed-tab">
+        <div *ngIf="feed.length === 0" class="empty-tab">
+          No activities in this competition period yet.
+        </div>
+        <div class="feed-item" *ngFor="let item of feed">
+          <a [routerLink]="['/profile', item.username]" class="feed-user">
+            <div class="feed-avatar">
+              <img *ngIf="avatar(item)" [src]="avatar(item)" alt="">
+              <span *ngIf="!avatar(item)">{{ initials(item) }}</span>
+            </div>
+            <div>
+              <div class="feed-username">{{ item.displayName || item.username }}</div>
+              <div class="feed-time">{{ timeAgo(item.date + 'T' + item.time) }}</div>
+            </div>
+          </a>
+          <div class="feed-activity">
+            <div class="activity-name">{{ item.type }}</div>
+            <div class="activity-meta">
+              <span><span class="material-icons md-18">timer</span> {{ item.duration }}min</span>
+              <span>{{ intensityLabel(item.intensity) }}</span>
+              <span class="activity-xp">+{{ item.xp }} XP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rules tab -->
+      <div *ngIf="activeTab === 'rules'" class="rules-tab">
+        <div class="info-card">
+          <h3>About this Competition</h3>
+          <p>{{ comp.description || 'No description provided.' }}</p>
+        </div>
+        <div class="info-card" *ngIf="comp.rules">
+          <h3>Rules</h3>
+          <div class="rules-text">{{ comp.rules }}</div>
+        </div>
+        <div class="info-card">
+          <h3>Details</h3>
+          <div class="detail-row"><span>Theme</span><span [style.color]="themeColor()">{{ themeLabel() }}</span></div>
+          <div class="detail-row"><span>Start</span><span>{{ formatDate(comp.startDate) }}</span></div>
+          <div class="detail-row"><span>End</span><span>{{ formatDate(comp.endDate) }}</span></div>
+          <div class="detail-row"><span>Status</span><span class="status-badge" [class.active]="comp.status === 'active'">{{ comp.status }}</span></div>
+          <div class="detail-row"><span>Created by</span>
+            <a [routerLink]="['/profile', comp.creator?.username]" class="creator-link">
+              {{ comp.creator?.displayName || comp.creator?.username }}
+            </a>
+          </div>
+          <div class="detail-row">
+            <span>Invite Code</span>
+            <button class="copy-code" (click)="copyInviteCode()">{{ comp.inviteCode }} <span class="material-icons md-18">content_copy</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members tab -->
+      <div *ngIf="activeTab === 'members'" class="members-tab">
+        <div class="member-row" *ngFor="let m of comp.members; let i = index">
+          <a [routerLink]="['/profile', m.username]" class="member-link">
+            <div class="member-avatar">
+              <img *ngIf="avatar(m)" [src]="avatar(m)" alt="">
+              <span *ngIf="!avatar(m)">{{ initials(m) }}</span>
+            </div>
+            <div class="member-info">
+              <span class="member-name">{{ m.displayName || m.username }}</span>
+              <span class="member-sub">&#64;{{ m.username }}</span>
+            </div>
+          </a>
+          <span class="creator-tag" *ngIf="m.username === comp.creator?.username">Creator</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating leaderboard button (mobile) -->
+  <button class="float-lb-btn" [style.background]="themeColor()" (click)="lbOpen.set(!lbOpen())" title="Leaderboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  </button>
+
+  <!-- Leaderboard panel -->
+  <div class="lb-panel" [class.open]="lbOpen()">
+    <div class="lb-header">
+      <h3>Leaderboard</h3>
+      <button (click)="lbOpen.set(false)" class="close-lb"><span class="material-icons">close</span></button>
+    </div>
+
+    <!-- Podium top 3 -->
+    <div class="podium" *ngIf="top3.length > 0">
+      <div class="podium-item" *ngFor="let item of podiumOrder(); let i = index"
+           [class.gold]="item?.rank === 1" [class.silver]="item?.rank === 2" [class.bronze]="item?.rank === 3">
+        <div class="podium-avatar" *ngIf="item">
+          <img *ngIf="avatar(item)" [src]="avatar(item)" alt="">
+          <span *ngIf="!avatar(item)">{{ initials(item) }}</span>
+          <span class="podium-medal material-icons md-24">{{ medalIcon(item.rank) }}</span>
+        </div>
+        <div class="podium-name" *ngIf="item">{{ item.displayName || item.username }}</div>
+        <div class="podium-xp" *ngIf="item">{{ item.xp }} XP</div>
+        <div class="podium-base" [style.height]="podiumHeight(i) + 'px'" [style.background]="themeColor() + '44'">
+          <span class="podium-rank">#{{ item?.rank }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rest of leaderboard -->
+    <div class="lb-list">
+      <div class="lb-row" *ngFor="let item of rest">
+        <span class="lb-rank">#{{ item.rank }}</span>
+        <div class="lb-avatar">
+          <img *ngIf="avatar(item)" [src]="avatar(item)" alt="">
+          <span *ngIf="!avatar(item)">{{ initials(item) }}</span>
+        </div>
+        <span class="lb-name">{{ item.displayName || item.username }}</span>
+        <span class="lb-xp">{{ item.xp }} XP</span>
+      </div>
+      <div *ngIf="leaderboard.length === 0" class="lb-empty">No participants yet</div>
+    </div>
+  </div>
+
+  <!-- Leaderboard sidebar (desktop) -->
+  <div class="lb-sidebar">
+    <div class="lb-sidebar-header">
+      <h3>Leaderboard</h3>
+    </div>
+
+    <div class="podium" *ngIf="top3.length > 0">
+      <div class="podium-item" *ngFor="let item of podiumOrder(); let i = index"
+           [class.gold]="item?.rank === 1" [class.silver]="item?.rank === 2" [class.bronze]="item?.rank === 3">
+        <div class="podium-avatar" *ngIf="item">
+          <img *ngIf="avatar(item)" [src]="avatar(item)" alt="">
+          <span *ngIf="!avatar(item)">{{ initials(item) }}</span>
+          <span class="podium-medal material-icons md-24">{{ medalIcon(item.rank) }}</span>
+        </div>
+        <div class="podium-name" *ngIf="item">{{ item.displayName || item.username }}</div>
+        <div class="podium-xp" *ngIf="item">{{ item.xp }} XP</div>
+        <div class="podium-base" [style.height]="podiumHeight(i) + 'px'" [style.background]="themeColor() + '44'">
+          <span class="podium-rank">#{{ item?.rank }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="lb-list">
+      <div class="lb-row" *ngFor="let item of rest">
+        <span class="lb-rank">#{{ item.rank }}</span>
+        <div class="lb-avatar">
+          <img *ngIf="avatar(item)" [src]="avatar(item)" alt="">
+          <span *ngIf="!avatar(item)">{{ initials(item) }}</span>
+        </div>
+        <span class="lb-name">{{ item.displayName || item.username }}</span>
+        <span class="lb-xp">{{ item.xp }} XP</span>
+      </div>
+      <div *ngIf="leaderboard.length === 0" class="lb-empty">No participants yet</div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="loading" class="loading-full">Loading competition...</div>

@@ -1,0 +1,45 @@
+# ─── Secrets ─────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+!.env.example
+
+# ─── Clojure / Leiningen ─────────────────────────────────────────────────────
+target/
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/lib/
+/classes/
+/checkouts/
+.lein-deps-sum
+.lein-repl-history
+.lein-plugins/
+.lein-failures
+.nrepl-port
+.cpcache/
+
+# ─── Node / Angular ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ─── IDEs ────────────────────────────────────────────────────────────────────
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/shelf/
+.vscode/
+*.iml
+
+# ─── Uploads (user data — never commit) ──────────────────────────────────────
+uploads/
+!uploads/.gitkeep
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

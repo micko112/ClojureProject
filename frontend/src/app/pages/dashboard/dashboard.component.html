@@ -1,0 +1,88 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div>
+      <h2>Dashboard</h2>
+      <p class="sub">Total XP: <strong>{{ totalXp() }}</strong></p>
+    </div>
+    <button class="btn-primary" (click)="openAdd()">+ Log Activity</button>
+  </div>
+
+  @if (loading) {
+    <div class="loading">Loading...</div>
+  } @else if (!activities.length) {
+    <div class="empty">No activities yet. Log your first one!</div>
+  } @else {
+    <div class="activity-list">
+      @for (a of activities; track a.id) {
+        <div class="activity-card" (click)="openEdit(a)">
+          <span class="activity-emoji material-icons md-36">{{ icon(a.type) }}</span>
+          <div class="activity-info">
+            <div class="activity-name">{{ label(a.type) }}</div>
+            <div class="activity-meta">{{ a.duration }}min · intensity {{ a.intensity }}/5 · {{ formatTime(a.startTime || a.date) }}</div>
+            @if (a.note) { <div class="activity-note">{{ a.note }}</div> }
+          </div>
+          <div class="activity-xp">+{{ xp(a) }} XP</div>
+          <div class="activity-actions">
+            <button (click)="$event.stopPropagation(); openEdit(a)"><span class="material-icons md-18">edit</span></button>
+            <button (click)="$event.stopPropagation(); delete(a)"><span class="material-icons md-18">delete</span></button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@if (showModal) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingActivity ? 'Edit Activity' : 'Log Activity' }}</h3>
+        <button (click)="closeModal()"><span class="material-icons">close</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Type</label>
+            <select [(ngModel)]="activityType">
+              @for (t of activityTypes; track t.type) {
+                <option [value]="t.type">{{ t.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Duration (min)</label>
+            <input type="number" [(ngModel)]="duration" min="1" max="600" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" [(ngModel)]="activityDate" />
+          </div>
+          <div class="form-group">
+            <label>Time</label>
+            <input type="time" [(ngModel)]="activityTime" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Intensity (1-5)</label>
+          <div class="intensity-row">
+            @for (i of [1,2,3,4,5]; track i) {
+              <button class="intensity-btn" [class.active]="intensity === i" (click)="intensity = i">{{ i }}</button>
+            }
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Note (optional)</label>
+          <input type="text" [(ngModel)]="note" placeholder="How did it go?" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeModal()">Cancel</button>
+        <button class="btn-primary" (click)="save()" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

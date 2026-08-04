@@ -1,0 +1,55 @@
+services:
+
+  # ─── Datomic transactor (dev protocol, H2 storage) ──────────────────────────
+  datomic:
+    build:
+      context: ./datomic-transactor
+    image: bebetter-datomic
+    container_name: bebetter-datomic
+    volumes:
+      - datomic_data:/var/lib/datomic
+    ports:
+      - "4334:4334"
+      - "4335:4335"
+      - "4336:4336"
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tln | grep -q 4334 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ─── Clojure backend (Ring + Jetty) ──────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bebetter-backend
+    container_name: bebetter-backend
+    environment:
+      DATOMIC_URI: "datomic:dev://datomic:4334/bebetter"
+      PORT: "3000"
+      BEBETTER_SEED: "${BEBETTER_SEED:-false}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+    volumes:
+      - uploads_data:/app/uploads
+    ports:
+      - "3000:3000"
+    depends_on:
+      datomic:
+        condition: service_started
+
+  # ─── Angular frontend (nginx serving built SPA) ──────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+    image: bebetter-frontend
+    container_name: bebetter-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  datomic_data:
+  uploads_data:

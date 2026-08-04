@@ -1,0 +1,124 @@
+<div class="recap-page">
+  <div class="recap-header">
+    <h1 class="recap-title">Recap</h1>
+    <div class="period-toggle">
+      <button [class.active]="period === 'weekly'" (click)="setPeriod('weekly')">This Week</button>
+      <button [class.active]="period === 'monthly'" (click)="setPeriod('monthly')">This Month</button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="recap-loading"><div class="spin"></div></div>
+  } @else if (!data) {
+    <div class="recap-empty">No data available.</div>
+  } @else {
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="sum-card">
+        <div class="sum-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
+        <div class="sum-val">{{ data.totalXp | number }}</div>
+        <div class="sum-lbl">Total XP</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div class="sum-val">{{ data.activeDays }}</div>
+        <div class="sum-lbl">Active Days</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+        </div>
+        <div class="sum-val">{{ data.totalActs }}</div>
+        <div class="sum-lbl">Activities</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div class="sum-val">{{ data.streak }}</div>
+        <div class="sum-lbl">Day Streak</div>
+      </div>
+    </div>
+
+    @if (data.bestDay) {
+      <div class="best-day-card">
+        <span class="best-day-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:middle">
+            <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+          </svg>
+          Best day
+        </span>
+        <span class="best-day-date">{{ formatDate(data.bestDay.date) }}</span>
+        <span class="best-day-xp">{{ data.bestDay.xp | number }} XP</span>
+      </div>
+    }
+
+    <!-- XP chart -->
+    @if (data.dailyXp.length > 0) {
+      <div class="chart-card">
+        <div class="chart-title">Daily XP</div>
+        <div class="bar-chart">
+          @for (day of data.dailyXp; track day.date) {
+            <div class="bar-col">
+              <div class="bar-val" [style.display]="barPct(day.xp) > 5 ? 'block' : 'none'">
+                {{ day.xp | number }}
+              </div>
+              <div class="bar-fill" [style.height.%]="barPct(day.xp)"
+                   [style.background]="day.xp === (data.bestDay?.xp || 0) ? 'var(--gold)' : 'var(--accent)'">
+              </div>
+              <div class="bar-label">{{ shortDate(day.date) }}</div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Top activity types -->
+    @if (data.topTypes.length > 0) {
+      <div class="chart-card">
+        <div class="chart-title">Top Activities</div>
+        <div class="type-list">
+          @for (t of data.topTypes; track t.type) {
+            <div class="type-row">
+              <div class="type-info">
+                <span class="type-badge" [style.background]="typeColor(t.type)">{{ typeInitials(t.type) }}</span>
+                <span class="type-name">{{ t.type }}</span>
+                <span class="type-count">{{ t.count }}×</span>
+              </div>
+              <div class="type-bar-wrap">
+                <div class="type-bar-fill" [style.width.%]="typeBarPct(t.xp)"
+                     [style.background]="typeColor(t.type)"></div>
+              </div>
+              <span class="type-xp">{{ t.xp | number }} XP</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (data.totalXp === 0) {
+      <div class="recap-empty-inner">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px;color:#333">
+            <circle cx="12" cy="12" r="10"/><path d="M8 15h.01M16 15h.01"/><path d="M9 9h.01M15 9h.01"/>
+          </svg>
+        </div>
+        <p>No activities {{ period === 'weekly' ? 'this week' : 'this month' }} yet.</p>
+        <p class="empty-sub">Start logging to see your recap!</p>
+      </div>
+    }
+  }
+</div>

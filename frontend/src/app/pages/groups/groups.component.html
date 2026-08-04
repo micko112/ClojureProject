@@ -1,0 +1,164 @@
+<div class="groups-page">
+
+  <!-- Groups sidebar -->
+  <div class="groups-sidebar" [class.hidden-mobile]="activeGroup">
+    <div class="sidebar-header">
+      <h2>Groups</h2>
+      <button class="create-btn" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New Group
+      </button>
+    </div>
+
+    <div class="groups-list">
+      <div *ngIf="loading" class="loading-state">Loading groups...</div>
+      <div *ngIf="!loading && groups.length === 0" class="empty-state">
+        <p>No groups yet. Create one!</p>
+      </div>
+      <div class="group-card" *ngFor="let g of groups"
+           [class.active]="activeGroup?.id === g.id"
+           (click)="openGroup(g)">
+        <div class="group-banner" [style.background]="g.bannerUrl ? 'none' : '#1a1a1a'">
+          <img *ngIf="g.bannerUrl" [src]="g.bannerUrl" alt="">
+          <div class="group-initial" *ngIf="!g.bannerUrl">{{ g.name.charAt(0).toUpperCase() }}</div>
+        </div>
+        <div class="group-info">
+          <div class="group-name">{{ g.name }}</div>
+          <div class="group-desc">{{ g.description || 'No description' }}</div>
+          <div class="group-meta">{{ g.memberCount }} members</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group detail -->
+  <div class="group-main" [class.hidden-mobile]="!activeGroup">
+    <ng-container *ngIf="activeGroup; else noGroup">
+      <!-- Header -->
+      <div class="group-header">
+        <button class="back-btn" (click)="activeGroup = null">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div class="group-banner-sm" *ngIf="activeGroup.bannerUrl">
+          <img [src]="activeGroup.bannerUrl" alt="">
+        </div>
+        <div class="group-name-h">{{ activeGroup.name }}</div>
+        <div class="header-actions">
+          <span class="member-count">{{ activeGroup.memberCount }} members</span>
+          <button *ngIf="!isCreator()" class="join-btn"
+                  [class.leave]="isMember()" (click)="toggleMembership()">
+            {{ isMember() ? 'Leave' : 'Join' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Group info strip -->
+      <div class="group-info-strip" *ngIf="activeGroup.description">
+        <span>{{ activeGroup.description }}</span>
+      </div>
+
+      <!-- Members bar -->
+      <div class="members-bar">
+        <div class="member-chip" *ngFor="let m of (activeGroup.members || []).slice(0, 8)">
+          <div class="chip-avatar">
+            <img *ngIf="avatar(m)" [src]="avatar(m)" alt="">
+            <span *ngIf="!avatar(m)">{{ initials(m) }}</span>
+          </div>
+          <span>{{ m.displayName || m.username }}</span>
+        </div>
+        <div class="chip-more" *ngIf="activeGroup.memberCount > 8">+{{ activeGroup.memberCount - 8 }} more</div>
+      </div>
+
+      <!-- Messages -->
+      <div class="group-messages-area">
+        <div *ngIf="msgsLoading" class="msgs-loading">Loading...</div>
+        <div *ngIf="!msgsLoading && groupMessages.length === 0" class="empty-msgs">
+          No messages yet. Start the conversation!
+        </div>
+        <div class="msg-row" *ngFor="let m of groupMessages" [class.mine]="isMine(m)">
+          <div class="msg-avatar-wrap" *ngIf="!isMine(m)">
+            <div class="msg-avatar">
+              <img *ngIf="avatar(m.sender)" [src]="avatar(m.sender)" alt="">
+              <span *ngIf="!avatar(m.sender)">{{ initials(m.sender) }}</span>
+            </div>
+            <div class="msg-sender-name">{{ m.sender?.displayName || m.sender?.username }}</div>
+          </div>
+          <div class="msg-bubble">
+            <div class="msg-content">{{ m.content }}</div>
+            <div class="msg-time">{{ timeAgo(m.createdAt) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="msg-input-wrap" *ngIf="isMember()">
+        <textarea [(ngModel)]="newMessage" (keydown)="onKeydown($event)"
+                  placeholder="Message group... (Enter to send)"
+                  class="msg-input" rows="1"></textarea>
+        <button class="send-btn" (click)="sendMessage()" [disabled]="sending || !newMessage.trim()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="join-cta" *ngIf="!isMember()">
+        <button (click)="toggleMembership()">Join group to participate</button>
+      </div>
+    </ng-container>
+
+    <ng-template #noGroup>
+      <div class="no-group-selected">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <p>Select a group or create a new one</p>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+<!-- Create group modal -->
+<div class="modal-overlay" *ngIf="createOpen()" (click)="closeCreate()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Create Group</h3>
+      <button (click)="closeCreate()" class="close-btn"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Group Name *</label>
+        <input [(ngModel)]="gName" placeholder="Group name" class="field-input">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea [(ngModel)]="gDescription" placeholder="What is this group about?" class="field-textarea" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label>Banner Image</label>
+        <input type="file" accept="image/*" (change)="onBannerSelect($event)" id="bannerFile" style="display:none">
+        <label for="bannerFile" class="upload-label">
+          <span *ngIf="!gBannerPreview">Click to upload banner</span>
+          <img *ngIf="gBannerPreview" [src]="gBannerPreview" class="banner-preview" alt="">
+        </label>
+      </div>
+      <div class="field" *ngIf="!gBannerPreview">
+        <label>Or paste image URL</label>
+        <input [(ngModel)]="gBannerUrl" placeholder="https://..." class="field-input">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button (click)="closeCreate()" class="btn-cancel">Cancel</button>
+      <button (click)="createGroup()" [disabled]="creating || !gName.trim()" class="btn-primary">
+        {{ creating ? 'Creating...' : 'Create Group' }}
+      </button>
+    </div>
+  </div>
+</div>

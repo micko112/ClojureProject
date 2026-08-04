@@ -1,0 +1,94 @@
+<div class="profile-page">
+  @if (loading) {
+    <div class="loading">Loading...</div>
+  } @else if (!profile) {
+    <div class="empty">User not found.</div>
+  } @else {
+    <div class="profile-hero">
+      <div class="profile-avatar">
+        @if (profile.profilePic) { <img [src]="profile.profilePic" alt="" /> }
+        @else { <span>{{ initials() }}</span> }
+      </div>
+      <div class="profile-info">
+        <h2>{{ profile.displayName || profile.username }}</h2>
+        <div class="profile-username">{{ '@' + profile.username }}</div>
+        @if (profile.bio) { <div class="profile-bio">{{ profile.bio }}</div> }
+        @if (profile.website) { <a [href]="profile.website" target="_blank" class="profile-website">{{ profile.website }}</a> }
+        <div class="profile-stats">
+          <span><strong>{{ profile.xp || 0 }}</strong> XP</span>
+          <span><strong>{{ profile.followersCount || 0 }}</strong> followers</span>
+          <span><strong>{{ profile.followingCount || 0 }}</strong> following</span>
+        </div>
+        <div class="profile-actions">
+          @if (isMe) {
+            <button class="btn-outline" (click)="openEdit()">Edit Profile</button>
+          } @else {
+            <button class="btn-primary" [class.following]="isFollowing" (click)="toggleFollow()" [disabled]="followLoading">
+              {{ isFollowing ? 'Unfollow' : 'Follow' }}
+            </button>
+            <button class="btn-outline" (click)="messageUser()">Message</button>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (badges.length) {
+      <div class="badges-section">
+        <h3>Badges</h3>
+        <div class="badges-row">
+          @for (b of badges; track b.id) {
+            <span class="badge-chip" [title]="b.description"><span class="material-icons md-18">military_tech</span> {{ b.name }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (activities.length) {
+      <div class="activities-section">
+        <h3>Recent Activities</h3>
+        <div class="activity-list">
+          @for (a of activities.slice(0, 10); track a.id) {
+            <div class="activity-item">
+              <span>{{ a.type }}</span>
+              <span>{{ a.duration }}min</span>
+              <span>intensity {{ a.intensity }}/5</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>
+
+@if (showEdit) {
+  <div class="modal-overlay" (click)="showEdit = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button (click)="showEdit = false"><span class="material-icons">close</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" [(ngModel)]="editName" placeholder="Your display name" />
+        </div>
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea [(ngModel)]="editBio" rows="3" placeholder="Tell people about yourself"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Website</label>
+          <input type="text" [(ngModel)]="editWebsite" placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label>Profile Picture URL</label>
+          <input type="text" [(ngModel)]="editPicUrl" placeholder="https://..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showEdit = false">Cancel</button>
+        <button class="btn-primary" (click)="saveEdit()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save' }}</button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,128 @@
+<div class="comps-page">
+  <div class="page-header">
+    <div>
+      <h1>Competitions</h1>
+      <p class="subtitle">Join a battle, climb the leaderboard</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" (click)="openJoin()">Join by Code</button>
+      <button class="btn-primary" (click)="openCreate()">+ New Competition</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading competitions...</div>
+
+  <div *ngIf="!loading && competitions.length === 0" class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+      <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+    </svg>
+    <h3>No competitions yet</h3>
+    <p>Create one or join with an invite code</p>
+  </div>
+
+  <div class="comps-grid">
+    <div class="comp-card" *ngFor="let c of competitions" (click)="openComp(c)">
+      <div class="comp-banner" [style.background]="c.bannerUrl ? 'none' : themeFor(c.theme).color + '22'">
+        <img *ngIf="c.bannerUrl" [src]="c.bannerUrl" alt="">
+        <div class="comp-theme-badge" [style.background]="themeFor(c.theme).color">
+          {{ themeFor(c.theme).label }}
+        </div>
+      </div>
+      <div class="comp-body">
+        <div class="comp-name">{{ c.name }}</div>
+        <div class="comp-desc">{{ c.description || 'No description' }}</div>
+        <div class="comp-meta">
+          <span class="comp-dates">{{ formatDate(c.startDate) }} – {{ formatDate(c.endDate) }}</span>
+          <span class="comp-days" [class.ended]="daysLeft(c.endDate) === 'Ended'">{{ daysLeft(c.endDate) }}</span>
+        </div>
+        <div class="comp-footer">
+          <span class="comp-members"><span class="material-icons md-18">group</span> {{ c.memberCount }} members</span>
+          <span class="comp-status" [class.active]="c.status === 'active'">{{ c.status }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create competition modal -->
+<div class="modal-overlay" *ngIf="createOpen()" (click)="closeCreate()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Create Competition</h3>
+      <button (click)="closeCreate()" class="close-btn"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Name *</label>
+        <input [(ngModel)]="cName" placeholder="Competition name" class="field-input">
+      </div>
+      <div class="field">
+        <label>Theme</label>
+        <div class="theme-picker">
+          <button *ngFor="let t of themes" class="theme-btn"
+                  [class.active]="cTheme === t.key"
+                  [style.border-color]="cTheme === t.key ? t.color : 'transparent'"
+                  [style.color]="cTheme === t.key ? t.color : ''"
+                  (click)="cTheme = t.key">{{ t.label }}</button>
+        </div>
+      </div>
+      <div class="date-row">
+        <div class="field">
+          <label>Start Date *</label>
+          <input type="date" [(ngModel)]="cStartDate" class="field-input">
+        </div>
+        <div class="field">
+          <label>End Date *</label>
+          <input type="date" [(ngModel)]="cEndDate" class="field-input">
+        </div>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea [(ngModel)]="cDescription" placeholder="What is this competition about?" class="field-textarea" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>Rules</label>
+        <textarea [(ngModel)]="cRules" placeholder="Rules and scoring criteria..." class="field-textarea" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label>Banner Image</label>
+        <input type="file" accept="image/*" (change)="onBannerSelect($event)" id="cBannerFile" style="display:none">
+        <label for="cBannerFile" class="upload-label">
+          <span *ngIf="!cBannerPreview">Click to upload banner</span>
+          <img *ngIf="cBannerPreview" [src]="cBannerPreview" class="banner-preview" alt="">
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button (click)="closeCreate()" class="btn-cancel">Cancel</button>
+      <button (click)="createCompetition()" [disabled]="creating || !cName.trim()" class="btn-primary">
+        {{ creating ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Join by code modal -->
+<div class="modal-overlay" *ngIf="joinOpen()" (click)="closeJoin()">
+  <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Join by Invite Code</h3>
+      <button (click)="closeJoin()" class="close-btn"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Invite Code</label>
+        <input [(ngModel)]="joinCode" placeholder="Enter 8-character code" class="field-input" maxlength="8">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button (click)="closeJoin()" class="btn-cancel">Cancel</button>
+      <button (click)="joinByCode()" [disabled]="joining || !joinCode.trim()" class="btn-primary">
+        {{ joining ? 'Joining...' : 'Join' }}
+      </button>
+    </div>
+  </div>
+</div>

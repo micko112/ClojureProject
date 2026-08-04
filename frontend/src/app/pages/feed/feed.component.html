@@ -1,0 +1,83 @@
+<div class="feed-page">
+  <!-- Post modal -->
+  @if (activePost) {
+    <app-post-modal
+      [postId]="activePost.id"
+      [initialPost]="activePost"
+      (closed)="closePost()">
+    </app-post-modal>
+  }
+
+  <!-- Story viewer overlay -->
+  @if (viewerGroups) {
+    <app-story-viewer
+      [groups]="viewerGroups"
+      [startGroupIndex]="viewerStartIndex"
+      (closed)="closeStoryViewer()">
+    </app-story-viewer>
+  }
+
+  <div class="feed-main">
+    <!-- Stories bar -->
+    <app-stories-bar (openViewer)="openStoryViewer($event)"></app-stories-bar>
+
+    @if (trending.length) {
+      <div class="trending-bar">
+        @for (t of trending; track t.type) {
+          <span class="trending-chip"><span class="material-icons md-18">military_tech</span> {{ t.type }} · {{ t.count }}</span>
+        }
+      </div>
+    }
+
+    @if (loading) {
+      <div class="loading">Loading feed...</div>
+    } @else if (!posts.length) {
+      <div class="empty">No posts yet. Follow people to see their activity!</div>
+    } @else {
+      @for (post of posts; track post.id) {
+        <div class="post-card" (click)="openPost(post)">
+          <div class="post-header">
+            <a [routerLink]="['/profile', post.author?.username]" class="author-link" (click)="$event.stopPropagation()">
+              <div class="avatar">
+                @if (post.author?.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
+                @else { <span>{{ initials(post.author) }}</span> }
+              </div>
+              <div>
+                <div class="author-name">{{ post.author?.displayName || post.author?.username }}</div>
+                <div class="post-time">{{ timeAgo(post.createdAt) }}</div>
+              </div>
+            </a>
+            @if (post.activityTag) {
+              <span class="activity-tag">{{ post.activityTag }}</span>
+            }
+          </div>
+
+          @if (post.mediaUrl) {
+            <div class="post-media">
+              @if (isVideo(post.mediaUrl)) {
+                <video [src]="post.mediaUrl" controls (click)="$event.stopPropagation()"></video>
+              } @else {
+                <img [src]="post.mediaUrl" alt="" />
+              }
+            </div>
+          }
+
+          @if (post.caption) {
+            <div class="post-caption">{{ post.caption }}</div>
+          }
+
+          <div class="post-actions" (click)="$event.stopPropagation()">
+            <button class="action-btn" [class.liked]="post.liked" (click)="like(post)">
+              <span class="material-icons md-18">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
+              {{ post.likes?.length ?? post.likes ?? 0 }}
+            </button>
+            <button class="action-btn" (click)="openPost(post)">
+              <span class="material-icons md-18">chat_bubble_outline</span>
+              {{ post.commentCount || 0 }}
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -1,0 +1,186 @@
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">BeBetter</div>
+
+    <div class="sidebar-search">
+      <input
+        type="text"
+        placeholder="Search..."
+        [(ngModel)]="searchQuery"
+        (input)="onSearchInput()"
+        (keydown.enter)="onSearchEnter()"
+        (blur)="closeSearchDrop()"
+      />
+      @if (showSearchDrop && searchResults.length) {
+        <div class="search-dropdown">
+          @for (u of searchResults; track u.username) {
+            <div class="search-item" (mousedown)="selectResult(u)">
+              <div class="search-avatar">
+                @if (u.profilePic) { <img [src]="u.profilePic" alt="" /> }
+                @else { <span>{{ u.username.charAt(0).toUpperCase() }}</span> }
+              </div>
+              <span>{{ u.displayName || u.username }}</span>
+              <span class="search-username">{{ '@' + u.username }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active">
+        <span class="nav-icon material-icons">dashboard</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a routerLink="/feed" routerLinkActive="active">
+        <span class="nav-icon material-icons">home</span>
+        <span class="nav-label">Feed</span>
+      </a>
+      <a routerLink="/leaderboard" routerLinkActive="active">
+        <span class="nav-icon material-icons">emoji_events</span>
+        <span class="nav-label">Leaderboard</span>
+      </a>
+      <a routerLink="/competitions" routerLinkActive="active">
+        <span class="nav-icon material-icons">bolt</span>
+        <span class="nav-label">Competitions</span>
+      </a>
+      <a routerLink="/groups" routerLinkActive="active">
+        <span class="nav-icon material-icons">group</span>
+        <span class="nav-label">Groups</span>
+      </a>
+      <a routerLink="/chat" routerLinkActive="active" class="nav-with-badge">
+        <span class="nav-icon material-icons">forum</span>
+        <span class="nav-label">Messages</span>
+        @if (unreadMsgCount() > 0) {
+          <span class="badge">{{ unreadMsgCount() }}</span>
+        }
+      </a>
+      <a routerLink="/challenges" routerLinkActive="active">
+        <span class="nav-icon material-icons">flag</span>
+        <span class="nav-label">Challenges</span>
+      </a>
+      <a routerLink="/recap" routerLinkActive="active">
+        <span class="nav-icon material-icons">show_chart</span>
+        <span class="nav-label">Recap</span>
+      </a>
+    </nav>
+
+    <button class="create-btn" (click)="openCreate()">+ New Post</button>
+
+    <div class="sidebar-user">
+      <a [routerLink]="profileUrl()" class="user-info">
+        <div class="user-avatar">
+          @if (avatar()) { <img [src]="avatar()" alt="" /> }
+          @else { <span>{{ initials() }}</span> }
+        </div>
+        <div class="user-details">
+          <div class="user-name">{{ user?.displayName || user?.username }}</div>
+          <div class="user-sub">{{ '@' + user?.username }}</div>
+        </div>
+      </a>
+      <div class="sidebar-actions">
+        <button class="icon-btn notif-btn" (click)="toggleNotifPanel()">
+          <span class="material-icons">notifications</span>
+          @if (unreadNotifCount() > 0) {
+            <span class="badge">{{ unreadNotifCount() }}</span>
+          }
+        </button>
+        <button class="icon-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
+
+  <!-- Notifications panel -->
+  @if (showNotifPanel) {
+    <div class="notif-panel">
+      <div class="notif-header">
+        <h3>Notifications</h3>
+        <button (click)="showNotifPanel = false">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      @if (!notifications.length) {
+        <div class="notif-empty">No notifications yet</div>
+      }
+      @for (n of notifications; track n.id) {
+        <div class="notif-item" [class.unread]="!n.read">
+          <span class="notif-icon material-icons">{{ notifIcon(n.type) }}</span>
+          <div class="notif-body">
+            <div class="notif-msg">{{ n.message }}</div>
+            <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Create post modal -->
+  @if (showCreatePost) {
+    <div class="modal-overlay" (click)="closeCreate()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>New Post</h3>
+          <button (click)="closeCreate()">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (createMediaPreview) {
+            <div class="media-preview">
+              @if (createMediaFile?.type?.startsWith('video/')) {
+                <video [src]="createMediaPreview" controls></video>
+              } @else {
+                <img [src]="createMediaPreview" alt="" />
+              }
+              <button class="remove-media" (click)="createMediaFile = null; createMediaPreview = ''">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+          }
+          <label class="media-upload-btn">
+            <span class="material-icons">photo_camera</span> Add photo/video
+            <input type="file" accept="image/*,video/*" (change)="onMediaSelect($event)" hidden />
+          </label>
+          <textarea
+            [(ngModel)]="createCaption"
+            placeholder="What did you accomplish?"
+            rows="3"
+          ></textarea>
+          <input
+            type="text"
+            [(ngModel)]="createActivityTag"
+            placeholder="Activity tag (e.g. running, coding...)"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" (click)="closeCreate()">Cancel</button>
+          <button class="btn-primary" (click)="submitPost()" [disabled]="creating">
+            {{ creating ? 'Posting...' : 'Post' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav">
+  <a routerLink="/dashboard" routerLinkActive="active"><span class="material-icons">dashboard</span></a>
+  <a routerLink="/feed" routerLinkActive="active"><span class="material-icons">home</span></a>
+  <a routerLink="/leaderboard" routerLinkActive="active"><span class="material-icons">emoji_events</span></a>
+  <a routerLink="/competitions" routerLinkActive="active"><span class="material-icons">bolt</span></a>
+  <a routerLink="/chat" routerLinkActive="active" class="nav-with-badge">
+    <span class="material-icons">forum</span>
+    @if (unreadMsgCount() > 0) { <span class="badge-dot"></span> }
+  </a>
+  <a routerLink="/groups" routerLinkActive="active"><span class="material-icons">group</span></a>
+  <a [routerLink]="profileUrl()" routerLinkActive="active"><span class="material-icons">person</span></a>
+</nav>
