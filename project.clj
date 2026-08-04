@@ -27,8 +27,7 @@
   :jvm-opts ["-Xmx512m"]
 
   :profiles {:dev  {:dependencies [[midje "1.10.10"]]}
-             :uberjar {:aot :all
-                       :uberjar-name "bebetter-standalone.jar"}}
+             :uberjar {:uberjar-name "bebetter-standalone.jar"}}
 
   :plugins [[lein-midje "3.2.1"]
             [dev.weavejester/lein-cljfmt "0.15.6"]])

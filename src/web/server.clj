@@ -1,4 +1,5 @@
 (ns web.server
+  (:gen-class)
   (:require [ring.adapter.jetty :as jetty]
             [reitit.ring :as ring]
             [reitit.ring.middleware.parameters :as params]
