@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     env_file: ./.env
     environment:
-      DATOMIC_URI: "datomic:dev://datomic:4334/bebetter"
+      DATOMIC_URI: "datomic:dev://bebetter_datomic_secret@datomic:4334/bebetter"
       PORT: "3000"
     volumes:
       - uploads_data:/app/uploads
