@@ -2,7 +2,7 @@
   :description "BeBetter - Gamified Productivity Social Network"
 
   :dependencies [[org.clojure/clojure "1.12.2"]
-                 [com.datomic/datomic-pro "1.0.7469"]
+                 [com.datomic/peer "1.0.7387"]
                  [metosin/malli "0.20.0"]
 
                  [ring/ring-core "1.9.6"]

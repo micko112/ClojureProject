@@ -8,7 +8,7 @@
 
 FROM eclipse-temurin:17-jre
 
-ARG DATOMIC_VERSION=1.0.7469
+ARG DATOMIC_VERSION=1.0.7387
 
 WORKDIR /opt
 
