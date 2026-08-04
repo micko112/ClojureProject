@@ -27,7 +27,7 @@ services:
     image: bebetter-backend
     container_name: bebetter-backend
     environment:
-      DATOMIC_URI: "datomic:dev://bebetter_datomic_secret@datomic:4334/bebetter"
+      DATOMIC_URI: "datomic:dev://datomic:4334/bebetter?password=bebetter_datomic_secret"
       PORT: "3000"
       BEBETTER_SEED: "${BEBETTER_SEED:-false}"
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
