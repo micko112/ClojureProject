@@ -28,7 +28,23 @@
          (do (println (format "[datomic] connected to %s" uri))
              result))))))
 
-(defonce conn (connect-with-retry db-uri))
+;; Try once at load time so REPL sessions work with a running local transactor.
+;; If no transactor is reachable (e.g. in CI, in a container starting up), we
+;; leave `conn` as nil — `-main` calls `init-conn!` before starting the server,
+;; and tests bring up their own in-memory connections.
+(defonce conn
+  (try (d/create-database db-uri) (d/connect db-uri)
+       (catch Throwable t
+         (println (format "[datomic] load-time connect skipped (%s) — call (init-conn!) when the transactor is up"
+                          (.getMessage t)))
+         nil)))
+
+(defn init-conn!
+  "Connect to Datomic with retry, updating the shared `conn` var.
+   Called from -main in web.server; safe to call from REPL as well."
+  ([] (init-conn! db-uri))
+  ([uri]
+   (alter-var-root #'conn (constantly (connect-with-retry uri)))))
 
 (defn reset-db! [all-tx-functions]
   (d/delete-database db-uri)

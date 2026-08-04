@@ -71,6 +71,6 @@
           {:user/username "C" :delta 0}
           {:user/username "D" :delta 3}])))
 
-(deftest get-leaderboard-test
-  (is (= (lb/leaderboard ))))
+;; TODO: pravi integracioni test za lb/leaderboard [db period date]
+;; (privremeno skloneno jer je bio prazan poziv koji baca ArityException)
 

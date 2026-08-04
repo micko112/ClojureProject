@@ -121,10 +121,10 @@ Fill in `GHCR_USER`, `GHCR_TOKEN`, `DOMAIN`, `CERTBOT_EMAIL`. Set `BEBETTER_SEED
 
 Once you buy the domain, create an A record:
 ```
-bebetter.example.com   A   <VPS_IP>
+bebetter.quest   A   <VPS_IP>
 ```
 
-Then find/replace `bebetter.example.com` with your real domain in:
+Then find/replace `bebetter.quest` with your real domain in:
 - `nginx.prod.conf` (the `ssl_certificate` paths)
 - `.github/workflows/ci.yml` (the `environment.url` + smoke test URL)
 - `.env` on the VPS (`DOMAIN=`)

@@ -1193,6 +1193,8 @@
   "Container entry point. Starts the server and blocks the JVM.
    Set BEBETTER_SEED=true on first boot to reset+seed the DB."
   [& _args]
+  (when (nil? s/conn)
+    (s/init-conn!))
   (when (= "true" (System/getenv "BEBETTER_SEED"))
     (println "[bootstrap] BEBETTER_SEED=true — running reset-db!")
     (s/reset-db! db/get-all-tx-functions))
