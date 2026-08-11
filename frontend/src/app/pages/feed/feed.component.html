@@ -1,11 +1,12 @@
 <div class="feed-page">
-  <!-- Post modal -->
-  @if (activePost) {
-    <app-post-modal
-      [postId]="activePost.id"
-      [initialPost]="activePost"
-      (closed)="closePost()">
-    </app-post-modal>
+  <!-- Reel viewer overlay -->
+  @if (reelOpen) {
+    <app-reel-viewer
+      [posts]="reelPosts"
+      [startIndex]="reelStartIndex"
+      (closed)="closeReel()"
+      (postSaved)="onReelSaved($event)">
+    </app-reel-viewer>
   }
 
   <!-- Story viewer overlay -->
@@ -18,13 +19,14 @@
   }
 
   <div class="feed-main">
-    <!-- Stories bar -->
     <app-stories-bar (openViewer)="openStoryViewer($event)"></app-stories-bar>
 
     @if (trending.length) {
       <div class="trending-bar">
         @for (t of trending; track t.type) {
-          <span class="trending-chip"><span class="material-icons md-18">military_tech</span> {{ t.type }} · {{ t.count }}</span>
+          <span class="trending-chip">
+            <span class="material-icons md-18">military_tech</span> {{ t.type }} · {{ t.count }}
+          </span>
         }
       </div>
     }
@@ -35,9 +37,9 @@
       <div class="empty">No posts yet. Follow people to see their activity!</div>
     } @else {
       @for (post of posts; track post.id) {
-        <div class="post-card" (click)="openPost(post)">
+        <div class="post-card">
           <div class="post-header">
-            <a [routerLink]="['/profile', post.author?.username]" class="author-link" (click)="$event.stopPropagation()">
+            <a [routerLink]="['/profile', post.author?.username]" class="author-link">
               <div class="avatar">
                 @if (post.author?.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
                 @else { <span>{{ initials(post.author) }}</span> }
@@ -53,9 +55,12 @@
           </div>
 
           @if (post.mediaUrl) {
-            <div class="post-media">
+            <div class="post-media" (click)="openReel(post)">
               @if (isVideo(post.mediaUrl)) {
-                <video [src]="post.mediaUrl" controls (click)="$event.stopPropagation()"></video>
+                <video [src]="post.mediaUrl" [muted]="true" playsinline></video>
+                <div class="play-overlay">
+                  <span class="material-icons">play_circle</span>
+                </div>
               } @else {
                 <img [src]="post.mediaUrl" alt="" />
               }
@@ -63,17 +68,21 @@
           }
 
           @if (post.caption) {
-            <div class="post-caption">{{ post.caption }}</div>
+            <div class="post-caption" (click)="openReel(post)">{{ post.caption }}</div>
           }
 
-          <div class="post-actions" (click)="$event.stopPropagation()">
-            <button class="action-btn" [class.liked]="post.liked" (click)="like(post)">
+          <div class="post-actions">
+            <button class="action-btn" [class.liked]="post.liked" (click)="like(post, $event)">
               <span class="material-icons md-18">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
-              {{ post.likes?.length ?? post.likes ?? 0 }}
+              {{ likeCount(post) }}
             </button>
-            <button class="action-btn" (click)="openPost(post)">
+            <button class="action-btn" (click)="openReel(post)">
               <span class="material-icons md-18">chat_bubble_outline</span>
               {{ post.commentCount || 0 }}
+            </button>
+            <div class="actions-spacer"></div>
+            <button class="action-btn save-btn" [class.saved]="post.saved" (click)="toggleSave(post, $event)" [title]="post.saved ? 'Unsave' : 'Save'">
+              <span class="material-icons md-18">{{ post.saved ? 'bookmark' : 'bookmark_border' }}</span>
             </button>
           </div>
         </div>

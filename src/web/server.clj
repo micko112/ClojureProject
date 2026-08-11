@@ -45,6 +45,30 @@
 (defn- instant->str [d]
   (when d (.toString (.toInstant d))))
 
+(defn- today-str []
+  (.toString (LocalDate/now (ZoneId/of "Europe/Belgrade"))))
+
+(defn- valid-date-str? [s]
+  (try
+    (LocalDate/parse s)
+    true
+    (catch Exception _ false)))
+
+(def tracking-methods
+  #{"ten-wins"
+    "deep-work"
+    "habit-scorecard"
+    "energy-check"
+    "one-thing"
+    "daily-review"
+    "streak-tracker"
+    "mood-trigger"
+    "bad-habit-avoided"
+    "identity-votes"
+    "weekly-focus"
+    "friction-log"
+    "tiny-challenge"})
+
 (defn uploads-dir []
   (io/file (System/getProperty "user.dir") "uploads"))
 
@@ -67,19 +91,26 @@
             :displayName (:user/display-name u)
             :profilePic  (:user/profile-pic u)}))
 
-(defn- post-dto [db eid]
-  (let [e (d/entity db eid)
-        author (d/entity db (-> e :post/author :db/id))
-        likes (keep #(:user/username (d/entity db (:db/id %))) (:post/likes e))
-        cc (or (d/q '[:find (count ?c) . :in $ ?p :where [?c :comment/post ?p]] db eid) 0)]
-    {:id          (str eid)
-     :author      (author-dto author)
-     :caption     (:post/caption e)
-     :mediaUrl    (:post/media-url e)
-     :activityTag (:post/activity-tag e)
-     :likes       (vec likes)
-     :commentCount cc
-     :createdAt   (instant->str (:post/created-at e))}))
+(defn- post-dto
+  ([db eid] (post-dto db eid nil))
+  ([db eid me-eid]
+   (let [e      (d/entity db eid)
+         author (d/entity db (-> e :post/author :db/id))
+         likes  (keep #(:user/username (d/entity db (:db/id %))) (:post/likes e))
+         cc     (or (d/q '[:find (count ?c) . :in $ ?p :where [?c :comment/post ?p]] db eid) 0)
+         base   {:id          (str eid)
+                 :author      (author-dto author)
+                 :caption     (:post/caption e)
+                 :mediaUrl    (:post/media-url e)
+                 :activityTag (:post/activity-tag e)
+                 :likes       (vec likes)
+                 :commentCount cc
+                 :createdAt   (instant->str (:post/created-at e))}]
+     (if me-eid
+       (assoc base
+              :liked (boolean (some #(= (:db/id %) me-eid) (:post/likes e)))
+              :saved (boolean (some #(= (:db/id %) me-eid) (:post/saved-by e))))
+       base))))
 
 (defn- comment-dto [db eid]
   (let [e (d/entity db eid)
@@ -280,6 +311,160 @@
             (ok {:ok true}))))
     (unauth)))
 
+;; ===== TRACKING ENTRIES =====
+
+(defn- parse-payload [payload]
+  (try
+    (if (seq payload) (json/parse-string payload true) {})
+    (catch Exception _ {})))
+
+(defn- tracking-entry-dto [db eid]
+  (let [e (d/entity db eid)]
+    {:id        (str eid)
+     :method    (name (:tracking/method e))
+     :date      (:tracking/date e)
+     :payload   (parse-payload (:tracking/payload e))
+     :createdAt (instant->str (:tracking/created-at e))
+     :updatedAt (instant->str (:tracking/updated-at e))}))
+
+(defn- tracking-entry-id [db user-id method date]
+  (d/q '[:find ?entry .
+         :in $ ?user ?method ?date
+         :where
+         [?entry :tracking/user ?user]
+         [?entry :tracking/method ?method]
+         [?entry :tracking/date ?date]]
+       db user-id method date))
+
+(defn- handle-get-tracking-entries [req]
+  (if-let [username (me req)]
+    (let [date (get-in req [:query-params "date"] (today-str))]
+      (if-not (valid-date-str? date)
+        (bad "Invalid date")
+        (let [db (ddb)
+              u-e (user-e db username)
+              ids (d/q '[:find [?entry ...]
+                         :in $ ?user ?date
+                         :where
+                         [?entry :tracking/user ?user]
+                         [?entry :tracking/date ?date]]
+                       db u-e date)
+              sorted (sort-by #(:tracking/updated-at (d/entity db %)) #(compare %2 %1) ids)]
+          (ok (mapv #(tracking-entry-dto db %) sorted)))))
+    (unauth)))
+
+(defn- handle-save-tracking-entry [req]
+  (if-let [username (me req)]
+    (let [method (get-in req [:path-params :method])
+          method-kw (keyword method)
+          {:keys [date payload]} (parse-body req)
+          entry-date (or date (today-str))]
+      (cond
+        (not (contains? tracking-methods method)) (bad "Unknown tracking method")
+        (not (valid-date-str? entry-date))        (bad "Invalid date")
+        :else
+        (let [db (ddb)
+              u-e (user-e db username)
+              now (Date.)
+              payload-json (json/generate-string (or payload {}))
+              existing-id (tracking-entry-id db u-e method-kw entry-date)
+              entry-id (or existing-id (d/tempid :db.part/user))
+              tx-data (cond-> [[:db/add entry-id :tracking/user u-e]
+                               [:db/add entry-id :tracking/method method-kw]
+                               [:db/add entry-id :tracking/date entry-date]
+                               [:db/add entry-id :tracking/payload payload-json]
+                               [:db/add entry-id :tracking/updated-at now]]
+                        (nil? existing-id) (conj [:db/add entry-id :tracking/created-at now]))
+              result @(d/transact s/conn tx-data)
+              real-id (if existing-id
+                        existing-id
+                        (d/resolve-tempid (:db-after result) (:tempids result) entry-id))]
+          (ok (tracking-entry-dto (:db-after result) real-id)))))
+    (unauth)))
+
+(defn- handle-delete-tracking-entry [req]
+  (if-let [username (me req)]
+    (let [raw-id (get-in req [:path-params :id])
+          entry-id (try (Long/parseLong raw-id) (catch Exception _ nil))]
+      (if-not entry-id
+        (bad "Invalid id")
+        (let [e (d/entity (ddb) entry-id)
+              owner (-> e :tracking/user :user/username)]
+          (cond
+            (nil? owner) (not-found)
+            (not= owner username) (jresp 403 {:error "Forbidden"})
+            :else (do @(d/transact s/conn [[:db/retractEntity entry-id]])
+                      (ok {:ok true}))))))
+    (unauth)))
+
+;; ===== STATS =====
+
+(defn- handle-get-stats [req]
+  (if-let [username (me req)]
+    (let [period-str (get-in req [:query-params "period"] "30")
+          period     (try (max 1 (min 365 (Integer/parseInt period-str))) (catch Exception _ 30))
+          db         (ddb)
+          u-e        (user-e db username)
+          zone       (ZoneId/of "Europe/Belgrade")
+          cutoff-date (.minusDays (LocalDate/now zone) period)
+          cutoff-inst (.toInstant (.atStartOfDay cutoff-date zone))
+          ;; Pre-load xp-per-minute for all types
+          xpm-map    (into {} (d/q '[:find ?t ?x :where [_ :activity-type/key ?t] [_ :activity-type/xp-per-minute ?x]] db))
+          ;; All activities for user
+          acts       (d/q '[:find ?t ?dur ?int ?start
+                            :in $ ?u
+                            :where
+                            [?a :activity/user ?u]
+                            [?a :activity/type ?at]
+                            [?at :activity-type/key ?t]
+                            [?a :activity/duration ?dur]
+                            [?a :activity/intensity ?int]
+                            [?a :activity/start-time ?start]]
+                          db u-e)
+          recent     (filter #(-> (nth % 3) .toInstant (.isAfter cutoff-inst)) acts)
+          date-str-f (fn [act] (.toString (.toLocalDate (.atZone (.toInstant (nth act 3)) zone))))
+          xp-for     (fn [[t dur int _]] (long (Math/round (* dur int (get xpm-map t 1.0)))))
+          by-date    (group-by date-str-f recent)
+          xp-per-day (into (sorted-map) (map (fn [[d as]] [d (reduce + (map xp-for as))]) by-date))
+          ;; Activity breakdown by type
+          type-breakdown (frequencies (map #(name (first %)) recent))
+          ;; All-time total XP (from user entity)
+          user-xp    (or (:user/xp (d/entity db u-e)) 0)
+          ;; Tracking consistency dates
+          tracking-dates (set (d/q '[:find [?date ...] :in $ ?u
+                                     :where [?e :tracking/user ?u] [?e :tracking/date ?date]]
+                                   db u-e))]
+      (ok {:xpPerDay       xp-per-day
+           :typeBreakdown  type-breakdown
+           :totalXp        user-xp
+           :periodXp       (reduce + (vals xp-per-day))
+           :totalMinutes   (reduce + (map #(nth % 1) recent))
+           :totalActivities (count recent)
+           :trackingDates  (vec (sort tracking-dates))
+           :period         period}))
+    (unauth)))
+
+(defn- handle-get-tracking-range [req]
+  (if-let [username (me req)]
+    (let [start (get-in req [:query-params "start"])
+          end   (get-in req [:query-params "end"])
+          db    (ddb)
+          u-e   (user-e db username)]
+      (cond
+        (or (str/blank? start) (str/blank? end)) (bad "start and end required")
+        (or (not (valid-date-str? start)) (not (valid-date-str? end))) (bad "Invalid date format")
+        :else
+        (let [ids (d/q '[:find [?e ...]
+                         :in $ ?u ?start ?end
+                         :where
+                         [?e :tracking/user ?u]
+                         [?e :tracking/date ?date]
+                         [(>= ?date ?start)]
+                         [(<= ?date ?end)]]
+                       db u-e start end)]
+          (ok (mapv #(tracking-entry-dto db %) (sort-by #(:tracking/date (d/entity db %)) ids))))))
+    (unauth)))
+
 ;; ===== POSTS / FEED =====
 
 (defn- handle-get-feed [req]
@@ -295,7 +480,7 @@
                           [?p :post/author ?followed]]
                         db u-e)
           sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) post-ids)]
-      (ok (mapv #(post-dto db %) (take 50 sorted))))
+      (ok (mapv #(post-dto db % u-e) (take 50 sorted))))
     (unauth)))
 
 (defn- handle-create-post [req]
@@ -325,20 +510,21 @@
 
 (defn- handle-like-post [req]
   (if-let [username (me req)]
-    (let [pid (Long/parseLong (get-in req [:path-params :id]))
-          db  (ddb)
-          u-e (user-e db username)
+    (let [pid    (Long/parseLong (get-in req [:path-params :id]))
+          db     (ddb)
+          u-e    (user-e db username)
           post-e (d/entity db pid)
-          liked? (some #(= (:db/id %) u-e) (:post/likes post-e))]
-      (if liked?
-        (do @(d/transact s/conn [[:db/retract pid :post/likes u-e]])
-            (ok {:action "removed"}))
-        (do
-          @(d/transact s/conn [[:db/add pid :post/likes u-e]])
-          (let [author-e (-> post-e :post/author :db/id)]
-            (when (not= author-e u-e)
-              (create-notif! author-e :like (str username " liked your post"))))
-          (ok {:action "added"}))))
+          liked? (boolean (some #(= (:db/id %) u-e) (:post/likes post-e)))
+          tx     (if liked?
+                   [[:db/retract pid :post/likes u-e]]
+                   [[:db/add pid :post/likes u-e]])
+          r      @(d/transact s/conn tx)
+          db2    (:db-after r)
+          likes  (vec (keep #(:user/username (d/entity db2 (:db/id %)))
+                             (:post/likes (d/entity db2 pid))))]
+      (when (and (not liked?) (not= (-> post-e :post/author :db/id) u-e))
+        (create-notif! (-> post-e :post/author :db/id) :like (str username " liked your post")))
+      (ok {:likes likes :liked (not liked?)}))
     (unauth)))
 
 (defn- handle-delete-post [req]
@@ -351,6 +537,43 @@
         (do @(d/transact s/conn [[:db/retractEntity pid]])
             (ok {:ok true}))))
     (unauth)))
+
+(defn- handle-save-post [req]
+  (if-let [username (me req)]
+    (let [pid (Long/parseLong (get-in req [:path-params :id]))
+          u-e (user-e (ddb) username)]
+      @(d/transact s/conn [[:db/add pid :post/saved-by u-e]])
+      (ok {:saved true}))
+    (unauth)))
+
+(defn- handle-unsave-post [req]
+  (if-let [username (me req)]
+    (let [pid (Long/parseLong (get-in req [:path-params :id]))
+          u-e (user-e (ddb) username)]
+      @(d/transact s/conn [[:db/retract pid :post/saved-by u-e]])
+      (ok {:saved false}))
+    (unauth)))
+
+(defn- handle-get-saved-posts [req]
+  (if-let [username (me req)]
+    (let [db    (ddb)
+          u-e   (user-e db username)
+          pids  (d/q '[:find [?p ...] :in $ ?u :where [?p :post/saved-by ?u]] db u-e)
+          sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) pids)]
+      (ok (mapv #(post-dto db % u-e) (take 50 sorted))))
+    (unauth)))
+
+(defn- handle-get-user-posts [req]
+  (let [uname  (get-in req [:path-params :username])
+        db     (ddb)
+        u      (d/entity db [:user/username uname])]
+    (if-not (:db/id u)
+      (not-found)
+      (let [me-un  (me req)
+            me-eid (when me-un (:db/id (d/entity db [:user/username me-un])))
+            pids   (d/q '[:find [?p ...] :in $ ?u :where [?p :post/author ?u]] db (:db/id u))
+            sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) pids)]
+        (ok (mapv #(post-dto db % me-eid) (take 50 sorted)))))))
 
 ;; ===== COMMENTS =====
 
@@ -1100,17 +1323,27 @@
 
    ["/api/activities"       {:get handle-get-activities :post handle-create-activity}]
    ["/api/activities/:id"   {:put handle-update-activity :delete handle-delete-activity}]
+   ["/api/tracking-entries"        {:get handle-get-tracking-entries}]
+   ["/api/tracking-entries/range"  {:get handle-get-tracking-range}]
+   ["/api/tracking-entries/:method" {:put handle-save-tracking-entry}]
+   ["/api/tracking-entries/id/:id" {:delete handle-delete-tracking-entry}]
+
+   ["/api/stats"                   {:get handle-get-stats}]
 
    ["/api/feed"             {:get handle-get-feed}]
    ["/api/posts"            {:post handle-create-post}]
    ["/api/posts/:id"        {:get handle-get-post :delete handle-delete-post}]
    ["/api/posts/:id/like"   {:post handle-like-post}]
+   ["/api/posts/:id/save"   {:post handle-save-post}]
+   ["/api/posts/:id/unsave" {:post handle-unsave-post}]
    ["/api/posts/:id/comments" {:get handle-get-comments :post handle-add-comment}]
    ["/api/comments/:id"     {:delete handle-delete-comment}]
+   ["/api/saved-posts"      {:get handle-get-saved-posts}]
 
    ["/api/profile"          {:put handle-update-profile}]
    ["/api/users/search"     {:get handle-search}]
    ["/api/users/:username"  {:get handle-get-profile :delete handle-delete-account}]
+   ["/api/users/:username/posts"  {:get handle-get-user-posts}]
    ["/api/users/:username/badges" {:get handle-get-badges}]
 
    ["/api/follow"           {:post handle-toggle-follow}]
@@ -1196,6 +1429,7 @@
   [& _args]
   (when (nil? s/conn)
     (s/init-conn!))
+  (s/ensure-schema!)
   (when (= "true" (System/getenv "BEBETTER_SEED"))
     (println "[bootstrap] BEBETTER_SEED=true — running reset-db!")
     (s/reset-db! db/get-all-tx-functions))

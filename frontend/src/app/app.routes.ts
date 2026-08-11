@@ -3,6 +3,7 @@ import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
+  { path: 'onboarding', loadComponent: () => import('./pages/onboarding/onboarding.component').then(m => m.OnboardingComponent) },
   { path: 'privacy', loadComponent: () => import('./pages/privacy/privacy.component').then(m => m.PrivacyComponent) },
   { path: 'terms', loadComponent: () => import('./pages/terms/terms.component').then(m => m.TermsComponent) },
   {
@@ -22,6 +23,7 @@ export const routes: Routes = [
       { path: 'search', loadComponent: () => import('./pages/search/search.component').then(m => m.SearchComponent) },
       { path: 'challenges', loadComponent: () => import('./pages/challenges/challenges.component').then(m => m.ChallengesComponent) },
       { path: 'recap', loadComponent: () => import('./pages/recap/recap.component').then(m => m.RecapComponent) },
+      { path: 'stats', loadComponent: () => import('./pages/stats/stats.component').then(m => m.StatsComponent) },
       { path: 'post/:id', loadComponent: () => import('./pages/post-detail/post-detail.component').then(m => m.PostDetailComponent) },
     ]
   },

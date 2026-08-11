@@ -1,0 +1,193 @@
+<div class="rv-root"
+  (touchstart)="onTouchStart($event)"
+  (touchend)="onTouchEnd($event)">
+
+  <!-- Backdrop -->
+  <div class="rv-backdrop" (click)="close()"></div>
+
+  <!-- Top bar -->
+  <div class="rv-topbar">
+    <span class="rv-counter">{{ currentIndex + 1 }} / {{ posts.length }}</span>
+    <button class="rv-close-btn" (click)="close()">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <!-- Prev arrow -->
+  <button class="rv-nav rv-prev" (click)="prev()" [class.rv-hidden]="!hasPrev">
+    <span class="material-icons">chevron_left</span>
+  </button>
+
+  @if (post) {
+    <div class="rv-container">
+
+      <!-- ── Media panel ── -->
+      <div class="rv-media-col">
+        @if (post.mediaUrl) {
+          @if (isVideo(post.mediaUrl)) {
+            <video class="rv-media" [src]="post.mediaUrl" controls autoplay [muted]="true" loop playsinline></video>
+          } @else {
+            <img class="rv-media" [src]="post.mediaUrl" alt="" />
+          }
+        } @else {
+          <div class="rv-text-card">
+            <p>{{ post.caption }}</p>
+          </div>
+        }
+
+        <!-- Mobile overlays -->
+        <div class="rv-media-overlay">
+          <a [routerLink]="['/profile', post.author?.username]" class="rv-author-row" (click)="close()">
+            <div class="rv-av">
+              @if (post.author?.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
+              @else { <span>{{ initials(post.author) }}</span> }
+            </div>
+            <div>
+              <div class="rv-author-name">{{ post.author?.displayName || post.author?.username }}</div>
+              @if (post.activityTag) { <span class="rv-tag-sm">{{ post.activityTag }}</span> }
+            </div>
+          </a>
+          @if (post.caption && post.mediaUrl) {
+            <p class="rv-caption-overlay">{{ post.caption }}</p>
+          }
+        </div>
+
+        <!-- Mobile action buttons (right side) -->
+        <div class="rv-mobile-actions">
+          <button class="rv-act-btn" [class.liked]="post.liked" (click)="like()">
+            <span class="material-icons">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
+            <span class="rv-act-label">{{ post.likes?.length ?? post.likes ?? 0 }}</span>
+          </button>
+          <button class="rv-act-btn" (click)="showCommentsMobile = !showCommentsMobile">
+            <span class="material-icons">chat_bubble_outline</span>
+            <span class="rv-act-label">{{ comments.length }}</span>
+          </button>
+          <button class="rv-act-btn" (click)="sharePost()">
+            <span class="material-icons">send</span>
+          </button>
+          <button class="rv-act-btn" [class.saved]="post.saved" (click)="toggleSave()">
+            <span class="material-icons">{{ post.saved ? 'bookmark' : 'bookmark_border' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Comments panel (desktop always visible / mobile toggle) ── -->
+      <div class="rv-comments-col" [class.rv-comments-open]="showCommentsMobile">
+
+        <!-- Author header -->
+        <div class="rv-c-header">
+          <a [routerLink]="['/profile', post.author?.username]" class="rv-c-author-row" (click)="close()">
+            <div class="rv-av sm">
+              @if (post.author?.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
+              @else { <span>{{ initials(post.author) }}</span> }
+            </div>
+            <div>
+              <div class="rv-c-author-name">{{ post.author?.displayName || post.author?.username }}</div>
+              <div class="rv-c-time">{{ timeAgo(post.createdAt) }}</div>
+            </div>
+          </a>
+          @if (post.activityTag) {
+            <span class="rv-tag">{{ post.activityTag }}</span>
+          }
+        </div>
+
+        <!-- Caption -->
+        @if (post.caption) {
+          <div class="rv-c-caption">{{ post.caption }}</div>
+        }
+
+        <!-- Comments list -->
+        <div class="rv-c-list" #commentsArea>
+          @if (commentsLoading) {
+            <div class="rv-c-loading">Loading...</div>
+          } @else if (!comments.length) {
+            <div class="rv-c-empty">No comments yet.</div>
+          } @else {
+            @for (c of comments; track c.id) {
+              <div class="rv-c-row">
+                <div class="rv-av xs">
+                  @if (c.author?.profilePic) { <img [src]="c.author.profilePic" alt="" /> }
+                  @else { <span>{{ initials(c.author) }}</span> }
+                </div>
+                <div class="rv-c-body">
+                  <span class="rv-c-name">{{ c.author?.displayName || c.author?.username }}</span>
+                  <span class="rv-c-text"> {{ c.content }}</span>
+                  <div class="rv-c-meta">
+                    {{ timeAgo(c.createdAt) }}
+                    @if (c.author?.username === me()) {
+                      <button class="rv-c-del" (click)="deleteComment(c.id)">Delete</button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Like / save row -->
+        <div class="rv-c-actions">
+          <button class="rv-c-like-btn" [class.liked]="post.liked" (click)="like()">
+            <span class="material-icons">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
+            {{ post.likes?.length ?? post.likes ?? 0 }} likes
+          </button>
+          <div class="rv-c-right">
+            <button class="rv-c-icon-btn" (click)="sharePost()" title="Send to DM">
+              <span class="material-icons">send</span>
+            </button>
+            <button class="rv-c-icon-btn" [class.saved]="post.saved" (click)="toggleSave()" title="{{ post.saved ? 'Unsave' : 'Save' }}">
+              <span class="material-icons">{{ post.saved ? 'bookmark' : 'bookmark_border' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Comment input -->
+        <div class="rv-c-input-row">
+          <input
+            type="text"
+            [(ngModel)]="newComment"
+            (keydown.enter)="addComment()"
+            placeholder="Add a comment..."
+            class="rv-c-input"
+          />
+          <button class="rv-c-post-btn" (click)="addComment()" [disabled]="!newComment.trim() || submitting">
+            Post
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Next arrow -->
+  <button class="rv-nav rv-next" (click)="next()" [class.rv-hidden]="!hasNext">
+    <span class="material-icons">chevron_right</span>
+  </button>
+</div>
+
+<!-- Share modal -->
+@if (showShareModal) {
+  <div class="rv-share-overlay" (click)="showShareModal = false">
+    <div class="rv-share-modal" (click)="$event.stopPropagation()">
+      <div class="rv-share-header">
+        <h3>Send to...</h3>
+        <button (click)="showShareModal = false"><span class="material-icons">close</span></button>
+      </div>
+      <div class="rv-share-list">
+        @if (!conversations.length) {
+          <div class="rv-share-empty">No conversations yet.</div>
+        }
+        @for (c of conversations; track c.id) {
+          <div class="rv-share-item" (click)="sendPostToConv(c)">
+            <div class="rv-av sm">
+              @if (c.other?.profilePic) { <img [src]="c.other.profilePic" alt="" /> }
+              @else { <span>{{ initials(c.other) }}</span> }
+            </div>
+            <span>{{ c.other?.displayName || c.other?.username }}</span>
+            @if (sharedTo === c.id) {
+              <span class="material-icons rv-sent-check">check_circle</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

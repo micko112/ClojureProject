@@ -1,4 +1,14 @@
 <div class="profile-page">
+  <!-- Reel viewer overlay -->
+  @if (reelOpen) {
+    <app-reel-viewer
+      [posts]="reelPosts"
+      [startIndex]="reelStartIndex"
+      (closed)="closeReel()"
+      (postSaved)="onReelSaved($event)">
+    </app-reel-viewer>
+  }
+
   @if (loading) {
     <div class="loading">Loading...</div>
   } @else if (!profile) {
@@ -18,6 +28,7 @@
           <span><strong>{{ profile.xp || 0 }}</strong> XP</span>
           <span><strong>{{ profile.followersCount || 0 }}</strong> followers</span>
           <span><strong>{{ profile.followingCount || 0 }}</strong> following</span>
+          <span><strong>{{ userPosts.length }}</strong> posts</span>
         </div>
         <div class="profile-actions">
           @if (isMe) {
@@ -34,28 +45,88 @@
 
     @if (badges.length) {
       <div class="badges-section">
-        <h3>Badges</h3>
         <div class="badges-row">
           @for (b of badges; track b.id) {
-            <span class="badge-chip" [title]="b.description"><span class="material-icons md-18">military_tech</span> {{ b.name }}</span>
+            <span class="badge-chip" [title]="b.description">
+              <span class="material-icons md-18">military_tech</span> {{ b.name }}
+            </span>
           }
         </div>
       </div>
     }
 
-    @if (activities.length) {
-      <div class="activities-section">
-        <h3>Recent Activities</h3>
-        <div class="activity-list">
-          @for (a of activities.slice(0, 10); track a.id) {
-            <div class="activity-item">
-              <span>{{ a.type }}</span>
-              <span>{{ a.duration }}min</span>
-              <span>intensity {{ a.intensity }}/5</span>
+    <!-- Posts / Saved tabs -->
+    <div class="profile-tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'posts'" (click)="setTab('posts')">
+        <span class="material-icons md-18">grid_on</span>
+        Posts
+      </button>
+      @if (isMe) {
+        <button class="tab-btn" [class.active]="activeTab === 'saved'" (click)="setTab('saved')">
+          <span class="material-icons md-18">bookmark_border</span>
+          Saved
+        </button>
+      }
+    </div>
+
+    <!-- Posts grid -->
+    @if (activeTab === 'posts') {
+      @if (postsLoading) {
+        <div class="grid-loading">Loading posts...</div>
+      } @else if (!userPosts.length) {
+        <div class="grid-empty">No posts yet.</div>
+      } @else {
+        <div class="posts-grid">
+          @for (post of userPosts; track post.id) {
+            <div class="grid-item" (click)="openReel(post, userPosts)">
+              @if (post.mediaUrl) {
+                @if (isVideo(post.mediaUrl)) {
+                  <video [src]="post.mediaUrl" [muted]="true" playsinline></video>
+                  <div class="grid-play"><span class="material-icons">play_circle</span></div>
+                } @else {
+                  <img [src]="post.mediaUrl" alt="" />
+                }
+              } @else {
+                <div class="grid-text">{{ post.caption }}</div>
+              }
+              <div class="grid-overlay">
+                <span class="material-icons md-18">favorite</span> {{ post.likes?.length || 0 }}
+                <span class="material-icons md-18" style="margin-left:8px">chat_bubble_outline</span> {{ post.commentCount || 0 }}
+              </div>
             </div>
           }
         </div>
-      </div>
+      }
+    }
+
+    <!-- Saved posts grid -->
+    @if (activeTab === 'saved' && isMe) {
+      @if (savedLoading) {
+        <div class="grid-loading">Loading saved posts...</div>
+      } @else if (!savedPosts.length) {
+        <div class="grid-empty">No saved posts yet.</div>
+      } @else {
+        <div class="posts-grid">
+          @for (post of savedPosts; track post.id) {
+            <div class="grid-item" (click)="openReel(post, savedPosts)">
+              @if (post.mediaUrl) {
+                @if (isVideo(post.mediaUrl)) {
+                  <video [src]="post.mediaUrl" [muted]="true" playsinline></video>
+                  <div class="grid-play"><span class="material-icons">play_circle</span></div>
+                } @else {
+                  <img [src]="post.mediaUrl" alt="" />
+                }
+              } @else {
+                <div class="grid-text">{{ post.caption }}</div>
+              }
+              <div class="grid-overlay">
+                <span class="material-icons md-18">favorite</span> {{ post.likes?.length || 0 }}
+                <span class="material-icons md-18" style="margin-left:8px">chat_bubble_outline</span> {{ post.commentCount || 0 }}
+              </div>
+            </div>
+          }
+        </div>
+      }
     }
   }
 </div>

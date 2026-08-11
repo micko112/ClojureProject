@@ -55,3 +55,11 @@
     @(d/transact new-conn all-tx-functions)
     (alter-var-root #'conn (constantly new-conn))
     new-conn))
+
+(defn ensure-schema!
+  "Transact current schema into an existing database. Datomic ignores schema
+   attributes that are already installed, so this is safe on every boot."
+  ([] (ensure-schema! conn))
+  ([conn]
+   (when conn
+     @(d/transact conn schema/all-schemas))))

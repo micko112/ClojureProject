@@ -26,5 +26,10 @@
 <body>
   <app-root></app-root>
   <noscript>Please enable JavaScript to use BeBetter.</noscript>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>

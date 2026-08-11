@@ -1,0 +1,190 @@
+<div class="stats-page">
+  <div class="stats-header">
+    <div>
+      <h2>Statistike</h2>
+      <p class="sub">Pregled tvojih aktivnosti i navika</p>
+    </div>
+    <div class="header-actions">
+      <select [(ngModel)]="period" (change)="onPeriodChange()">
+        <option [value]="7">Zadnjih 7 dana</option>
+        <option [value]="30">Zadnjih 30 dana</option>
+        <option [value]="90">Zadnjih 90 dana</option>
+      </select>
+      <button class="btn-secondary" (click)="exportCsv()">
+        <span class="material-icons md-18">download</span>
+        CSV
+      </button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loading-state">
+      <span class="material-icons spinning">sync</span>
+      <p>Učitavam statistike...</p>
+    </div>
+  } @else if (error) {
+    <div class="error-state">{{ error }}</div>
+  } @else if (stats) {
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="stat-card">
+        <span class="material-icons">emoji_events</span>
+        <div>
+          <p class="stat-label">Ukupni XP</p>
+          <p class="stat-value">{{ stats.totalXp | number }}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="material-icons">trending_up</span>
+        <div>
+          <p class="stat-label">XP u periodu</p>
+          <p class="stat-value">{{ stats.periodXp | number }}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="material-icons">schedule</span>
+        <div>
+          <p class="stat-label">Ukupno minuta</p>
+          <p class="stat-value">{{ stats.totalMinutes | number }}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="material-icons">fitness_center</span>
+        <div>
+          <p class="stat-label">Aktivnosti</p>
+          <p class="stat-value">{{ stats.totalActivities }}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="material-icons">local_fire_department</span>
+        <div>
+          <p class="stat-label">Prosječni XP/dan</p>
+          <p class="stat-value">{{ avgXpPerDay() }}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="material-icons">check_circle</span>
+        <div>
+          <p class="stat-label">Konzistentnost trackiranja</p>
+          <p class="stat-value">{{ trackingConsistencyPct() }}%</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- XP chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="material-icons">bar_chart</span>
+        <h3>XP po danu</h3>
+        <span class="panel-meta">Max: {{ maxXpInPeriod() | number }} · Prosjek: {{ avgXpPerDay() | number }}</span>
+      </div>
+      @if (!chartBars().length) {
+        <div class="empty-chart">Nema aktivnosti u ovom periodu.</div>
+      } @else {
+        <div class="chart-wrap">
+          <div class="chart-bars">
+            @for (bar of chartBars(); track bar.date) {
+              <div class="bar-col" [title]="bar.date + ': ' + bar.xp + ' XP'">
+                <div class="bar" [style.height.px]="bar.height"></div>
+                @if (chartBars().length <= 30) {
+                  <span class="bar-label">{{ bar.label }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Activity breakdown -->
+    <div class="two-col">
+      <!-- Donut -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="material-icons">donut_large</span>
+          <h3>Kategorije</h3>
+        </div>
+        @if (!categoryBreakdown().length) {
+          <div class="empty-chart">Nema podataka.</div>
+        } @else {
+          <div class="donut-wrap">
+            <svg viewBox="0 0 128 128" width="128" height="128">
+              @for (seg of donutSegments(); track seg.category) {
+                <path [attr.d]="seg.d" [attr.fill]="seg.color" />
+              }
+              <circle cx="64" cy="64" r="32" fill="var(--bg2)" />
+            </svg>
+            <div class="donut-legend">
+              @for (c of categoryBreakdown(); track c.category) {
+                <div class="legend-row">
+                  <span class="legend-dot" [style.background]="c.color"></span>
+                  <span class="legend-label">{{ c.category }}</span>
+                  <span class="legend-pct">{{ c.pct }}%</span>
+                  <span class="legend-count">({{ c.count }})</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Top types -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="material-icons">format_list_numbered</span>
+          <h3>Top aktivnosti</h3>
+        </div>
+        @if (!typeBreakdownEntries().length) {
+          <div class="empty-chart">Nema podataka.</div>
+        } @else {
+          <div class="type-list">
+            @for (e of typeBreakdownEntries().slice(0, 8); track e.type) {
+              <div class="type-row">
+                <span class="material-icons type-icon" [style.color]="e.color">{{ e.icon }}</span>
+                <span class="type-name">{{ e.type }}</span>
+                <div class="type-bar-wrap">
+                  <div class="type-bar" [style.width.%]="(e.count / typeBreakdownEntries()[0].count) * 100" [style.background]="e.color"></div>
+                </div>
+                <span class="type-count">{{ e.count }}x</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Tracking heatmap -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="material-icons">calendar_month</span>
+        <h3>Tracking konzistentnost</h3>
+        <span class="panel-meta">{{ stats.trackingDates?.length || 0 }} dana ukupno</span>
+      </div>
+      <div class="heatmap-grid">
+        @for (month of calendarMonths; track month.label) {
+          <div class="heatmap-month">
+            <p class="month-label">{{ month.label }}</p>
+            <div class="heatmap-days">
+              @for (day of month.days; track day.date) {
+                <div
+                  class="heatmap-day"
+                  [class.tracked]="day.count > 0"
+                  [class.today]="day.date === today"
+                  [title]="day.date + (day.count ? ' ✓' : '')"
+                ></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <div class="heatmap-legend">
+        <span>Manje</span>
+        <div class="legend-scale">
+          <div class="heatmap-day"></div>
+          <div class="heatmap-day tracked"></div>
+        </div>
+        <span>Više</span>
+      </div>
+    </div>
+  }
+</div>

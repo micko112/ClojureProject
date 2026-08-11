@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -23,6 +25,87 @@ const ACTIVITY_TYPES = [
   { type: 'socializing', label: 'Socializing', icon: 'handshake', category: 'social', xpPerMin: 1 },
 ];
 
+const TRACKING_METHODS = [
+  {
+    id: 'ten-wins',
+    label: '10 Wins a Day',
+    icon: 'trophy',
+    summary: 'Upisi deset malih ili velikih pobeda za danas.'
+  },
+  {
+    id: 'deep-work',
+    label: 'Deep Work Blocks',
+    icon: 'timer',
+    summary: 'Planiraj fokus blokove i cekiraj sta je zavrseno.'
+  },
+  {
+    id: 'habit-scorecard',
+    label: 'Habit Scorecard',
+    icon: 'checklist',
+    summary: 'Brzo oceni kljucne navike za dan.'
+  },
+  {
+    id: 'energy-check',
+    label: 'Energy Check-in',
+    icon: 'battery_charging_full',
+    summary: 'Prati energiju, raspolozenje i jednu stvar koja te dize.'
+  },
+  {
+    id: 'one-thing',
+    label: 'One Thing',
+    icon: 'flag',
+    summary: 'Izaberi jedan prioritet koji danas nosi najveci efekat.'
+  },
+  {
+    id: 'daily-review',
+    label: 'Daily Review',
+    icon: 'rate_review',
+    summary: 'Zatvori dan kroz tri kratka pitanja.'
+  },
+  {
+    id: 'streak-tracker',
+    label: 'Streak Tracker',
+    icon: 'local_fire_department',
+    summary: 'Prati niz dana za navike koje zelis da odrzis.'
+  },
+  {
+    id: 'mood-trigger',
+    label: 'Mood + Trigger Log',
+    icon: 'psychology_alt',
+    summary: 'Povezi raspolozenje sa stvarima koje ga pokrecu.'
+  },
+  {
+    id: 'bad-habit-avoided',
+    label: 'Bad Habit Avoided',
+    icon: 'block',
+    summary: 'Zabelezi sta si danas uspeo da izbegnes.'
+  },
+  {
+    id: 'identity-votes',
+    label: 'Identity Votes',
+    icon: 'how_to_reg',
+    summary: 'Pretvori male akcije u glasove za osobu koja postajes.'
+  },
+  {
+    id: 'weekly-focus',
+    label: 'Weekly Focus',
+    icon: 'calendar_view_week',
+    summary: 'Jedna tema nedelje i mali dnevni dokaz napretka.'
+  },
+  {
+    id: 'friction-log',
+    label: 'Friction Log',
+    icon: 'report_problem',
+    summary: 'Uhvati sta te koci, da bi sledeci put lakse prosao.'
+  },
+  {
+    id: 'tiny-challenge',
+    label: 'Tiny Challenge Generator',
+    icon: 'casino',
+    summary: 'Izvuci mali izazov kad ti treba brz sledeci potez.'
+  },
+];
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -30,7 +113,7 @@ const ACTIVITY_TYPES = [
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   activities: any[] = [];
   loading = true;
   showModal = false;
@@ -46,6 +129,90 @@ export class DashboardComponent implements OnInit {
   saving = false;
 
   activityTypes = ACTIVITY_TYPES;
+  trackingMethods = TRACKING_METHODS;
+  selectedMethodId = 'ten-wins';
+  trackingDate = new Date().toISOString().split('T')[0];
+  trackingLoading = false;
+  trackingSaving = false;
+  trackingSaved = false;
+  trackingError = '';
+  trackingEntries: Record<string, any> = {};
+  tenWins = Array.from({ length: 10 }, () => '');
+  deepWorkBlocks = [
+    { label: 'Blok 1', minutes: 50, done: false },
+    { label: 'Blok 2', minutes: 50, done: false },
+    { label: 'Blok 3', minutes: 25, done: false },
+  ];
+  habitScorecard = [
+    { habit: 'Trening / setnja', done: false },
+    { habit: 'Ucenje / citanje', done: false },
+    { habit: 'Bez kasnog skrolovanja', done: false },
+    { habit: 'Voda i obrok na vreme', done: false },
+  ];
+  energyLevel = 3;
+  moodLevel = 3;
+  energyNote = '';
+  oneThing = '';
+  oneThingNextStep = '';
+  dailyReview = {
+    good: '',
+    learned: '',
+    improve: ''
+  };
+  streakHabits = [
+    { name: 'Trening', days: 0 },
+    { name: 'Citanje', days: 0 },
+    { name: 'Ucenje', days: 0 },
+  ];
+  moodTrigger = {
+    mood: 3,
+    trigger: '',
+    response: ''
+  };
+  avoidedHabits = [
+    { name: 'Doomscrolling', avoided: false },
+    { name: 'Junk food', avoided: false },
+    { name: 'Odlaganje', avoided: false },
+    { name: 'Kasno spavanje', avoided: false },
+  ];
+  identityVotes = [
+    { identity: 'Osoba koja trenira', votes: 0 },
+    { identity: 'Osoba koja uci', votes: 0 },
+    { identity: 'Osoba koja drzi obecanje sebi', votes: 0 },
+  ];
+  weeklyFocus = {
+    theme: 'Disciplina',
+    proof: '',
+    confidence: 3
+  };
+  frictionLog = {
+    goal: '',
+    blocker: '',
+    fix: ''
+  };
+  tinyChallenges = [
+    '10 min setnje',
+    '15 min citanja',
+    'Sredi radni sto',
+    'Posalji jednu vaznu poruku',
+    'Popij casu vode i napravi pauzu',
+    'Zapisi sledeca 3 koraka',
+    'Uradi 20 cucnjeva',
+    'Radi 25 min bez telefona',
+  ];
+  currentChallenge = this.tinyChallenges[0];
+
+  // Autosave
+  private autosave$ = new Subject<void>();
+  private autosaveSub?: Subscription;
+  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
+
+  // Habit edit mode
+  editingHabits = false;
+  newHabitText = '';
+
+  // Share wins
+  sharingWins = false;
 
   constructor(
     private api: ApiService,
@@ -54,6 +221,37 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadActivities();
+    this.loadTrackingEntries();
+    this.autosaveSub = this.autosave$.pipe(
+      debounceTime(1500),
+      distinctUntilChanged()
+    ).subscribe(() => this.runAutosave());
+  }
+
+  ngOnDestroy(): void {
+    this.autosaveSub?.unsubscribe();
+  }
+
+  triggerAutosave(): void {
+    this.autosaveStatus = 'idle';
+    this.autosave$.next();
+  }
+
+  private runAutosave(): void {
+    if (this.trackingSaving || this.trackingLoading) return;
+    this.autosaveStatus = 'saving';
+    this.api.saveTrackingEntry(
+      this.selectedMethodId,
+      this.trackingDate,
+      this.buildTrackingPayload(this.selectedMethodId)
+    ).subscribe({
+      next: entry => {
+        this.trackingEntries[entry.method] = entry;
+        this.autosaveStatus = 'saved';
+        setTimeout(() => { if (this.autosaveStatus === 'saved') this.autosaveStatus = 'idle'; }, 2000);
+      },
+      error: () => { this.autosaveStatus = 'error'; }
+    });
   }
 
   loadActivities(): void {
@@ -133,5 +331,252 @@ export class DashboardComponent implements OnInit {
 
   totalXp(): number {
     return this.activities.reduce((sum, a) => sum + this.xp(a), 0);
+  }
+
+  selectedMethod(): any {
+    return TRACKING_METHODS.find(m => m.id === this.selectedMethodId) || TRACKING_METHODS[0];
+  }
+
+  onTrackingDateChange(): void {
+    this.trackingSaved = false;
+    this.loadTrackingEntries();
+  }
+
+  loadTrackingEntries(): void {
+    this.trackingLoading = true;
+    this.trackingError = '';
+    this.api.getTrackingEntries(this.trackingDate).subscribe({
+      next: entries => {
+        this.trackingEntries = {};
+        entries.forEach(entry => {
+          this.trackingEntries[entry.method] = entry;
+          this.applyTrackingPayload(entry.method, entry.payload || {});
+        });
+        this.trackingLoading = false;
+      },
+      error: () => {
+        this.trackingLoading = false;
+        this.trackingError = 'Nije uspelo ucitavanje metoda.';
+      }
+    });
+  }
+
+  saveSelectedTracking(): void {
+    if (this.trackingSaving) return;
+    this.trackingSaving = true;
+    this.trackingSaved = false;
+    this.trackingError = '';
+    this.api.saveTrackingEntry(
+      this.selectedMethodId,
+      this.trackingDate,
+      this.buildTrackingPayload(this.selectedMethodId)
+    ).subscribe({
+      next: entry => {
+        this.trackingEntries[entry.method] = entry;
+        this.trackingSaving = false;
+        this.trackingSaved = true;
+      },
+      error: () => {
+        this.trackingSaving = false;
+        this.trackingError = 'Nije uspelo cuvanje metode.';
+      }
+    });
+  }
+
+  buildTrackingPayload(method: string): any {
+    switch (method) {
+      case 'ten-wins':
+        return { wins: this.tenWins };
+      case 'deep-work':
+        return { blocks: this.deepWorkBlocks };
+      case 'habit-scorecard':
+        return { habits: this.habitScorecard };
+      case 'energy-check':
+        return { energyLevel: this.energyLevel, moodLevel: this.moodLevel, note: this.energyNote };
+      case 'one-thing':
+        return { thing: this.oneThing, nextStep: this.oneThingNextStep };
+      case 'daily-review':
+        return this.dailyReview;
+      case 'streak-tracker':
+        return { habits: this.streakHabits };
+      case 'mood-trigger':
+        return this.moodTrigger;
+      case 'bad-habit-avoided':
+        return { habits: this.avoidedHabits };
+      case 'identity-votes':
+        return { votes: this.identityVotes };
+      case 'weekly-focus':
+        return this.weeklyFocus;
+      case 'friction-log':
+        return this.frictionLog;
+      case 'tiny-challenge':
+        return { currentChallenge: this.currentChallenge };
+      default:
+        return {};
+    }
+  }
+
+  applyTrackingPayload(method: string, payload: any): void {
+    switch (method) {
+      case 'ten-wins':
+        this.tenWins = Array.from({ length: 10 }, (_, i) => payload.wins?.[i] || '');
+        break;
+      case 'deep-work':
+        if (Array.isArray(payload.blocks)) this.deepWorkBlocks = payload.blocks;
+        break;
+      case 'habit-scorecard':
+        if (Array.isArray(payload.habits)) this.habitScorecard = payload.habits;
+        break;
+      case 'energy-check':
+        this.energyLevel = Number(payload.energyLevel || this.energyLevel);
+        this.moodLevel = Number(payload.moodLevel || this.moodLevel);
+        this.energyNote = payload.note || '';
+        break;
+      case 'one-thing':
+        this.oneThing = payload.thing || '';
+        this.oneThingNextStep = payload.nextStep || '';
+        break;
+      case 'daily-review':
+        this.dailyReview = {
+          good: payload.good || '',
+          learned: payload.learned || '',
+          improve: payload.improve || ''
+        };
+        break;
+      case 'streak-tracker':
+        if (Array.isArray(payload.habits)) this.streakHabits = payload.habits;
+        break;
+      case 'mood-trigger':
+        this.moodTrigger = {
+          mood: Number(payload.mood || this.moodTrigger.mood),
+          trigger: payload.trigger || '',
+          response: payload.response || ''
+        };
+        break;
+      case 'bad-habit-avoided':
+        if (Array.isArray(payload.habits)) this.avoidedHabits = payload.habits;
+        break;
+      case 'identity-votes':
+        if (Array.isArray(payload.votes)) this.identityVotes = payload.votes;
+        break;
+      case 'weekly-focus':
+        this.weeklyFocus = {
+          theme: payload.theme || this.weeklyFocus.theme,
+          proof: payload.proof || '',
+          confidence: Number(payload.confidence || this.weeklyFocus.confidence)
+        };
+        break;
+      case 'friction-log':
+        this.frictionLog = {
+          goal: payload.goal || '',
+          blocker: payload.blocker || '',
+          fix: payload.fix || ''
+        };
+        break;
+      case 'tiny-challenge':
+        this.currentChallenge = payload.currentChallenge || this.currentChallenge;
+        break;
+    }
+  }
+
+  tenWinsCount(): number {
+    return this.tenWins.filter(w => w.trim()).length;
+  }
+
+  completedDeepWorkMinutes(): number {
+    return this.deepWorkBlocks
+      .filter(block => block.done)
+      .reduce((sum, block) => sum + Number(block.minutes || 0), 0);
+  }
+
+  habitScore(): number {
+    return this.habitScorecard.filter(h => h.done).length;
+  }
+
+  avoidedHabitsCount(): number {
+    return this.avoidedHabits.filter(h => h.avoided).length;
+  }
+
+  totalIdentityVotes(): number {
+    return this.identityVotes.reduce((sum, item) => sum + Number(item.votes || 0), 0);
+  }
+
+  generateChallenge(): void {
+    const index = Math.floor(Math.random() * this.tinyChallenges.length);
+    this.currentChallenge = this.tinyChallenges[index];
+  }
+
+  changeStreak(habit: any, amount: number): void {
+    habit.days = Math.max(0, Number(habit.days || 0) + amount);
+    this.triggerAutosave();
+  }
+
+  changeIdentityVotes(item: any, amount: number): void {
+    item.votes = Math.max(0, Number(item.votes || 0) + amount);
+    this.triggerAutosave();
+  }
+
+  isMethodSaved(methodId?: string): boolean {
+    return !!(this.trackingEntries[(methodId ?? this.selectedMethodId)]);
+  }
+
+  savedMethodsCount(): number {
+    return this.trackingMethods.filter(m => this.trackingEntries[m.id]).length;
+  }
+
+  // ---- Habit customization ----
+  addHabitItem(): void {
+    const text = this.newHabitText.trim();
+    if (!text) return;
+    switch (this.selectedMethodId) {
+      case 'habit-scorecard': this.habitScorecard.push({ habit: text, done: false }); break;
+      case 'streak-tracker': this.streakHabits.push({ name: text, days: 0 }); break;
+      case 'bad-habit-avoided': this.avoidedHabits.push({ name: text, avoided: false }); break;
+      case 'identity-votes': this.identityVotes.push({ identity: text, votes: 0 }); break;
+    }
+    this.newHabitText = '';
+    this.triggerAutosave();
+  }
+
+  removeHabitItem(index: number): void {
+    switch (this.selectedMethodId) {
+      case 'habit-scorecard': this.habitScorecard.splice(index, 1); break;
+      case 'streak-tracker': this.streakHabits.splice(index, 1); break;
+      case 'bad-habit-avoided': this.avoidedHabits.splice(index, 1); break;
+      case 'identity-votes': this.identityVotes.splice(index, 1); break;
+    }
+    this.triggerAutosave();
+  }
+
+  hasCustomizableList(): boolean {
+    return ['habit-scorecard', 'streak-tracker', 'bad-habit-avoided', 'identity-votes'].includes(this.selectedMethodId);
+  }
+
+  // ---- Share wins to feed ----
+  shareWins(): void {
+    const wins = this.tenWins.filter(w => w.trim());
+    if (!wins.length || this.sharingWins) return;
+    this.sharingWins = true;
+    const caption = '🏆 Moje pobede za danas:\n' + wins.map((w, i) => `${i + 1}. ${w}`).join('\n');
+    this.api.createPost({ caption }).subscribe({
+      next: () => { this.sharingWins = false; },
+      error: () => { this.sharingWins = false; }
+    });
+  }
+
+  // ---- Export tracking as CSV ----
+  exportTrackingCsv(): void {
+    const rows = [['Method', 'Date', 'Data']];
+    Object.values(this.trackingEntries).forEach((entry: any) => {
+      rows.push([entry.method, entry.date, JSON.stringify(entry.payload || {})]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracking-${this.trackingDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }

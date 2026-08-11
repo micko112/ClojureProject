@@ -66,3 +66,14 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
 }
 .fb-btn:hover { background: #222; border-color: #1877f2; }
 .fb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+  .login-card { padding: 24px 18px; border-radius: 12px; }
+  h1 { font-size: 24px; }
+  .seed-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 360px) {
+  .login-page { padding: 16px; }
+  .login-card { padding: 20px 14px; }
+}

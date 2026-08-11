@@ -76,3 +76,8 @@ ul li::before {
 }
 
 strong { color: var(--text); }
+
+@media (max-width: 600px) {
+  .legal-page { padding: 24px 16px; }
+  h1 { font-size: 22px; }
+}

@@ -314,7 +314,18 @@
   .sidebar-logo { display: none; }
   .sidebar-search { display: none; }
   .nav-label { display: none; }
-  .create-btn { font-size: 18px; padding: 10px; }
+  .create-btn {
+    font-size: 0;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .create-btn::before {
+    content: '+';
+    font-size: 22px;
+    line-height: 1;
+  }
   .user-details { display: none; }
   .notif-panel { left: 64px; }
 }

@@ -64,6 +64,10 @@
         <span class="nav-icon material-icons">show_chart</span>
         <span class="nav-label">Recap</span>
       </a>
+      <a routerLink="/stats" routerLinkActive="active">
+        <span class="nav-icon material-icons">bar_chart</span>
+        <span class="nav-label">Stats</span>
+      </a>
     </nav>
 
     <button class="create-btn" (click)="openCreate()">+ New Post</button>
@@ -85,6 +89,9 @@
           @if (unreadNotifCount() > 0) {
             <span class="badge">{{ unreadNotifCount() }}</span>
           }
+        </button>
+        <button class="icon-btn" (click)="toggleTheme()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+          <span class="material-icons">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
         </button>
         <button class="icon-btn" (click)="logout()">
           <span class="material-icons">logout</span>
@@ -176,7 +183,7 @@
   <a routerLink="/dashboard" routerLinkActive="active"><span class="material-icons">dashboard</span></a>
   <a routerLink="/feed" routerLinkActive="active"><span class="material-icons">home</span></a>
   <a routerLink="/leaderboard" routerLinkActive="active"><span class="material-icons">emoji_events</span></a>
-  <a routerLink="/competitions" routerLinkActive="active"><span class="material-icons">bolt</span></a>
+  <a routerLink="/stats" routerLinkActive="active"><span class="material-icons">bar_chart</span></a>
   <a routerLink="/chat" routerLinkActive="active" class="nav-with-badge">
     <span class="material-icons">forum</span>
     @if (unreadMsgCount() > 0) { <span class="badge-dot"></span> }

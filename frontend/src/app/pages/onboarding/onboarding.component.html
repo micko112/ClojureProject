@@ -1,0 +1,52 @@
+<div class="onboarding">
+  <div class="ob-card">
+    <div class="ob-progress">
+      <div class="progress-bar" [style.width.%]="progress"></div>
+    </div>
+
+    <div class="ob-content">
+      <span class="ob-icon material-icons">{{ step.icon }}</span>
+      <h2>{{ step.title }}</h2>
+      <p>{{ step.subtitle }}</p>
+
+      @if (step.hasForm) {
+        <div class="ob-form">
+          <input
+            type="text"
+            [(ngModel)]="displayName"
+            placeholder="Display name (npr. Micko)"
+            maxlength="40"
+          />
+          <textarea
+            [(ngModel)]="bio"
+            placeholder="Kratko o sebi (opcionalno)"
+            rows="3"
+            maxlength="160"
+          ></textarea>
+        </div>
+      }
+    </div>
+
+    <div class="ob-footer">
+      <button class="ob-skip" (click)="skip()">Preskoči</button>
+      <div class="ob-nav">
+        @if (currentStep > 0) {
+          <button class="ob-back" (click)="prev()">
+            <span class="material-icons md-18">arrow_back</span>
+            Nazad
+          </button>
+        }
+        <button class="ob-next" (click)="next()" [disabled]="saving">
+          {{ isLast ? (saving ? 'Čuvanje...' : 'Završi') : 'Dalje' }}
+          @if (!isLast) { <span class="material-icons md-18">arrow_forward</span> }
+        </button>
+      </div>
+    </div>
+
+    <div class="ob-steps">
+      @for (s of steps; track s.id; let i = $index) {
+        <div class="ob-dot" [class.active]="i === currentStep" [class.done]="i < currentStep"></div>
+      }
+    </div>
+  </div>
+</div>

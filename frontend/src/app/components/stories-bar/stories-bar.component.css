@@ -209,3 +209,10 @@
 }
 .share-btn:hover { opacity: 0.9; }
 .share-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 380px) {
+  .create-modal {
+    width: calc(100vw - 32px);
+    padding: 18px;
+  }
+}

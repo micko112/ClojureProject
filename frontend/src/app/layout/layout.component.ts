@@ -26,6 +26,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   createMediaFile: File | null = null;
   createMediaPreview = '';
   creating = false;
+  isDark = true;
 
   private searchTimer: any;
   private notifTimer: any;
@@ -35,7 +36,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
     public auth: AuthService,
     private api: ApiService,
     private router: Router
-  ) {}
+  ) {
+    const saved = localStorage.getItem('bb-theme');
+    this.isDark = saved !== 'light';
+    this.applyTheme();
+  }
 
   ngOnInit(): void {
     this.loadNotifications();
@@ -166,6 +171,16 @@ export class LayoutComponent implements OnInit, OnDestroy {
     } else {
       doCreate();
     }
+  }
+
+  toggleTheme(): void {
+    this.isDark = !this.isDark;
+    localStorage.setItem('bb-theme', this.isDark ? 'dark' : 'light');
+    this.applyTheme();
+  }
+
+  private applyTheme(): void {
+    document.documentElement.setAttribute('data-theme', this.isDark ? 'dark' : 'light');
   }
 
   logout(): void {

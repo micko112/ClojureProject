@@ -6,35 +6,28 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { StoriesBarComponent } from '../../components/stories-bar/stories-bar.component';
 import { StoryViewerComponent } from '../../components/story-viewer/story-viewer.component';
-import { PostModalComponent } from '../../components/post-modal/post-modal.component';
+import { ReelViewerComponent } from '../../components/reel-viewer/reel-viewer.component';
 
 @Component({
   selector: 'app-feed',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, StoriesBarComponent, StoryViewerComponent, PostModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StoriesBarComponent, StoryViewerComponent, ReelViewerComponent],
   templateUrl: './feed.component.html',
   styleUrls: ['./feed.component.css']
 })
 export class FeedComponent implements OnInit {
+  // Story viewer
   viewerGroups: any[] | null = null;
   viewerStartIndex = 0;
 
-  openStoryViewer(e: { groups: any[]; index: number }): void {
-    this.viewerGroups = e.groups;
-    this.viewerStartIndex = e.index;
-  }
+  // Reel viewer
+  reelOpen = false;
+  reelPosts: any[] = [];
+  reelStartIndex = 0;
 
-  closeStoryViewer(): void { this.viewerGroups = null; }
-
-  activePost: any = null;
-  openPost(post: any): void { this.activePost = post; }
-  closePost(): void { this.activePost = null; }
   posts: any[] = [];
   loading = true;
   trending: any[] = [];
-  expandedComments: Set<string> = new Set();
-  comments: Record<string, any[]> = {};
-  newComment: Record<string, string> = {};
 
   constructor(private api: ApiService, public auth: AuthService) {}
 
@@ -44,6 +37,7 @@ export class FeedComponent implements OnInit {
   }
 
   loadFeed(): void {
+    this.loading = true;
     this.api.getFeed().subscribe({
       next: p => { this.posts = p; this.loading = false; },
       error: () => { this.loading = false; }
@@ -51,54 +45,61 @@ export class FeedComponent implements OnInit {
   }
 
   loadTrending(): void {
-    this.api.getTrending().subscribe({
-      next: t => { this.trending = t; },
-      error: () => {}
-    });
+    this.api.getTrending().subscribe({ next: t => { this.trending = t; }, error: () => {} });
   }
 
-  like(post: any): void {
+  // Story viewer
+  openStoryViewer(e: { groups: any[]; index: number }): void {
+    this.viewerGroups = e.groups;
+    this.viewerStartIndex = e.index;
+  }
+  closeStoryViewer(): void { this.viewerGroups = null; }
+
+  // Reel viewer — builds a relevance-sorted queue starting with the tapped post
+  openReel(post: any): void {
+    this.reelPosts = this.buildReelQueue(post);
+    this.reelStartIndex = 0;
+    this.reelOpen = true;
+  }
+
+  closeReel(): void { this.reelOpen = false; }
+
+  onReelSaved(ev: { id: string; saved: boolean }): void {
+    const p = this.posts.find(p => p.id === ev.id);
+    if (p) p.saved = ev.saved;
+  }
+
+  private buildReelQueue(anchor: any): any[] {
+    const score = (p: any): number => {
+      let s = 0;
+      if (p.activityTag && p.activityTag === anchor.activityTag) s += 50;
+      const likes = Array.isArray(p.likes) ? p.likes.length : (p.likes || 0);
+      s += Math.min(likes, 30);
+      s += Math.min(p.commentCount || 0, 20);
+      const ageH = (Date.now() - new Date(p.createdAt).getTime()) / 3_600_000;
+      if (ageH < 24) s += 20;
+      else if (ageH < 48) s += 10;
+      return s;
+    };
+    const others = this.posts.filter(p => p.id !== anchor.id);
+    others.sort((a, b) => score(b) - score(a));
+    return [anchor, ...others];
+  }
+
+  like(post: any, event: Event): void {
+    event.stopPropagation();
     this.api.likePost(post.id).subscribe({
       next: r => { post.likes = r.likes; post.liked = r.liked; },
       error: () => {}
     });
   }
 
-  toggleComments(post: any): void {
-    const id = post.id;
-    if (this.expandedComments.has(id)) {
-      this.expandedComments.delete(id);
-    } else {
-      this.expandedComments.add(id);
-      if (!this.comments[id]) this.loadComments(id);
-    }
-  }
-
-  loadComments(postId: string): void {
-    this.api.getComments(postId).subscribe({
-      next: c => { this.comments[postId] = c; },
-      error: () => {}
-    });
-  }
-
-  addComment(post: any): void {
-    const content = (this.newComment[post.id] || '').trim();
-    if (!content) return;
-    this.api.createComment(post.id, content).subscribe({
-      next: () => {
-        this.newComment[post.id] = '';
-        this.loadComments(post.id);
-      },
-      error: () => {}
-    });
-  }
-
-  deleteComment(postId: string, commentId: string): void {
-    this.api.deleteComment(commentId).subscribe(() => this.loadComments(postId));
-  }
-
-  isExpanded(postId: string): boolean {
-    return this.expandedComments.has(postId);
+  toggleSave(post: any, event: Event): void {
+    event.stopPropagation();
+    const wasSaved = post.saved;
+    post.saved = !wasSaved;
+    const call = wasSaved ? this.api.unsavePost(post.id) : this.api.savePost(post.id);
+    call.subscribe({ error: () => { post.saved = wasSaved; } });
   }
 
   isVideo(url: string): boolean {
@@ -120,5 +121,9 @@ export class FeedComponent implements OnInit {
 
   initials(user: any): string {
     return (user?.displayName || user?.username || '?').charAt(0).toUpperCase();
+  }
+
+  likeCount(post: any): number {
+    return Array.isArray(post.likes) ? post.likes.length : (post.likes || 0);
   }
 }

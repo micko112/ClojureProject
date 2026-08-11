@@ -21,6 +21,27 @@ export class ApiService {
     return this.http.delete(`/api/activities/${id}`);
   }
 
+  // Tracking methods
+  getTrackingEntries(date?: string): Observable<any[]> {
+    let params = new HttpParams();
+    if (date) params = params.set('date', date);
+    return this.http.get<any[]>('/api/tracking-entries', { params });
+  }
+  getTrackingRange(start: string, end: string): Observable<any[]> {
+    return this.http.get<any[]>('/api/tracking-entries/range', { params: { start, end } });
+  }
+  saveTrackingEntry(method: string, date: string, payload: any): Observable<any> {
+    return this.http.put(`/api/tracking-entries/${method}`, { date, payload });
+  }
+  deleteTrackingEntry(id: string): Observable<any> {
+    return this.http.delete(`/api/tracking-entries/id/${id}`);
+  }
+
+  // Stats
+  getStats(period: number = 30): Observable<any> {
+    return this.http.get<any>('/api/stats', { params: { period: period.toString() } });
+  }
+
   // Feed / Posts
   getFeed(): Observable<any[]> {
     return this.http.get<any[]>('/api/feed');
@@ -196,6 +217,22 @@ export class ApiService {
   }
   deleteStory(id: string): Observable<any> {
     return this.http.delete(`/api/stories/${id}`);
+  }
+
+  // Save / bookmark posts
+  savePost(id: string): Observable<any> {
+    return this.http.post(`/api/posts/${id}/save`, {});
+  }
+  unsavePost(id: string): Observable<any> {
+    return this.http.post(`/api/posts/${id}/unsave`, {});
+  }
+  getSavedPosts(): Observable<any[]> {
+    return this.http.get<any[]>('/api/saved-posts');
+  }
+
+  // User posts
+  getUserPosts(username: string): Observable<any[]> {
+    return this.http.get<any[]>(`/api/users/${username}/posts`);
   }
 
   // Aliases used by some components

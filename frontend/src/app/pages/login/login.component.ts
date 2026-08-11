@@ -97,7 +97,12 @@ export class LoginComponent implements OnInit, AfterViewInit {
       ? this.auth.login(this.username.trim(), this.password)
       : this.auth.register(this.username.trim(), this.password);
     obs.subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => {
+        const dest = (this.mode === 'register' && !localStorage.getItem('bb-onboarded'))
+          ? '/onboarding'
+          : '/dashboard';
+        this.router.navigate([dest]);
+      },
       error: (e) => {
         this.loading = false;
         this.error = e?.error?.error || 'Something went wrong.';

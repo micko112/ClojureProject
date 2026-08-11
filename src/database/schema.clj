@@ -33,7 +33,8 @@
    {:db/ident :post/media-url :db/valueType :db.type/string :db/cardinality :db.cardinality/one}
    {:db/ident :post/activity-tag :db/valueType :db.type/string :db/cardinality :db.cardinality/one}
    {:db/ident :post/created-at :db/valueType :db.type/instant :db/cardinality :db.cardinality/one :db/index true}
-   {:db/ident :post/likes :db/valueType :db.type/ref :db/cardinality :db.cardinality/many}])
+   {:db/ident :post/likes    :db/valueType :db.type/ref :db/cardinality :db.cardinality/many}
+   {:db/ident :post/saved-by :db/valueType :db.type/ref :db/cardinality :db.cardinality/many}])
 
 (def comment-schema
   [{:db/ident :comment/post :db/valueType :db.type/ref :db/cardinality :db.cardinality/one :db/index true}
@@ -106,9 +107,18 @@
    {:db/ident :story/expires-at :db/valueType :db.type/instant :db/cardinality :db.cardinality/one}
    {:db/ident :story/viewed-by  :db/valueType :db.type/ref     :db/cardinality :db.cardinality/many}])
 
+(def tracking-entry-schema
+  [{:db/ident :tracking/user       :db/valueType :db.type/ref     :db/cardinality :db.cardinality/one :db/index true}
+   {:db/ident :tracking/method     :db/valueType :db.type/keyword :db/cardinality :db.cardinality/one :db/index true}
+   {:db/ident :tracking/date       :db/valueType :db.type/string  :db/cardinality :db.cardinality/one :db/index true}
+   {:db/ident :tracking/payload    :db/valueType :db.type/string  :db/cardinality :db.cardinality/one}
+   {:db/ident :tracking/created-at :db/valueType :db.type/instant :db/cardinality :db.cardinality/one}
+   {:db/ident :tracking/updated-at :db/valueType :db.type/instant :db/cardinality :db.cardinality/one}])
+
 (def all-schemas
   (concat user-schema activity-schema activity-type-schema
           post-schema comment-schema notification-schema
           conversation-schema message-schema
           group-schema group-message-schema
-          competition-schema challenge-schema story-schema))
+          competition-schema challenge-schema story-schema
+          tracking-entry-schema))

@@ -98,3 +98,17 @@
 .toast-close:hover {
   color: var(--text-1, #e8e8f0);
 }
+
+@media (max-width: 420px) {
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  .toast {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+}

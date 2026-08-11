@@ -7,6 +7,8 @@ export interface CurrentUser {
   displayName?: string;
   profilePic?: string;
   xp?: number;
+  bio?: string;
+  website?: string;
 }
 
 @Injectable({ providedIn: 'root' })

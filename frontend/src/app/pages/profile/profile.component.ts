@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { ReelViewerComponent } from '../../components/reel-viewer/reel-viewer.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ReelViewerComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.css']
 })
@@ -16,10 +17,21 @@ export class ProfileComponent implements OnInit {
   profile: any = null;
   activities: any[] = [];
   badges: any[] = [];
+  userPosts: any[] = [];
+  savedPosts: any[] = [];
   loading = true;
+  postsLoading = false;
+  savedLoading = false;
   isFollowing = false;
   followLoading = false;
   isMe = false;
+
+  activeTab: 'posts' | 'saved' = 'posts';
+
+  // Reel viewer
+  reelOpen = false;
+  reelPosts: any[] = [];
+  reelStartIndex = 0;
 
   showEdit = false;
   editName = '';
@@ -40,6 +52,7 @@ export class ProfileComponent implements OnInit {
 
   loadProfile(username: string): void {
     this.loading = true;
+    this.activeTab = 'posts';
     this.api.getProfile(username).subscribe({
       next: p => {
         this.profile = p;
@@ -48,6 +61,7 @@ export class ProfileComponent implements OnInit {
         this.isFollowing = p.isFollowing || false;
         this.activities = p.activities || [];
         this.badges = p.badges || [];
+        this.loadUserPosts(username);
       },
       error: () => { this.loading = false; }
     });
@@ -55,6 +69,42 @@ export class ProfileComponent implements OnInit {
       next: b => { this.badges = b; },
       error: () => {}
     });
+  }
+
+  loadUserPosts(username: string): void {
+    this.postsLoading = true;
+    this.api.getUserPosts(username).subscribe({
+      next: posts => { this.userPosts = posts; this.postsLoading = false; },
+      error: () => { this.postsLoading = false; }
+    });
+  }
+
+  setTab(tab: 'posts' | 'saved'): void {
+    this.activeTab = tab;
+    if (tab === 'saved' && this.savedPosts.length === 0 && !this.savedLoading) {
+      this.savedLoading = true;
+      this.api.getSavedPosts().subscribe({
+        next: posts => { this.savedPosts = posts; this.savedLoading = false; },
+        error: () => { this.savedLoading = false; }
+      });
+    }
+  }
+
+  openReel(post: any, allPosts: any[]): void {
+    const others = allPosts.filter(p => p.id !== post.id);
+    this.reelPosts = [post, ...others];
+    this.reelStartIndex = 0;
+    this.reelOpen = true;
+  }
+
+  closeReel(): void { this.reelOpen = false; }
+
+  onReelSaved(ev: { id: string; saved: boolean }): void {
+    const inPosts = this.userPosts.find(p => p.id === ev.id);
+    if (inPosts) inPosts.saved = ev.saved;
+    const inSaved = this.savedPosts.find(p => p.id === ev.id);
+    if (inSaved) inSaved.saved = ev.saved;
+    if (!ev.saved) this.savedPosts = this.savedPosts.filter(p => p.id !== ev.id);
   }
 
   toggleFollow(): void {
@@ -96,6 +146,10 @@ export class ProfileComponent implements OnInit {
       },
       error: () => { this.saving = false; }
     });
+  }
+
+  isVideo(url: string): boolean {
+    return url ? /\.(mp4|webm|mov)$/i.test(url) : false;
   }
 
   initials(): string {
