@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -29,7 +29,86 @@ export class FeedComponent implements OnInit {
   loading = true;
   trending: any[] = [];
 
-  constructor(private api: ApiService, public auth: AuthService) {}
+  focusedIndex = -1;
+
+  constructor(private api: ApiService, public auth: AuthService, private host: ElementRef) {}
+
+  @HostListener('window:keydown', ['$event'])
+  onKey(e: KeyboardEvent): void {
+    // Do not hijack keys inside inputs or when overlays are open
+    if (this.reelOpen || this.viewerGroups) return;
+    const target = e.target as HTMLElement | null;
+    if (target) {
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (target as any).isContentEditable) return;
+    }
+    if (!this.posts.length) return;
+
+    switch (e.key) {
+      case 'j':
+      case 'ArrowDown':
+        e.preventDefault();
+        this.moveFocus(1);
+        break;
+      case 'k':
+      case 'ArrowUp':
+        e.preventDefault();
+        this.moveFocus(-1);
+        break;
+      case 'Enter':
+        if (this.focusedIndex >= 0) {
+          e.preventDefault();
+          this.openReel(this.posts[this.focusedIndex]);
+        }
+        break;
+      case 'l':
+      case 'L':
+        if (this.focusedIndex >= 0) {
+          e.preventDefault();
+          this.likeFocused();
+        }
+        break;
+      case 's':
+      case 'S':
+        if (this.focusedIndex >= 0) {
+          e.preventDefault();
+          this.toggleSaveFocused();
+        }
+        break;
+    }
+  }
+
+  private moveFocus(delta: number): void {
+    if (this.focusedIndex < 0) {
+      this.focusedIndex = delta > 0 ? 0 : this.posts.length - 1;
+    } else {
+      const n = this.posts.length;
+      this.focusedIndex = (this.focusedIndex + delta + n) % n;
+    }
+    // Wait for DOM update, then scroll into view
+    setTimeout(() => {
+      const cards = this.host.nativeElement.querySelectorAll('.post-card');
+      const el = cards[this.focusedIndex] as HTMLElement | undefined;
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 0);
+  }
+
+  private likeFocused(): void {
+    const post = this.posts[this.focusedIndex];
+    if (!post) return;
+    this.api.likePost(post.id).subscribe({
+      next: r => { post.likes = r.likes; post.liked = r.liked; }
+    });
+  }
+
+  private toggleSaveFocused(): void {
+    const post = this.posts[this.focusedIndex];
+    if (!post) return;
+    const wasSaved = post.saved;
+    post.saved = !wasSaved;
+    const call = wasSaved ? this.api.unsavePost(post.id) : this.api.savePost(post.id);
+    call.subscribe({ error: () => { post.saved = wasSaved; } });
+  }
 
   ngOnInit(): void {
     this.loadFeed();

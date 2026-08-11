@@ -24,6 +24,11 @@
   cursor: pointer;
   flex-shrink: 0;
   width: 68px;
+  border-radius: 10px;
+  outline: none;
+}
+.story-bubble:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent, #4a90d9);
 }
 
 .ring-wrap {

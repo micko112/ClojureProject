@@ -1,0 +1,143 @@
+<div class="journal-page">
+  <div class="journal-header">
+    <div>
+      <h2>Journal</h2>
+      <p class="sub">Browse your past days - activities and tracking history.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" (click)="goToToday()">
+        <span class="material-icons md-18">today</span>
+        Today
+      </button>
+      <a class="btn-secondary" routerLink="/dashboard">
+        <span class="material-icons md-18">arrow_back</span>
+        Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="journal-grid">
+    <section class="calendar-panel">
+      <div class="calendar-nav">
+        <button class="nav-btn" (click)="prevMonth()" aria-label="Previous month">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <h3>{{ monthLabel() }}</h3>
+        <button class="nav-btn" (click)="nextMonth()" aria-label="Next month">
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
+
+      @if (loading) {
+        <div class="loading">
+          <span class="material-icons spinning">sync</span>
+          Loading...
+        </div>
+      } @else if (error) {
+        <div class="error">{{ error }}</div>
+      } @else {
+        <div class="weekday-row">
+          @for (w of weekdayLabels; track w) {
+            <div class="weekday">{{ w }}</div>
+          }
+        </div>
+        <div class="calendar-grid">
+          @for (cell of cells; track cell.date) {
+            <button
+              class="day-cell"
+              [class.out-of-month]="!cell.inMonth"
+              [class.is-today]="cell.isToday"
+              [class.is-selected]="cell.date === selectedDate"
+              [class.is-future]="cell.isFuture"
+              [class.has-data]="cell.activityCount > 0 || cell.trackingCount > 0"
+              [disabled]="!cell.inMonth || cell.isFuture"
+              (click)="selectDay(cell)"
+            >
+              <span class="day-num">{{ cell.day }}</span>
+              @if (cell.activityCount > 0 || cell.trackingCount > 0) {
+                <div class="day-dots">
+                  @if (cell.activityCount > 0) { <span class="dot dot-activity" title="Activities"></span> }
+                  @if (cell.trackingCount > 0) { <span class="dot dot-tracking" title="Tracking"></span> }
+                </div>
+              }
+            </button>
+          }
+        </div>
+        <div class="legend">
+          <span><span class="dot dot-activity"></span> Activity</span>
+          <span><span class="dot dot-tracking"></span> Tracking</span>
+        </div>
+        <div class="kbd-hint">
+          <span class="material-icons md-18">keyboard</span>
+          <span>
+            <kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> move
+            &nbsp;·&nbsp; <kbd>PgUp</kbd>/<kbd>PgDn</kbd> month
+            &nbsp;·&nbsp; <kbd>T</kbd> today
+          </span>
+        </div>
+      }
+    </section>
+
+    <aside class="day-detail">
+      <div class="day-detail-header">
+        <div>
+          <p class="panel-label">Selected day</p>
+          <h3>{{ formatSelectedDate() }}</h3>
+        </div>
+        <div class="day-xp-badge">
+          <span class="material-icons">emoji_events</span>
+          <strong>{{ dayXp(selectedDate) }}</strong>
+          <span>XP</span>
+        </div>
+      </div>
+
+      <section class="detail-section">
+        <div class="section-title">
+          <span class="material-icons">history</span>
+          <h4>Activities</h4>
+          <span class="count-pill">{{ selectedActivities().length }}</span>
+        </div>
+        @if (!selectedActivities().length) {
+          <p class="empty">No activities logged this day.</p>
+        } @else {
+          <ul class="activity-list">
+            @for (a of selectedActivities(); track a.id) {
+              <li class="activity-item">
+                <span class="material-icons">{{ activityIcon(a.type) }}</span>
+                <div class="activity-meta">
+                  <strong>{{ a.type }}</strong>
+                  <small>{{ a.duration }}min - intensity {{ a.intensity }}/5 - {{ formatTime(a.startTime || a.date) }}</small>
+                  @if (a.note) { <small class="note">{{ a.note }}</small> }
+                </div>
+                <span class="xp">+{{ activityXp(a) }} XP</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="detail-section">
+        <div class="section-title">
+          <span class="material-icons">checklist</span>
+          <h4>Tracking</h4>
+          <span class="count-pill">{{ selectedTracking().length }}</span>
+        </div>
+        @if (!selectedTracking().length) {
+          <p class="empty">No tracking entries this day.</p>
+        } @else {
+          <ul class="tracking-list">
+            @for (t of selectedTracking(); track t.id || t.method) {
+              <li class="tracking-item">
+                <div class="tracking-head">
+                  <strong>{{ trackingLabel(t.method) }}</strong>
+                  <span class="material-icons md-18 done-icon">check_circle</span>
+                </div>
+                <p class="tracking-summary">{{ trackingSummary(t) }}</p>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </aside>
+  </div>
+</div>

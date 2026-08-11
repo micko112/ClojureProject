@@ -2,7 +2,12 @@
   <div class="stories-scroll">
 
     <!-- My story bubble -->
-    <div class="story-bubble my-bubble" (click)="openMyStory()">
+    <div class="story-bubble my-bubble"
+         role="button"
+         tabindex="0"
+         (click)="openMyStory()"
+         (keydown.enter)="openMyStory()"
+         (keydown.space)="$event.preventDefault(); openMyStory()">
       <div class="ring-wrap" [class.has-stories]="myGroup?.stories?.length > 0" [class.all-viewed]="myGroup && !myGroup.hasUnviewed">
         <div class="s-avatar">
           @if (auth.currentUser()?.profilePic) {
@@ -23,7 +28,12 @@
     <!-- Others' stories -->
     @for (group of groups; track group.username) {
       @if (!group.isMe) {
-        <div class="story-bubble" (click)="openGroup(group)">
+        <div class="story-bubble"
+             role="button"
+             tabindex="0"
+             (click)="openGroup(group)"
+             (keydown.enter)="openGroup(group)"
+             (keydown.space)="$event.preventDefault(); openGroup(group)">
           <div class="ring-wrap has-stories" [class.all-viewed]="!group.hasUnviewed">
             <div class="s-avatar">
               @if (group.profilePic) {

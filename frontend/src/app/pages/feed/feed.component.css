@@ -5,9 +5,30 @@
 .trending-chip { background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
 .loading, .empty { text-align: center; padding: 48px; color: var(--text-muted); }
 
+/* Keyboard shortcut hint */
+.feed-kbd-hint {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg2); border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.feed-kbd-hint kbd {
+  display: inline-block; padding: 1px 6px;
+  background: var(--bg3); border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 11px;
+  color: var(--text);
+}
+
 /* Post card */
-.post-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.15s; }
+.post-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
 .post-card:hover { border-color: var(--text-muted); }
+.post-card.kb-focused {
+  border-color: var(--accent, #4a90d9);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.25);
+}
 
 .post-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 .author-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }

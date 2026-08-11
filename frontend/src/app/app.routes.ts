@@ -24,6 +24,7 @@ export const routes: Routes = [
       { path: 'challenges', loadComponent: () => import('./pages/challenges/challenges.component').then(m => m.ChallengesComponent) },
       { path: 'recap', loadComponent: () => import('./pages/recap/recap.component').then(m => m.RecapComponent) },
       { path: 'stats', loadComponent: () => import('./pages/stats/stats.component').then(m => m.StatsComponent) },
+      { path: 'journal', loadComponent: () => import('./pages/journal/journal.component').then(m => m.JournalComponent) },
       { path: 'post/:id', loadComponent: () => import('./pages/post-detail/post-detail.component').then(m => m.PostDetailComponent) },
     ]
   },

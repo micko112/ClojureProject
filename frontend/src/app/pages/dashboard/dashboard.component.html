@@ -4,24 +4,30 @@
       <div class="dashboard-header">
         <div>
           <h2>Dashboard</h2>
-          <p class="sub">Total XP: <strong>{{ totalXp() }}</strong></p>
+          <p class="sub">Today's XP: <strong>{{ totalXp() }}</strong></p>
         </div>
-        <button class="btn-primary" (click)="openAdd()">+ Log Activity</button>
+        <div class="dashboard-header-actions">
+          <button class="btn-secondary" routerLink="/journal">
+            <span class="material-icons md-18">calendar_month</span>
+            Journal
+          </button>
+          <button class="btn-primary" (click)="openAdd()">+ Log Activity</button>
+        </div>
       </div>
 
       <section class="activity-section">
         <div class="section-title">
-          <span class="material-icons">history</span>
-          <h3>Log aktivnosti</h3>
+          <span class="material-icons">today</span>
+          <h3>Today's Activity Log</h3>
         </div>
 
         @if (loading) {
           <div class="loading">Loading...</div>
-        } @else if (!activities.length) {
-          <div class="empty">No activities yet. Log your first one!</div>
+        } @else if (!todayActivities().length) {
+          <div class="empty">No activities logged today. Start your day!</div>
         } @else {
           <div class="activity-list">
-            @for (a of activities; track a.id) {
+            @for (a of todayActivities(); track a.id) {
               <div class="activity-card" (click)="openEdit(a)">
                 <span class="activity-emoji material-icons md-36">{{ icon(a.type) }}</span>
                 <div class="activity-info">
@@ -44,7 +50,7 @@
     <aside class="tracking-panel">
       <div class="tracking-header">
         <div>
-          <p class="panel-label">Metod pracenja</p>
+          <p class="panel-label">Tracking method</p>
           <h3>
             {{ selectedMethod().label }}
             @if (isMethodSaved()) {
@@ -70,7 +76,7 @@
       <p class="method-summary">{{ selectedMethod().summary }}</p>
 
       @if (trackingLoading) {
-        <div class="tracking-status">Ucitavanje metoda...</div>
+        <div class="tracking-status">Loading methods...</div>
       }
 
       @switch (selectedMethodId) {
@@ -85,7 +91,7 @@
             @for (win of tenWins; track $index) {
               <label class="win-input">
                 <span>{{ $index + 1 }}</span>
-                <input type="text" [(ngModel)]="tenWins[$index]" placeholder="Pobeda za danas" (input)="triggerAutosave()" />
+                <input type="text" [(ngModel)]="tenWins[$index]" placeholder="Today's win" (input)="triggerAutosave()" />
               </label>
             }
           </div>
@@ -95,7 +101,7 @@
           <div class="method-stat">
             <span class="material-icons">schedule</span>
             <strong>{{ completedDeepWorkMinutes() }} min</strong>
-            <span>zavrsenog fokusa</span>
+            <span>of completed focus</span>
           </div>
           <div class="block-list">
             @for (block of deepWorkBlocks; track block.label) {
@@ -113,7 +119,7 @@
           <div class="method-stat">
             <span class="material-icons">done_all</span>
             <strong>{{ habitScore() }}/{{ habitScorecard.length }}</strong>
-            <span>navika danas</span>
+            <span>habits today</span>
           </div>
           <div class="habit-list">
             @for (habit of habitScorecard; track habit.habit; let i = $index) {
@@ -121,7 +127,7 @@
                 <input type="checkbox" [(ngModel)]="habit.done" (change)="triggerAutosave()" />
                 <span>{{ habit.habit }}</span>
                 @if (editingHabits) {
-                  <button class="remove-item-btn" (click)="$event.preventDefault(); removeHabitItem(i)" title="Ukloni">
+                  <button class="remove-item-btn" (click)="$event.preventDefault(); removeHabitItem(i)" title="Remove">
                     <span class="material-icons md-18">remove_circle_outline</span>
                   </button>
                 }
@@ -132,40 +138,40 @@
 
         @case ('energy-check') {
           <div class="slider-group">
-            <label>Energija: {{ energyLevel }}/5</label>
+            <label>Energy: {{ energyLevel }}/5</label>
             <input type="range" [(ngModel)]="energyLevel" min="1" max="5" />
           </div>
           <div class="slider-group">
-            <label>Raspolozenje: {{ moodLevel }}/5</label>
+            <label>Mood: {{ moodLevel }}/5</label>
             <input type="range" [(ngModel)]="moodLevel" min="1" max="5" />
           </div>
-          <textarea [(ngModel)]="energyNote" rows="4" placeholder="Sta ti danas puni baterije?" (input)="triggerAutosave()"></textarea>
+          <textarea [(ngModel)]="energyNote" rows="4" placeholder="What is charging your batteries today?" (input)="triggerAutosave()"></textarea>
         }
 
         @case ('one-thing') {
           <div class="form-group compact">
-            <label>Glavni prioritet</label>
-            <input type="text" [(ngModel)]="oneThing" placeholder="Jedna stvar koja danas najvise vredi" />
+            <label>Main priority</label>
+            <input type="text" [(ngModel)]="oneThing" placeholder="The one thing worth most today" />
           </div>
           <div class="form-group compact">
-            <label>Sledeci konkretan korak</label>
-            <textarea [(ngModel)]="oneThingNextStep" rows="4" placeholder="Sta je najmanji sledeci potez?"></textarea>
+            <label>Next concrete step</label>
+            <textarea [(ngModel)]="oneThingNextStep" rows="4" placeholder="What is the smallest next move?"></textarea>
           </div>
         }
 
         @case ('daily-review') {
           <div class="review-list">
             <div class="form-group compact">
-              <label>Sta je danas bilo dobro?</label>
-              <textarea [(ngModel)]="dailyReview.good" rows="3" placeholder="Jedna dobra stvar, makar mala"></textarea>
+              <label>What went well today?</label>
+              <textarea [(ngModel)]="dailyReview.good" rows="3" placeholder="One good thing, even small"></textarea>
             </div>
             <div class="form-group compact">
-              <label>Sta sam naucio?</label>
-              <textarea [(ngModel)]="dailyReview.learned" rows="3" placeholder="Lekcija, uvid ili signal"></textarea>
+              <label>What did I learn?</label>
+              <textarea [(ngModel)]="dailyReview.learned" rows="3" placeholder="A lesson, insight, or signal"></textarea>
             </div>
             <div class="form-group compact">
-              <label>Sta popravljam sutra?</label>
-              <textarea [(ngModel)]="dailyReview.improve" rows="3" placeholder="Jedna jasna promena"></textarea>
+              <label>What will I improve tomorrow?</label>
+              <textarea [(ngModel)]="dailyReview.improve" rows="3" placeholder="One clear change"></textarea>
             </div>
           </div>
         }
@@ -180,7 +186,7 @@
                 <input type="number" [(ngModel)]="habit.days" min="0" max="365" (change)="triggerAutosave()" />
                 <button (click)="changeStreak(habit, 1)">+</button>
                 @if (editingHabits) {
-                  <button class="remove-item-btn" (click)="removeHabitItem(i)" title="Ukloni">
+                  <button class="remove-item-btn" (click)="removeHabitItem(i)" title="Remove">
                     <span class="material-icons md-18">remove_circle_outline</span>
                   </button>
                 }
@@ -191,16 +197,16 @@
 
         @case ('mood-trigger') {
           <div class="slider-group">
-            <label>Raspolozenje: {{ moodTrigger.mood }}/5</label>
+            <label>Mood: {{ moodTrigger.mood }}/5</label>
             <input type="range" [(ngModel)]="moodTrigger.mood" min="1" max="5" />
           </div>
           <div class="form-group compact">
-            <label>Sta je uticalo?</label>
-            <input type="text" [(ngModel)]="moodTrigger.trigger" placeholder="San, posao, ljudi, hrana..." />
+            <label>What triggered it?</label>
+            <input type="text" [(ngModel)]="moodTrigger.trigger" placeholder="Sleep, work, people, food..." />
           </div>
           <div class="form-group compact">
-            <label>Moj odgovor na to</label>
-            <textarea [(ngModel)]="moodTrigger.response" rows="4" placeholder="Sta cu uraditi sa tim signalom?"></textarea>
+            <label>My response to it</label>
+            <textarea [(ngModel)]="moodTrigger.response" rows="4" placeholder="What will I do with this signal?"></textarea>
           </div>
         }
 
@@ -208,7 +214,7 @@
           <div class="method-stat">
             <span class="material-icons">shield</span>
             <strong>{{ avoidedHabitsCount() }}/{{ avoidedHabits.length }}</strong>
-            <span>izbegnuto danas</span>
+            <span>avoided today</span>
           </div>
           <div class="habit-list">
             @for (habit of avoidedHabits; track habit.name; let i = $index) {
@@ -216,7 +222,7 @@
                 <input type="checkbox" [(ngModel)]="habit.avoided" (change)="triggerAutosave()" />
                 <span>{{ habit.name }}</span>
                 @if (editingHabits) {
-                  <button class="remove-item-btn" (click)="$event.preventDefault(); removeHabitItem(i)" title="Ukloni">
+                  <button class="remove-item-btn" (click)="$event.preventDefault(); removeHabitItem(i)" title="Remove">
                     <span class="material-icons md-18">remove_circle_outline</span>
                   </button>
                 }
@@ -229,7 +235,7 @@
           <div class="method-stat">
             <span class="material-icons">verified</span>
             <strong>{{ totalIdentityVotes() }}</strong>
-            <span>glasova za identitet</span>
+            <span>identity votes</span>
           </div>
           <div class="identity-list">
             @for (item of identityVotes; track item.identity; let i = $index) {
@@ -239,7 +245,7 @@
                 <strong>{{ item.votes }}</strong>
                 <button (click)="changeIdentityVotes(item, 1)">+</button>
                 @if (editingHabits) {
-                  <button class="remove-item-btn" (click)="removeHabitItem(i)" title="Ukloni">
+                  <button class="remove-item-btn" (click)="removeHabitItem(i)" title="Remove">
                     <span class="material-icons md-18">remove_circle_outline</span>
                   </button>
                 }
@@ -250,37 +256,37 @@
 
         @case ('weekly-focus') {
           <div class="form-group compact">
-            <label>Tema nedelje</label>
+            <label>Theme of the week</label>
             <select [(ngModel)]="weeklyFocus.theme">
-              <option value="Disciplina">Disciplina</option>
-              <option value="Zdravlje">Zdravlje</option>
-              <option value="Fokus">Fokus</option>
-              <option value="Socijalni zivot">Socijalni zivot</option>
-              <option value="Kreativnost">Kreativnost</option>
+              <option value="Discipline">Discipline</option>
+              <option value="Health">Health</option>
+              <option value="Focus">Focus</option>
+              <option value="Social life">Social life</option>
+              <option value="Creativity">Creativity</option>
             </select>
           </div>
           <div class="slider-group">
-            <label>Samopouzdanje: {{ weeklyFocus.confidence }}/5</label>
+            <label>Confidence: {{ weeklyFocus.confidence }}/5</label>
             <input type="range" [(ngModel)]="weeklyFocus.confidence" min="1" max="5" />
           </div>
           <div class="form-group compact">
-            <label>Danasnji dokaz napretka</label>
-            <textarea [(ngModel)]="weeklyFocus.proof" rows="4" placeholder="Sta sam uradio u skladu sa temom?"></textarea>
+            <label>Today's proof of progress</label>
+            <textarea [(ngModel)]="weeklyFocus.proof" rows="4" placeholder="What did I do in line with the theme?"></textarea>
           </div>
         }
 
         @case ('friction-log') {
           <div class="form-group compact">
-            <label>Sta sam hteo da uradim?</label>
-            <input type="text" [(ngModel)]="frictionLog.goal" placeholder="Cilj ili zadatak" />
+            <label>What did I want to do?</label>
+            <input type="text" [(ngModel)]="frictionLog.goal" placeholder="Goal or task" />
           </div>
           <div class="form-group compact">
-            <label>Sta me je kocilo?</label>
-            <textarea [(ngModel)]="frictionLog.blocker" rows="3" placeholder="Umor, telefon, nejasan plan..."></textarea>
+            <label>What was blocking me?</label>
+            <textarea [(ngModel)]="frictionLog.blocker" rows="3" placeholder="Tiredness, phone, unclear plan..."></textarea>
           </div>
           <div class="form-group compact">
-            <label>Kako smanjujem trenje sledeci put?</label>
-            <textarea [(ngModel)]="frictionLog.fix" rows="3" placeholder="Jedna mala izmena u okruzenju ili planu"></textarea>
+            <label>How will I reduce friction next time?</label>
+            <textarea [(ngModel)]="frictionLog.fix" rows="3" placeholder="One small change in environment or plan"></textarea>
           </div>
         }
 
@@ -291,7 +297,7 @@
           </div>
           <button class="btn-secondary full-width" (click)="generateChallenge()">
             <span class="material-icons md-18">autorenew</span>
-            Novi izazov
+            New challenge
           </button>
         }
       }
@@ -300,15 +306,15 @@
       @if (hasCustomizableList()) {
         <div class="habit-toolbar">
           @if (editingHabits) {
-            <input class="habit-add-input" type="text" [(ngModel)]="newHabitText" placeholder="Nova stavka..." (keydown.enter)="addHabitItem()" />
-            <button class="btn-icon-sm" (click)="addHabitItem()" title="Dodaj">
+            <input class="habit-add-input" type="text" [(ngModel)]="newHabitText" placeholder="New item..." (keydown.enter)="addHabitItem()" />
+            <button class="btn-icon-sm" (click)="addHabitItem()" title="Add">
               <span class="material-icons md-18">add</span>
             </button>
-            <button class="btn-icon-sm" (click)="editingHabits = false" title="Zatvori">
+            <button class="btn-icon-sm" (click)="editingHabits = false" title="Close">
               <span class="material-icons md-18">close</span>
             </button>
           } @else {
-            <button class="btn-icon-sm" (click)="editingHabits = true" title="Uredi listu">
+            <button class="btn-icon-sm" (click)="editingHabits = true" title="Edit list">
               <span class="material-icons md-18">edit</span>
             </button>
           }
@@ -319,28 +325,37 @@
       @if (selectedMethodId === 'ten-wins' && tenWinsCount() > 0) {
         <button class="btn-secondary full-width" (click)="shareWins()" [disabled]="sharingWins">
           <span class="material-icons md-18">share</span>
-          {{ sharingWins ? 'Dijeljenje...' : 'Podijeli na feed' }}
+          {{ sharingWins ? 'Sharing...' : 'Share to feed' }}
         </button>
       }
 
       <div class="method-tip">
         <span class="material-icons">lightbulb</span>
-        <span>Biraj metod po danu: pobede za momentum, fokus blokove za produktivnost, scorecard za disciplinu.</span>
+        <span>Pick a method per day: wins for momentum, focus blocks for productivity, scorecard for discipline.</span>
+      </div>
+
+      <div class="kbd-hint">
+        <span class="material-icons md-18">keyboard</span>
+        <span>
+          <kbd>Alt</kbd>+<kbd>&larr;</kbd>/<kbd>&rarr;</kbd> switch method
+          &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>S</kbd> save
+          &nbsp;·&nbsp; <kbd>A</kbd> log activity
+        </span>
       </div>
 
       <div class="tracking-save-row">
         <span class="autosave-status">
-          @if (autosaveStatus === 'saving') { <span class="save-muted">Autosave...</span> }
-          @else if (autosaveStatus === 'saved') { <span class="save-ok">✓ Sacuvano</span> }
-          @else if (autosaveStatus === 'error') { <span class="save-error">Greska</span> }
+          @if (autosaveStatus === 'saving') { <span class="save-muted">Autosaving...</span> }
+          @else if (autosaveStatus === 'saved') { <span class="save-ok">✓ Saved</span> }
+          @else if (autosaveStatus === 'error') { <span class="save-error">Error</span> }
           @else if (trackingError) { <span class="save-error">{{ trackingError }}</span> }
         </span>
         <div class="save-actions">
-          <button class="btn-icon-sm" (click)="exportTrackingCsv()" title="Preuzmi CSV">
+          <button class="btn-icon-sm" (click)="exportTrackingCsv()" title="Download CSV">
             <span class="material-icons md-18">download</span>
           </button>
-          <button class="btn-primary" (click)="saveSelectedTracking()" [disabled]="trackingSaving || trackingLoading">
-            {{ trackingSaving ? 'Cuvanje...' : 'Sacuvaj' }}
+          <button class="btn-primary" (click)="saveSelectedTracking()" [disabled]="trackingSaving || trackingLoading" title="Save (Ctrl+S)">
+            {{ trackingSaving ? 'Saving...' : 'Save' }}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -30,79 +30,79 @@ const TRACKING_METHODS = [
     id: 'ten-wins',
     label: '10 Wins a Day',
     icon: 'trophy',
-    summary: 'Upisi deset malih ili velikih pobeda za danas.'
+    summary: 'Write down ten small or big wins for today.'
   },
   {
     id: 'deep-work',
     label: 'Deep Work Blocks',
     icon: 'timer',
-    summary: 'Planiraj fokus blokove i cekiraj sta je zavrseno.'
+    summary: 'Plan focus blocks and check off what you completed.'
   },
   {
     id: 'habit-scorecard',
     label: 'Habit Scorecard',
     icon: 'checklist',
-    summary: 'Brzo oceni kljucne navike za dan.'
+    summary: 'Quickly score your key habits for the day.'
   },
   {
     id: 'energy-check',
     label: 'Energy Check-in',
     icon: 'battery_charging_full',
-    summary: 'Prati energiju, raspolozenje i jednu stvar koja te dize.'
+    summary: 'Track your energy, mood, and one thing that lifts you up.'
   },
   {
     id: 'one-thing',
     label: 'One Thing',
     icon: 'flag',
-    summary: 'Izaberi jedan prioritet koji danas nosi najveci efekat.'
+    summary: 'Pick the one priority that has the biggest impact today.'
   },
   {
     id: 'daily-review',
     label: 'Daily Review',
     icon: 'rate_review',
-    summary: 'Zatvori dan kroz tri kratka pitanja.'
+    summary: 'Close out the day with three short questions.'
   },
   {
     id: 'streak-tracker',
     label: 'Streak Tracker',
     icon: 'local_fire_department',
-    summary: 'Prati niz dana za navike koje zelis da odrzis.'
+    summary: 'Track streaks for habits you want to keep going.'
   },
   {
     id: 'mood-trigger',
     label: 'Mood + Trigger Log',
     icon: 'psychology_alt',
-    summary: 'Povezi raspolozenje sa stvarima koje ga pokrecu.'
+    summary: 'Connect your mood to what triggers it.'
   },
   {
     id: 'bad-habit-avoided',
     label: 'Bad Habit Avoided',
     icon: 'block',
-    summary: 'Zabelezi sta si danas uspeo da izbegnes.'
+    summary: 'Log what you managed to avoid today.'
   },
   {
     id: 'identity-votes',
     label: 'Identity Votes',
     icon: 'how_to_reg',
-    summary: 'Pretvori male akcije u glasove za osobu koja postajes.'
+    summary: 'Turn small actions into votes for the person you are becoming.'
   },
   {
     id: 'weekly-focus',
     label: 'Weekly Focus',
     icon: 'calendar_view_week',
-    summary: 'Jedna tema nedelje i mali dnevni dokaz napretka.'
+    summary: 'One theme for the week and a small daily proof of progress.'
   },
   {
     id: 'friction-log',
     label: 'Friction Log',
     icon: 'report_problem',
-    summary: 'Uhvati sta te koci, da bi sledeci put lakse prosao.'
+    summary: 'Capture what blocks you so next time is easier.'
   },
   {
     id: 'tiny-challenge',
     label: 'Tiny Challenge Generator',
     icon: 'casino',
-    summary: 'Izvuci mali izazov kad ti treba brz sledeci potez.'
+    summary: 'Pull a small challenge when you need a quick next move.'
   },
 ];
 
@@ -144,10 +144,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { label: 'Blok 3', minutes: 25, done: false },
   ];
   habitScorecard = [
-    { habit: 'Trening / setnja', done: false },
-    { habit: 'Ucenje / citanje', done: false },
-    { habit: 'Bez kasnog skrolovanja', done: false },
-    { habit: 'Voda i obrok na vreme', done: false },
+    { habit: 'Workout / walk', done: false },
+    { habit: 'Studying / reading', done: false },
+    { habit: 'No late-night scrolling', done: false },
+    { habit: 'Water and meals on time', done: false },
   ];
   energyLevel = 3;
   moodLevel = 3;
@@ -160,9 +160,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     improve: ''
   };
   streakHabits = [
-    { name: 'Trening', days: 0 },
-    { name: 'Citanje', days: 0 },
-    { name: 'Ucenje', days: 0 },
+    { name: 'Workout', days: 0 },
+    { name: 'Reading', days: 0 },
+    { name: 'Studying', days: 0 },
   ];
   moodTrigger = {
     mood: 3,
@@ -172,16 +172,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   avoidedHabits = [
     { name: 'Doomscrolling', avoided: false },
     { name: 'Junk food', avoided: false },
-    { name: 'Odlaganje', avoided: false },
-    { name: 'Kasno spavanje', avoided: false },
+    { name: 'Procrastination', avoided: false },
+    { name: 'Late sleep', avoided: false },
   ];
   identityVotes = [
-    { identity: 'Osoba koja trenira', votes: 0 },
-    { identity: 'Osoba koja uci', votes: 0 },
-    { identity: 'Osoba koja drzi obecanje sebi', votes: 0 },
+    { identity: 'A person who trains', votes: 0 },
+    { identity: 'A person who studies', votes: 0 },
+    { identity: 'A person who keeps promises to themselves', votes: 0 },
   ];
   weeklyFocus = {
-    theme: 'Disciplina',
+    theme: 'Discipline',
     proof: '',
     confidence: 3
   };
@@ -191,14 +191,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     fix: ''
   };
   tinyChallenges = [
-    '10 min setnje',
-    '15 min citanja',
-    'Sredi radni sto',
-    'Posalji jednu vaznu poruku',
-    'Popij casu vode i napravi pauzu',
-    'Zapisi sledeca 3 koraka',
-    'Uradi 20 cucnjeva',
-    'Radi 25 min bez telefona',
+    '10 min walk',
+    '15 min of reading',
+    'Tidy your desk',
+    'Send one important message',
+    'Drink a glass of water and take a break',
+    'Write down the next 3 steps',
+    'Do 20 squats',
+    'Work 25 min phone-free',
   ];
   currentChallenge = this.tinyChallenges[0];
 
@@ -230,6 +230,59 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.autosaveSub?.unsubscribe();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onGlobalKey(e: KeyboardEvent): void {
+    // Escape closes the activity modal
+    if (e.key === 'Escape' && this.showModal) {
+      e.preventDefault();
+      this.closeModal();
+      return;
+    }
+    // Ctrl+Enter inside the modal submits it
+    if (this.showModal && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      this.save();
+      return;
+    }
+    // Save shortcut works even inside inputs
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (this.showModal) this.save();
+      else this.saveSelectedTracking();
+      return;
+    }
+    // Method switching: Alt+ArrowLeft / Alt+ArrowRight
+    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault();
+      this.cycleMethod(e.key === 'ArrowRight' ? 1 : -1);
+      return;
+    }
+    // Bracket shortcuts only outside of editable fields
+    if (this.isTypingInField(e)) return;
+    if (e.key === ']') { e.preventDefault(); this.cycleMethod(1); }
+    else if (e.key === '[') { e.preventDefault(); this.cycleMethod(-1); }
+    else if (e.key === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && !this.showModal) {
+      e.preventDefault();
+      this.openAdd();
+    }
+  }
+
+  private isTypingInField(e: KeyboardEvent): boolean {
+    const t = e.target as HTMLElement | null;
+    if (!t) return false;
+    const tag = t.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t as any).isContentEditable === true;
+  }
+
+  cycleMethod(delta: number): void {
+    const ids = this.trackingMethods.map(m => m.id);
+    const idx = ids.indexOf(this.selectedMethodId);
+    if (idx < 0) return;
+    const next = (idx + delta + ids.length) % ids.length;
+    this.selectedMethodId = ids[next];
+    this.trackingSaved = false;
   }
 
   triggerAutosave(): void {
@@ -330,7 +383,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   totalXp(): number {
-    return this.activities.reduce((sum, a) => sum + this.xp(a), 0);
+    return this.todayActivities().reduce((sum, a) => sum + this.xp(a), 0);
+  }
+
+  todayActivities(): any[] {
+    const today = new Date().toISOString().split('T')[0];
+    return this.activities.filter(a => {
+      const ts = a.startTime || a.date;
+      if (!ts) return false;
+      return new Date(ts).toISOString().split('T')[0] === today;
+    });
   }
 
   selectedMethod(): any {
@@ -356,7 +418,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.trackingLoading = false;
-        this.trackingError = 'Nije uspelo ucitavanje metoda.';
+        this.trackingError = 'Failed to load methods.';
       }
     });
   }
@@ -378,7 +440,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.trackingSaving = false;
-        this.trackingError = 'Nije uspelo cuvanje metode.';
+        this.trackingError = 'Failed to save method.';
       }
     });
   }

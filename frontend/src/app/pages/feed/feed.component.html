@@ -36,8 +36,17 @@
     } @else if (!posts.length) {
       <div class="empty">No posts yet. Follow people to see their activity!</div>
     } @else {
-      @for (post of posts; track post.id) {
-        <div class="post-card">
+      <div class="feed-kbd-hint">
+        <span class="material-icons md-18">keyboard</span>
+        <span>
+          <kbd>J</kbd>/<kbd>K</kbd> next/prev
+          &nbsp;·&nbsp; <kbd>Enter</kbd> open
+          &nbsp;·&nbsp; <kbd>L</kbd> like
+          &nbsp;·&nbsp; <kbd>S</kbd> save
+        </span>
+      </div>
+      @for (post of posts; track post.id; let i = $index) {
+        <div class="post-card" [class.kb-focused]="i === focusedIndex" (click)="focusedIndex = i">
           <div class="post-header">
             <a [routerLink]="['/profile', post.author?.username]" class="author-link">
               <div class="avatar">
