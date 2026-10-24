@@ -1,19 +1,20 @@
 <div class="login-page">
   <div class="login-card">
-    <h1>BeBetter</h1>
-    <p class="subtitle">Track effort. Build discipline. Stay consistent.</p>
+    <h1>{{ brand.name }}</h1>
+    <p class="subtitle">
+      {{ mode === 'login' ? brand.tagline : 'Sign up to share your progress with friends.' }}
+    </p>
 
-    <div class="mode-tabs">
-      <button [class.active]="mode === 'login'" (click)="mode = 'login'; error = ''">Login</button>
-      <button [class.active]="mode === 'register'" (click)="mode = 'register'; error = ''">Register</button>
-    </div>
+    @if (info) {
+      <div class="info-msg">{{ info }}</div>
+    }
 
     @if (mode === 'login') {
       <div class="seed-users">
-        <p class="seed-label">Quick login:</p>
+        <p class="seed-label">Quick login (demo accounts):</p>
         <div class="seed-grid">
           @for (u of seedUsers; track u) {
-            <button class="seed-btn" [class.selected]="selectedUser === u" (click)="selectUser(u)">
+            <button type="button" class="seed-btn" [class.selected]="selectedUser === u" (click)="selectUser(u)">
               {{ u }}
             </button>
           }
@@ -21,41 +22,70 @@
       </div>
     }
 
-    <form (ngSubmit)="submit()">
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" [(ngModel)]="username" name="username" placeholder="Enter username" required />
-      </div>
-      @if (showPasswordFor || mode === 'register') {
+    <form (ngSubmit)="submit()" autocomplete="on">
+      @if (mode === 'register') {
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" [(ngModel)]="password" name="password"
-            [placeholder]="mode === 'register' ? 'Min 6 characters' : 'Enter password'"
-            [required]="mode === 'register'" />
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" [(ngModel)]="email" name="email" placeholder="you@example.com"
+            autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-name">Full name <span class="optional">(optional)</span></label>
+          <input id="reg-name" type="text" [(ngModel)]="displayName" name="displayName" placeholder="Your name"
+            autocomplete="name" maxlength="64" />
         </div>
       }
+      <div class="form-group">
+        <label for="login-user">{{ mode === 'login' ? 'Username or email' : 'Username' }}</label>
+        <input id="login-user" type="text" [(ngModel)]="username" name="username"
+          [placeholder]="mode === 'login' ? 'Username or email' : 'e.g. jane.doe'"
+          autocapitalize="off" autocorrect="off" spellcheck="false"
+          [attr.autocomplete]="mode === 'login' ? 'username' : 'username'" required />
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Password</label>
+        <div class="password-wrap">
+          <input id="login-pass" [type]="showPassword ? 'text' : 'password'" [(ngModel)]="password" name="password"
+            [placeholder]="mode === 'register' ? 'At least 6 characters' : 'Password'"
+            [attr.autocomplete]="mode === 'register' ? 'new-password' : 'current-password'" required />
+          @if (password) {
+            <button type="button" class="show-btn" (click)="showPassword = !showPassword">
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          }
+        </div>
+      </div>
       @if (error) {
-        <div class="error-msg">{{ error }}</div>
+        <div class="error-msg" role="alert">{{ error }}</div>
       }
-      <button type="submit" class="submit-btn" [disabled]="loading || oauthLoading || !username.trim() || (mode === 'register' && password.length < 6)">
-        {{ loading ? 'Loading...' : (mode === 'login' ? 'Login' : 'Register') }}
+      <button type="submit" class="submit-btn" [disabled]="!canSubmit">
+        {{ loading ? 'Please wait...' : (mode === 'login' ? 'Log in' : 'Sign up') }}
       </button>
+      @if (mode === 'login') {
+        <a routerLink="/forgot-password" class="forgot-link">Forgot password?</a>
+      }
     </form>
 
-    @if (mode === 'login') {
-      <div class="oauth-divider"><span>or continue with</span></div>
+    <div class="oauth-divider"><span>or</span></div>
 
-      <div class="oauth-buttons">
-        <div id="google-btn" class="google-btn-wrap"></div>
+    <div class="oauth-buttons">
+      <div id="google-btn" class="google-btn-wrap"></div>
 
-        <button class="fb-btn" (click)="loginWithFacebook()" [disabled]="oauthLoading">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877f2">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-          {{ oauthLoading ? 'Loading...' : 'Continue with Facebook' }}
-        </button>
-      </div>
-    }
+      <button type="button" class="fb-btn" (click)="loginWithFacebook()" [disabled]="oauthLoading">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877f2">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        {{ oauthLoading ? 'Loading...' : 'Continue with Facebook' }}
+      </button>
+    </div>
+
+    <div class="switch-mode">
+      @if (mode === 'login') {
+        Don't have an account? <button type="button" (click)="setMode('register')">Sign up</button>
+      } @else {
+        Have an account? <button type="button" (click)="setMode('login')">Log in</button>
+      }
+    </div>
 
     <div class="legal-links">
       <a routerLink="/privacy">Privacy Policy</a>
