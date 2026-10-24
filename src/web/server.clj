@@ -16,34 +16,21 @@
             [project.leaderboard :as lb]
             [project.time :as t]
             [web.oauth :as oauth]
+            [web.http :refer [jresp parse-body me ok created bad unauth not-found
+                              instant->str ddb user-e author-dto]]
+            [web.notifications :refer [notif-dto create-notif!]]
+            [web.media :as media]
+            [web.posts :as posts]
+            [web.accounts :as accounts]
+            [web.realtime :as realtime]
             [buddy.hashers :as hashers])
   (:import (java.util UUID Date)
            (java.time Instant LocalDate ZoneId)))
 
 ;; ===== HELPERS =====
 
-(defn- jresp [status body]
-  {:status status
-   :headers {"Content-Type" "application/json"}
-   :body (json/generate-string body)})
-
-(defn- parse-body [req]
-  (try (json/parse-stream (io/reader (:body req)) true)
-       (catch Exception _ {})))
-
-(defn- me [req] (get-in req [:session :username]))
-
-(defn- ok [body]  (jresp 200 body))
-(defn- created [body] (jresp 201 body))
-(defn- bad [msg]  (jresp 400 {:error msg}))
-(defn- unauth []  (jresp 401 {:error "Unauthorized"}))
-(defn- not-found [] (jresp 404 {:error "Not found"}))
-
 (defn- parse-instant [s]
   (try (Date/from (Instant/parse s)) (catch Exception _ (Date.))))
-
-(defn- instant->str [d]
-  (when d (.toString (.toInstant d))))
 
 (defn- today-str []
   (.toString (LocalDate/now (ZoneId/of "Europe/Belgrade"))))
@@ -86,11 +73,6 @@
 (defn- user-dto-e [db eid]
   (user-dto (d/entity db eid)))
 
-(defn- author-dto [u]
-  (when u {:username    (:user/username u)
-            :displayName (:user/display-name u)
-            :profilePic  (:user/profile-pic u)}))
-
 (defn- post-dto
   ([db eid] (post-dto db eid nil))
   ([db eid me-eid]
@@ -119,14 +101,6 @@
      :author    (author-dto author)
      :content   (:comment/content e)
      :createdAt (instant->str (:comment/created-at e))}))
-
-(defn- notif-dto [db eid]
-  (let [e (d/entity db eid)]
-    {:id        (str eid)
-     :type      (name (or (:notification/type e) :info))
-     :message   (:notification/message e)
-     :read      (boolean (:notification/read e))
-     :createdAt (instant->str (:notification/created-at e))}))
 
 (defn- msg-dto [db eid]
   (let [e (d/entity db eid)
@@ -168,18 +142,6 @@
      :createdAt   (instant->str (:competition/created-at e))}))
 
 ;; ===== DB HELPERS =====
-
-(defn- ddb [] (d/db s/conn))
-
-(defn- user-e [db username]
-  (d/q '[:find ?e . :in $ ?u :where [?e :user/username ?u]] db username))
-
-(defn- create-notif! [recipient-e type msg]
-  @(d/transact s/conn [{:notification/recipient recipient-e
-                         :notification/type type
-                         :notification/message msg
-                         :notification/read false
-                         :notification/created-at (Date.)}]))
 
 ;; ===== AUTH =====
 
@@ -1312,7 +1274,7 @@
 
 ;; ===== ROUTES =====
 
-(def routes
+(def core-routes
   [["/api/me"           {:get handle-me}]
    ["/api/login"        {:post handle-login}]
    ["/api/register"     {:post handle-register}]
@@ -1386,6 +1348,15 @@
    ["/api/stories/:id/view" {:post handle-view-story}]
 
    ["/favicon.ico"          {:get (fn [_] {:status 204 :body ""})}]])
+
+;; Each feature area owns its own route vector; keep this list as the only
+;; place they are combined.
+(def routes
+  (vec (concat core-routes
+               media/routes
+               posts/routes
+               accounts/routes
+               realtime/routes)))
 
 ;; ===== APP =====
 

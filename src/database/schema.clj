@@ -1,4 +1,8 @@
-(ns database.schema)
+(ns database.schema
+  (:require [database.schema-media :as media]
+            [database.schema-posts :as posts]
+            [database.schema-accounts :as accounts]
+            [database.schema-realtime :as realtime]))
 
 (def user-schema
   [{:db/ident :user/username :db/valueType :db.type/string :db/cardinality :db.cardinality/one :db/unique :db.unique/identity}
@@ -47,7 +51,9 @@
    {:db/ident :notification/type :db/valueType :db.type/keyword :db/cardinality :db.cardinality/one}
    {:db/ident :notification/message :db/valueType :db.type/string :db/cardinality :db.cardinality/one}
    {:db/ident :notification/created-at :db/valueType :db.type/instant :db/cardinality :db.cardinality/one}
-   {:db/ident :notification/read :db/valueType :db.type/boolean :db/cardinality :db.cardinality/one}])
+   {:db/ident :notification/read :db/valueType :db.type/boolean :db/cardinality :db.cardinality/one}
+   {:db/ident :notification/actor :db/valueType :db.type/ref :db/cardinality :db.cardinality/one}
+   {:db/ident :notification/post :db/valueType :db.type/ref :db/cardinality :db.cardinality/one}])
 
 (def conversation-schema
   [{:db/ident :conversation/participants :db/valueType :db.type/ref :db/cardinality :db.cardinality/many}
@@ -121,4 +127,5 @@
           conversation-schema message-schema
           group-schema group-message-schema
           competition-schema challenge-schema story-schema
-          tracking-entry-schema))
+          tracking-entry-schema
+          media/schema posts/schema accounts/schema realtime/schema))
