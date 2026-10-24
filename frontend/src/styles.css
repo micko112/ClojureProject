@@ -1,128 +1,152 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ==========================================================================
-   Design tokens
-   Existing variables (first block of each theme) are kept as-is because many
-   components use them. New Instagram-style tokens are additive.
-   Theme is chosen by [data-theme] on <html>; index.html sets it before boot
-   from localStorage('bb-theme') or prefers-color-scheme.
+   Design tokens — Instagram-style, black by default.
+   Existing variable names are kept (many components use them); their values
+   are tuned to Instagram web's dark palette. Light mode is opt-in from
+   Settings -> Theme. index.html sets [data-theme] before boot from
+   localStorage('bb-theme'), defaulting to dark for everyone.
    ========================================================================== */
 
 :root,
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --bg2: #111111;
-  --bg3: #1a1a1a;
-  --surface: #141414;
-  --surface2: #1e1e1e;
-  --border: #2a2a2a;
-  --text: #f0f0f0;
-  --text-muted: #888;
-  --accent: #ffffff;
-  --accent2: #e0e0e0;
-  --danger: #e63946;
-  --success: #2a9d8f;
-  --sidebar-width: 240px;
-  --bottom-nav: 60px;
-  /* Extended variables used by newer components */
-  --bg-card: #111111;
-  --bg-elevated: #1a1a1a;
-  --surface-2: #1e1e1e;
-  --text-1: #f0f0f0;
-  --text-2: #888888;
-  --text-3: #555555;
-  --border-mid: #333333;
+  color-scheme: dark;
+
+  /* Core palette */
+  --bg: #000000;                 /* page */
+  --bg2: #000000;                /* chrome (sidebar, bars, panels) is page-black too */
+  --bg3: #262626;                /* filled inputs, secondary buttons, chips */
+  --surface: #121212;            /* elevated surfaces */
+  --surface2: #363636;           /* hover on #262626 */
+  --border: #262626;             /* 1px separators */
+  --border-mid: #363636;         /* input borders */
+  --text: #f5f5f5;
+  --text-muted: #a8a8a8;
+  --accent: #f5f5f5;             /* high-contrast neutral (legacy tool pages) */
+  --accent2: #dbdbdb;
+  --danger: #ed4956;
+  --success: #58c322;
+  --sidebar-width: 245px;
+  --bottom-nav: 50px;
+
+  /* Extended names used by newer components */
+  --bg-card: #000000;
+  --bg-elevated: #121212;
+  --surface-2: #363636;
+  --text-1: #f5f5f5;
+  --text-2: #a8a8a8;
+  --text-3: #737373;
   --gold: #f5c518;
-  --accent-hover: #e0e0e0;
+  --accent-hover: #dbdbdb;
   --accent-dim: rgba(255, 255, 255, 0.08);
-  --red: #ef4444;
-  --red-dim: rgba(239, 68, 68, 0.1);
-  --primary: #6c5ce7;
+  --red: #ed4956;
+  --red-dim: rgba(237, 73, 86, 0.12);
+  --primary: #0095f6;
   --r: 8px;
   --r-lg: 12px;
   --r-sm: 6px;
-  --radius-base: 10px;
+  --radius-base: 8px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* --- v2 theme tokens (dark) --- */
-  color-scheme: dark;
-  --link: #7cb8ff;
-  --like: #ff3b5c;
-  --brand-solid: #dc2b66;          /* warm pink, primary actions (4.6:1 with white) */
-  --brand-solid-hover: #c81e5a;
+  /* Actions */
+  --link: #0095f6;               /* blue text buttons */
+  --link-hover: #1877f2;
+  --tag: #e0f1ff;                /* hashtags / mentions inside captions */
+  --like: #ff3040;
+  --brand-solid: #0095f6;        /* primary button */
+  --brand-solid-hover: #1877f2;
   --on-brand: #ffffff;
-  --brand-soft: rgba(255, 92, 138, 0.14);
-  --brand-text: #ff7aa0;           /* brand-coloured text on dark bg */
-  --hover-bg: rgba(255, 255, 255, 0.07);
-  --active-bg: rgba(255, 255, 255, 0.11);
+  --brand-soft: rgba(0, 149, 246, 0.15);
+  --brand-text: #0095f6;
+  --btn-secondary: #363636;
+  --btn-secondary-hover: #262626;
+
+  /* Inputs & overlays */
+  --input-bg: #121212;
+  --input-border: #363636;
+  --input-border-focus: #737373;
+  --modal-bg: #262626;           /* menus, sheets, dialogs */
+  --modal-sep: #363636;          /* hairlines inside #262626 sheets */
+  --hover-bg: rgba(255, 255, 255, 0.1);   /* = #1a1a1a on black */
+  --active-bg: rgba(255, 255, 255, 0.15);
   --separator: #262626;
   --overlay: rgba(0, 0, 0, 0.65);
-  --glass: rgba(10, 10, 10, 0.82);
-  --focus-ring: #8ab4ff;
-  --skeleton-base: #1c1c1c;
-  --skeleton-shine: #2a2a2a;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --glass: rgba(0, 0, 0, 0.88);
+  --focus-ring: #0095f6;
+  --skeleton-base: #121212;
+  --skeleton-shine: #1f1f1f;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.5);
   --panel-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="light"] {
-  --bg: #f4f4f5;
+  color-scheme: light;
+
+  --bg: #ffffff;
   --bg2: #ffffff;
-  --bg3: #ebebec;
-  --surface: #f8f8f9;
-  --surface2: #e4e4e6;
-  --border: #d4d4d8;
-  --text: #18181b;
-  --text-muted: #71717a;
-  --accent: #18181b;
-  --accent2: #3f3f46;
-  --danger: #e63946;
-  --success: #2a9d8f;
-  --sidebar-width: 240px;
-  --bottom-nav: 60px;
-  /* Extended variables used by newer components */
+  --bg3: #efefef;
+  --surface: #fafafa;
+  --surface2: #dbdbdb;
+  --border: #dbdbdb;
+  --border-mid: #dbdbdb;
+  --text: #0c1014;
+  --text-muted: #737373;
+  --accent: #0c1014;
+  --accent2: #363636;
+  --danger: #ed4956;
+  --success: #58c322;
+  --sidebar-width: 245px;
+  --bottom-nav: 50px;
+
   --bg-card: #ffffff;
-  --bg-elevated: #f0f0f0;
-  --surface-2: #e4e4e6;
-  --text-1: #18181b;
-  --text-2: #71717a;
-  --text-3: #a1a1aa;
-  --border-mid: #c4c4c8;
+  --bg-elevated: #ffffff;
+  --surface-2: #dbdbdb;
+  --text-1: #0c1014;
+  --text-2: #737373;
+  --text-3: #a8a8a8;
   --gold: #d97706;
-  --accent-hover: #3f3f46;
-  --accent-dim: rgba(0, 0, 0, 0.06);
-  --red: #ef4444;
-  --red-dim: rgba(239, 68, 68, 0.1);
-  --primary: #6c5ce7;
+  --accent-hover: #363636;
+  --accent-dim: rgba(0, 0, 0, 0.05);
+  --red: #ed4956;
+  --red-dim: rgba(237, 73, 86, 0.1);
+  --primary: #0095f6;
   --r: 8px;
   --r-lg: 12px;
   --r-sm: 6px;
-  --radius-base: 10px;
+  --radius-base: 8px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* --- v2 theme tokens (light) --- */
-  color-scheme: light;
-  --link: #00509e;
-  --like: #e0244a;
-  --brand-solid: #d4245f;
-  --brand-solid-hover: #b81d51;
+  --link: #0095f6;
+  --link-hover: #00376b;
+  --tag: #00376b;
+  --like: #ff3040;
+  --brand-solid: #0095f6;
+  --brand-solid-hover: #1877f2;
   --on-brand: #ffffff;
-  --brand-soft: rgba(212, 36, 95, 0.09);
-  --brand-text: #c81e5a;
-  --hover-bg: rgba(0, 0, 0, 0.045);
-  --active-bg: rgba(0, 0, 0, 0.08);
-  --separator: #e4e4e7;
-  --overlay: rgba(0, 0, 0, 0.5);
-  --glass: rgba(255, 255, 255, 0.86);
-  --focus-ring: #2563eb;
-  --skeleton-base: #ececee;
-  --skeleton-shine: #f7f7f8;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
-  --panel-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+  --brand-soft: rgba(0, 149, 246, 0.1);
+  --brand-text: #0095f6;
+  --btn-secondary: #efefef;
+  --btn-secondary-hover: #dbdbdb;
+
+  --input-bg: #fafafa;
+  --input-border: #dbdbdb;
+  --input-border-focus: #a8a8a8;
+  --modal-bg: #ffffff;
+  --modal-sep: #dbdbdb;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --active-bg: rgba(0, 0, 0, 0.1);
+  --separator: #dbdbdb;
+  --overlay: rgba(0, 0, 0, 0.65);
+  --glass: rgba(255, 255, 255, 0.92);
+  --focus-ring: #0095f6;
+  --skeleton-base: #efefef;
+  --skeleton-shine: #f7f7f7;
+  --shadow-sm: none;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.12);
+  --panel-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Theme-independent scale tokens */
@@ -162,15 +186,20 @@
   --radius-xl: 24px;
   --radius-pill: 999px;
 
-  /* Brand — BeBetter's own warm sunrise gradient (orange -> pink -> violet) */
-  --brand-1: #ffb03a;
-  --brand-2: #ff6a4d;
-  --brand-3: #ff3d8b;
-  --brand-4: #8b5cf6;
-  --brand-gradient: linear-gradient(45deg, var(--brand-1) 0%, var(--brand-2) 30%, var(--brand-3) 62%, var(--brand-4) 100%);
+  /* Brand — BeBetter's own sunrise (amber -> orange -> magenta).
+     Used ONLY on story rings and the streak flame; everything else is neutral. */
+  --brand-1: #ffc046;
+  --brand-2: #ff7a2f;
+  --brand-3: #f2385a;
+  --brand-4: #d6267f;
+  --brand-gradient: linear-gradient(45deg, var(--brand-1) 0%, var(--brand-2) 38%, var(--brand-3) 72%, var(--brand-4) 100%);
   --story-ring: var(--brand-gradient);
-  --story-ring-seen: var(--border);
-  --streak: #ff8a3d;
+  --story-ring-seen: var(--border-mid);
+  --streak: #ff7a2f;
+
+  /* Type */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-wordmark: "Satisfy", "Brush Script MT", cursive;
 
   /* Avatar sizes */
   --avatar-xs: 24px;
@@ -181,7 +210,7 @@
 
   /* Layout */
   --topbar-h: 52px;
-  --sidebar-w-full: 244px;
+  --sidebar-w-full: 245px;
   --sidebar-w-collapsed: 72px;
   --content-max: 935px;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -213,9 +242,9 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.3;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
@@ -227,13 +256,14 @@ input, textarea { font-family: inherit; }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+html { scrollbar-color: var(--border-mid) transparent; }
+::selection { background: rgba(0, 149, 246, 0.35); }
 
 /* Keyboard focus — visible everywhere, invisible for mouse/touch */
 :focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 :focus:not(:focus-visible) { outline: none; }
 
@@ -276,39 +306,19 @@ input, textarea { font-family: inherit; }
   white-space: nowrap; border: 0;
 }
 
-/* Animated logo wordmark */
+/* Wordmark — script logotype, solid text colour (no gradients) */
 .bb-wordmark {
   display: inline-block;
-  font-weight: var(--fw-black);
-  letter-spacing: -0.04em;
+  font-family: var(--font-wordmark);
+  font-weight: 400;
+  font-size: 1.15em;
+  letter-spacing: 0;
   line-height: 1;
-  background: linear-gradient(90deg, var(--text) 0%, var(--text) 40%, var(--brand-2) 50%, var(--brand-3) 55%, var(--text) 65%, var(--text) 100%);
-  background-size: 300% 100%;
-  background-position: 100% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: bb-wordmark-in 1.6s var(--ease-out) 0.2s both;
+  color: var(--text);
   user-select: none;
+  white-space: nowrap;
 }
-.bb-wordmark:hover { animation: bb-wordmark-in 1.2s var(--ease-out) both; }
-.bb-wordmark-dot {
-  display: inline-block;
-  width: 0.28em; height: 0.28em;
-  margin-left: 0.08em;
-  border-radius: 50%;
-  background: var(--brand-gradient);
-  vertical-align: baseline;
-  animation: bb-pop 0.5s var(--ease-spring) 1.2s both;
-}
-@keyframes bb-wordmark-in {
-  from { background-position: 100% 0; }
-  to   { background-position: 0% 0; }
-}
-@keyframes bb-pop {
-  0% { transform: scale(0); }
-  100% { transform: scale(1); }
-}
+.bb-wordmark-dot { display: none; }
 
 /* Gradient text helper */
 .bb-gradient-text {
@@ -370,39 +380,82 @@ input, textarea { font-family: inherit; }
 .bb-ring > * { box-shadow: 0 0 0 2px var(--bg); }
 .bb-ring.seen { background: var(--story-ring-seen); }
 
-/* Buttons */
+/* Buttons — Instagram style: 32px, 8px radius, 600 14px, flat */
 .bb-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  height: 34px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
   font: inherit;
-  font-size: var(--fs-base);
-  font-weight: var(--fw-semibold);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast), opacity var(--dur-fast);
   text-decoration: none;
 }
-.bb-btn:active:not(:disabled) { transform: scale(0.97); }
-.bb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.bb-btn .material-icons { font-size: 18px; }
+.bb-btn:disabled { opacity: 0.4; cursor: default; }
+.bb-btn .material-icons, .bb-btn .material-icons-outlined { font-size: 18px; }
 .bb-btn--primary { background: var(--brand-solid); color: var(--on-brand); }
 .bb-btn--primary:hover:not(:disabled) { background: var(--brand-solid-hover); }
-.bb-btn--secondary { background: var(--bg3); color: var(--text); }
-.bb-btn--secondary:hover:not(:disabled) { background: var(--surface2); }
+.bb-btn--secondary { background: var(--btn-secondary); color: var(--text); }
+.bb-btn--secondary:hover:not(:disabled) { background: var(--btn-secondary-hover); }
 .bb-btn--ghost { background: transparent; color: var(--text); }
 .bb-btn--ghost:hover:not(:disabled) { background: var(--hover-bg); }
-.bb-btn--outline { background: transparent; color: var(--text); border-color: var(--border); }
+.bb-btn--outline { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--border-mid); }
 .bb-btn--outline:hover:not(:disabled) { background: var(--hover-bg); }
-.bb-btn--sm { height: 30px; padding: 0 var(--space-3); font-size: var(--fs-sm); }
-.bb-btn--lg { height: 44px; padding: 0 var(--space-6); font-size: var(--fs-md); border-radius: var(--radius-md); }
+.bb-btn--text { background: none; color: var(--link); padding: 0; height: auto; }
+.bb-btn--text:hover:not(:disabled) { color: var(--link-hover); }
+.bb-btn--sm { height: 28px; padding: 0 12px; font-size: 13px; }
+.bb-btn--lg { height: 44px; padding: 0 20px; font-size: 14px; }
 .bb-btn--block { width: 100%; }
+
+/* Inputs */
+.bb-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.bb-input:focus { border-color: var(--input-border-focus); }
+.bb-input::placeholder { color: var(--text-muted); }
+
+/* Instagram ⋯ menu / action sheet (shared by post card, post view, etc.) */
+.bb-sheet {
+  background: var(--modal-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+}
+.bb-sheet > button, .bb-sheet > a {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 48px;
+  padding: 4px 16px;
+  border: none;
+  border-top: 1px solid var(--modal-sep);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: center;
+}
+.bb-sheet > :first-child { border-top: none; }
+.bb-sheet > button:active { background: var(--hover-bg); }
+.bb-sheet .danger { color: var(--danger); font-weight: 700; }
+.bb-sheet .strong { font-weight: 700; }
 
 .bb-icon-btn {
   display: inline-flex;
@@ -416,10 +469,10 @@ input, textarea { font-family: inherit; }
   color: var(--text);
   font-size: 24px;
   cursor: pointer;
-  transition: background var(--dur-fast), transform var(--dur-fast);
+  transition: opacity var(--dur-fast);
 }
-.bb-icon-btn:hover { background: var(--hover-bg); }
-.bb-icon-btn:active { transform: scale(0.92); }
+.bb-icon-btn:hover { opacity: 0.6; }
+.bb-icon-btn:active { opacity: 0.4; }
 
 /* Count badge & dot */
 .bb-badge {
@@ -432,7 +485,7 @@ input, textarea { font-family: inherit; }
   border-radius: var(--radius-pill);
   background: var(--like);
   color: #fff;
-  font-size: var(--fs-2xs);
+  font-size: 11px;
   font-weight: var(--fw-bold);
   line-height: 1;
   box-shadow: 0 0 0 2px var(--bg);
@@ -457,8 +510,8 @@ input, textarea { font-family: inherit; }
   color: var(--text-muted);
 }
 .bb-empty-icon {
-  width: 72px;
-  height: 72px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   border: 2px solid var(--text);
   color: var(--text);
@@ -467,7 +520,7 @@ input, textarea { font-family: inherit; }
   justify-content: center;
   font-size: 36px;
 }
-.bb-empty h3 { color: var(--text); font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.bb-empty h3 { color: var(--text); font-size: 24px; font-weight: 800; line-height: 30px; }
 .bb-empty p { max-width: 320px; font-size: var(--fs-base); line-height: 1.5; }
 
 /* Fade/slide helpers */
