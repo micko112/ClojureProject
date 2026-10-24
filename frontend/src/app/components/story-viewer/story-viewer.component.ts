@@ -114,7 +114,9 @@ export class StoryViewerComponent implements OnInit, OnDestroy {
 
   onTap(e: MouseEvent): void {
     if ((e.target as HTMLElement).closest('.story-header')) return;
-    if (e.clientX < window.innerWidth * 0.35) this.prevStory();
+    // Relative to the story card (full screen on phones, a centred 9:16 card on desktop).
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    if (e.clientX < r.left + r.width * 0.35) this.prevStory();
     else this.nextStory();
   }
 

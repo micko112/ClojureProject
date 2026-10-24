@@ -1,14 +1,15 @@
-.pm-overlay { position: fixed; inset: 0; z-index: 5000; background: rgba(0, 0, 0, .7); display: flex;
-  align-items: center; justify-content: center; padding: 24px 64px; }
-.pm-close { position: fixed; top: 12px; right: 12px; background: none; border: none; color: #fff; z-index: 5001; padding: 6px; display: flex; }
-.pm-close .material-icons { font-size: 30px; }
+.pm-overlay { position: fixed; inset: 0; z-index: 5000; background: var(--overlay); display: flex;
+  align-items: center; justify-content: center; padding: 24px 64px; animation: bb-fade-in .15s ease; }
+.pm-close { position: fixed; top: 12px; right: 12px; background: none; border: none; color: #fff; z-index: 5001; padding: 8px; display: flex; }
+.pm-close:hover { opacity: .7; }
+.pm-close .material-icons { font-size: 28px; }
 .pm-box { max-width: min(1240px, 100%); width: auto; }
-.pm-spin { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%;
+.pm-spin { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%;
   animation: spin .7s linear infinite; }
-.pm-error { background: var(--bg2); color: var(--text); padding: 24px 32px; border-radius: 12px; }
+.pm-error { background: var(--modal-bg); color: var(--text); padding: 24px 32px; border-radius: 12px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 735px) {
   .pm-overlay { padding: 0; align-items: flex-start; background: var(--bg); overflow-y: auto; }
-  .pm-box { width: 100%; max-width: none; padding-top: 48px; }
-  .pm-close { color: var(--text); background: var(--bg); border-radius: 50%; }
+  .pm-box { width: 100%; max-width: none; padding-top: 44px; }
+  .pm-close { color: var(--text); background: var(--bg); border-radius: 50%; top: 4px; right: 4px; }
 }

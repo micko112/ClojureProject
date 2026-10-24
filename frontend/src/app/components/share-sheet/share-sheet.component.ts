@@ -63,35 +63,37 @@ import { ToastService } from '../../services/toast.service';
     </div>
   `,
   styles: [`
-    .ss-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9500; display: flex; align-items: center; justify-content: center; }
-    .ss-sheet { width: min(420px, 100vw); max-height: min(560px, 90dvh); background: var(--bg2); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; animation: ss-in .2s ease; }
+    .ss-backdrop { position: fixed; inset: 0; background: var(--overlay); z-index: 9500; display: flex; align-items: center; justify-content: center; }
+    .ss-sheet { width: min(420px, 100vw); max-height: min(560px, 90dvh); background: var(--modal-bg); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; animation: ss-in .2s ease; }
     @keyframes ss-in { from { transform: translateY(24px); opacity: 0; } }
     .ss-grabber { display: none; width: 40px; height: 4px; border-radius: 2px; background: var(--border-mid); margin: 8px auto 0; }
-    .ss-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 8px 8px 4px; border-bottom: 1px solid var(--border); }
+    .ss-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 2px 8px; min-height: 44px; border-bottom: 1px solid var(--modal-sep); }
     .ss-head h3 { text-align: center; font-size: 16px; font-weight: 700; }
     .ss-icon { background: none; border: none; color: var(--text); cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-    .ss-search { display: flex; align-items: center; gap: 8px; margin: 10px 14px; padding: 0 12px; background: var(--bg3); border-radius: 10px; }
+    .ss-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 16px; border-bottom: 1px solid var(--modal-sep); }
     .ss-search .material-icons { color: var(--text-muted); font-size: 20px; }
-    .ss-search input { flex: 1; background: none; border: none; outline: none; color: var(--text); padding: 10px 0; font-size: 15px; font-family: inherit; }
-    .ss-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; padding: 4px 12px 12px; min-height: 160px; align-content: start; }
+    .ss-search input { flex: 1; background: none; border: none; outline: none; color: var(--text); padding: 8px 0; font-size: 14px; font-family: inherit; }
+    .ss-search input::placeholder { color: var(--text-muted); }
+    .ss-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; padding: 12px 12px 12px; min-height: 160px; align-content: start; }
     .ss-empty { grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 13px; padding: 32px 0; }
     .ss-person { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 6px 2px; color: var(--text); font-family: inherit; }
-    .ss-avatar { position: relative; width: 64px; height: 64px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; }
+    .ss-avatar { position: relative; width: 64px; height: 64px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px; }
     .ss-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .ss-check { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg2); }
+    .ss-check { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--brand-solid); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--modal-bg); }
     .ss-person.on .ss-avatar img, .ss-person.on .ss-avatar span { opacity: .75; }
     .ss-name { font-size: 12px; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ss-footer { border-top: 1px solid var(--border); padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; }
-    .ss-msg { background: none; border: none; outline: none; color: var(--text); font-size: 15px; padding: 6px 2px; font-family: inherit; }
-    .ss-send { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 12px; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
-    .ss-send:disabled { opacity: .6; }
+    .ss-footer { border-top: 1px solid var(--modal-sep); padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; }
+    .ss-msg { background: none; border: none; outline: none; color: var(--text); font-size: 14px; padding: 6px 2px; font-family: inherit; }
+    .ss-send { background: var(--brand-solid); color: #fff; border: none; border-radius: 8px; height: 44px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .ss-send:hover:not(:disabled) { background: var(--brand-solid-hover); }
+    .ss-send:disabled { opacity: .4; }
     .ss-actions { flex-direction: row; gap: 18px; }
     .ss-action { background: none; border: none; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font-family: inherit; }
-    .ss-action .material-icons { width: 48px; height: 48px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; }
-    .ss-action small { font-size: 11px; color: var(--text-muted); }
+    .ss-action .material-icons { width: 48px; height: 48px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .ss-action small { font-size: 12px; color: var(--text); }
     @media (max-width: 768px) {
       .ss-backdrop { align-items: flex-end; }
-      .ss-sheet { border-radius: 16px 16px 0 0; max-height: 85dvh; }
+      .ss-sheet { border-radius: 12px 12px 0 0; max-height: 85dvh; }
       .ss-grabber { display: block; }
     }
   `]

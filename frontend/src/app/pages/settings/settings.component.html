@@ -11,7 +11,7 @@
         <div class="group-title">{{ g }}</div>
         @for (s of itemsIn(g); track s.key) {
           <a class="nav-item" [routerLink]="['/settings', s.key]" [class.active]="section === s.key">
-            <span class="material-icons">{{ s.icon }}</span>
+            <span class="material-icons-outlined">{{ s.icon }}</span>
             <span class="label">{{ s.label }}</span>
             @if (s.key === 'follow-requests' && followRequestCount) {
               <span class="count">{{ followRequestCount }}</span>
@@ -25,7 +25,7 @@
     <div class="group">
       <div class="group-title">Login</div>
       <button class="nav-item danger" (click)="logout()">
-        <span class="material-icons">logout</span>
+        <span class="material-icons-outlined">logout</span>
         <span class="label">Log out {{ auth.currentUser()?.username }}</span>
       </button>
     </div>

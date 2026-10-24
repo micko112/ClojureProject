@@ -1,11 +1,11 @@
 .pd-page { max-width: 935px; margin: 0 auto; padding: 32px 20px; }
-.pd-skel { height: min(calc(100vh - 120px), 760px); border-radius: 4px; background: var(--bg3); animation: pulse 1.2s infinite; }
-.pd-more { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-muted); }
+.pd-skel { height: min(calc(100vh - 120px), 760px); border-radius: 4px; background: var(--skeleton-base); animation: pulse 1.2s infinite; }
+.pd-more { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--separator); font-size: 14px; font-weight: 600; color: var(--text-muted); }
 .pd-more strong { color: var(--text); }
 .pd-empty { text-align: center; padding: 40px 16px; }
-.pd-empty h2 { font-size: 22px; margin-bottom: 16px; }
-.pd-empty p { color: var(--text-muted); }
-.pd-empty a { color: #4f8ff7; }
+.pd-empty h2 { font-size: 24px; font-weight: 600; margin-bottom: 24px; }
+.pd-empty p { color: var(--text); }
+.pd-empty a { color: var(--tag); }
 @keyframes pulse { 50% { opacity: .5; } }
 @media (max-width: 735px) {
   .pd-page { padding: 0 0 24px; }

@@ -26,10 +26,9 @@ import { CaptionSegment, captionSegments } from '../post-card/post-utils';
     }
   `,
   styles: [`
-    :host { display: block; white-space: pre-line; word-break: break-word; line-height: 1.45; }
+    :host { display: block; white-space: pre-line; word-break: break-word; line-height: 1.3; }
     .cap-author { font-weight: 600; color: var(--text); }
-    .cap-link { color: #4f8ff7; }
-    :host-context([data-theme="light"]) .cap-link { color: #00376b; }
+    .cap-link { color: var(--tag); }
     .cap-more { background: none; border: none; color: var(--text-muted); padding: 0; font-size: inherit; }
   `]
 })

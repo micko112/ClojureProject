@@ -23,7 +23,8 @@
         <span class="material-icons">more_horiz</span>
       </button>
       @if (menuOpen) {
-        <div class="pc-menu" role="menu" (click)="$event.stopPropagation()">
+        <div class="pc-backdrop" aria-hidden="true"></div>
+        <div class="pc-menu bb-sheet" role="menu" (click)="$event.stopPropagation()">
           @if (isOwner) {
             <button type="button" role="menuitem" (click)="openEdit()">Edit</button>
             <button type="button" role="menuitem" (click)="archive()">Archive</button>

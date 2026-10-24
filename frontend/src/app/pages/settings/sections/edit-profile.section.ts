@@ -11,7 +11,7 @@ import { ToastService } from '../../../services/toast.service';
   imports: [FormsModule],
   styleUrls: ['../settings-shared.css'],
   styles: [`
-    .pic-row { display: flex; align-items: center; gap: 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .pic-row { display: flex; align-items: center; gap: 14px; background: var(--bg3); border-radius: 20px; padding: 16px; }
     .pic-row .avatar { width: 56px; height: 56px; font-size: 22px; }
     .pic-row .names { flex: 1; }
     input[type=file] { display: none; }

@@ -50,9 +50,9 @@ export class StreakStore {
         <svg class="flame" viewBox="0 0 24 24" aria-hidden="true">
           <defs>
             <linearGradient [attr.id]="gid" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0" stop-color="#ff3d8b"/>
-              <stop offset="0.55" stop-color="#ff6a4d"/>
-              <stop offset="1" stop-color="#ffb03a"/>
+              <stop offset="0" stop-color="#d6267f"/>
+              <stop offset="0.5" stop-color="#ff7a2f"/>
+              <stop offset="1" stop-color="#ffc046"/>
             </linearGradient>
           </defs>
           <path [attr.fill]="'url(#' + gid + ')'" d="M13.5 1.6c.4 2.6-.6 4.4-2 6-1.4 1.6-3 3-3 5.5 0 .8.2 1.5.5 2.1-1.6-.6-2.6-2.1-2.8-3.8C4.6 13.1 4 14.8 4 16.6 4 20.1 7.6 23 12 23s8-2.9 8-6.6c0-5.4-4.1-8.4-6.5-14.8zM12 21c-1.9 0-3.4-1.3-3.4-3 0-2.1 2-3.2 2.8-5.2 1.6 1.5 4 3.1 4 5.2 0 1.7-1.5 3-3.4 3z"/>
@@ -65,11 +65,9 @@ export class StreakStore {
     :host { display: inline-flex; }
     .streak {
       display: inline-flex; align-items: center; gap: 2px;
-      padding: 2px 7px 2px 4px;
-      border-radius: var(--radius-pill, 999px);
-      background: rgba(255, 138, 61, 0.14);
+      padding: 2px 0;
       color: var(--text);
-      font-size: 12px; font-weight: 700; line-height: 1;
+      font-size: 13px; font-weight: 600; line-height: 1;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }

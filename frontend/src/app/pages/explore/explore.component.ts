@@ -45,18 +45,19 @@ import { Post } from '../../models/post.model';
   styles: [`
     .ex-page { max-width: 935px; margin: 0 auto; padding: 24px 20px; }
     .ex-search { position: relative; display: flex; align-items: center; gap: 8px; background: var(--bg3);
-                 border-radius: 8px; padding: 0 12px; margin-bottom: 20px; max-width: 470px; }
+                 border-radius: 8px; padding: 0 12px; height: 40px; margin-bottom: 24px; max-width: 470px; }
     .ex-search .material-icons { color: var(--text-muted); font-size: 20px; }
-    .ex-search input { flex: 1; background: none; border: none; outline: none; color: var(--text); padding: 10px 0; font-size: 14px; }
-    .ex-search button { background: none; border: none; display: flex; padding: 0; }
-    .ex-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; background: var(--bg2);
-                  border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    .ex-search input { flex: 1; background: none; border: none; outline: none; color: var(--text); padding: 10px 0; font-size: 16px; }
+    .ex-search input::placeholder { color: var(--text-muted); font-weight: 300; }
+    .ex-search button { background: none; border: none; display: flex; padding: 0; color: var(--text-muted); }
+    .ex-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; background: var(--modal-bg);
+                  border-radius: 8px; box-shadow: var(--shadow-lg);
                   max-height: 360px; overflow-y: auto; padding: 6px 0; }
     .ex-tag { display: flex; align-items: center; gap: 12px; padding: 8px 14px; }
-    .ex-tag:hover { background: var(--bg3); }
+    .ex-tag:hover { background: var(--hover-bg); }
     .ex-tag strong { display: block; font-size: 14px; }
     .ex-tag small { color: var(--text-muted); font-size: 12px; }
-    .ex-hash { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); display: flex;
+    .ex-hash { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-mid); display: flex;
                align-items: center; justify-content: center; font-size: 18px; }
     .ex-empty { text-align: center; color: var(--text-muted); padding: 48px 16px; }
     .ex-empty .material-icons { font-size: 48px; margin-bottom: 8px; }
