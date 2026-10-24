@@ -76,7 +76,7 @@ export function savePost(svc: PostService, post: Post): void {
     @if (showLikes) {
       <div class="pa-likes">
         @if (likes > 0) { <strong>{{ compact(likes) }} {{ likes === 1 ? 'like' : 'likes' }}</strong> }
-        @else { <span class="pa-first">Be the first to cheer this on</span> }
+        @else if (!reactionList.length) { <span class="pa-first">Be the first to cheer this on</span> }
         @if (post.hideLikes) { <span class="pa-hidden">· only you can see this</span> }
       </div>
     }
