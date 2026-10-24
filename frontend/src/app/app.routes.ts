@@ -26,6 +26,8 @@ export const routes: Routes = [
       { path: 'stats', loadComponent: () => import('./pages/stats/stats.component').then(m => m.StatsComponent) },
       { path: 'journal', loadComponent: () => import('./pages/journal/journal.component').then(m => m.JournalComponent) },
       { path: 'post/:id', loadComponent: () => import('./pages/post-detail/post-detail.component').then(m => m.PostDetailComponent) },
+      { path: 'live', loadComponent: () => import('./pages/live/go-live.component').then(m => m.GoLiveComponent) },
+      { path: 'live/:id', loadComponent: () => import('./pages/live/watch-live.component').then(m => m.WatchLiveComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

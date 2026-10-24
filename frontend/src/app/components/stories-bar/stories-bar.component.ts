@@ -1,8 +1,12 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { LiveInfo, LiveService } from '../../services/live.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-stories-bar',
@@ -11,7 +15,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './stories-bar.component.html',
   styleUrls: ['./stories-bar.component.css']
 })
-export class StoriesBarComponent implements OnInit {
+export class StoriesBarComponent implements OnInit, OnDestroy {
   @Output() openViewer = new EventEmitter<{ groups: any[]; index: number }>();
 
   groups: any[] = [];
@@ -28,9 +32,39 @@ export class StoriesBarComponent implements OnInit {
     '#ee5a24', '#f9ca24', '#6ab04c', '#22a6b3', '#be2edd'
   ];
 
+  // Live videos (shown first with a red LIVE ring) — realtime area
+  lives: LiveInfo[] = [];
+  private liveService = inject(LiveService);
+  private realtime = inject(RealtimeService);
+  private router = inject(Router);
+  private liveSubs: Subscription[] = [];
+
   constructor(private api: ApiService, public auth: AuthService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.loadLives();
+    this.liveSubs.push(
+      this.realtime.on('live:started').subscribe(() => this.loadLives()),
+      this.realtime.on('live:ended').subscribe(() => this.loadLives())
+    );
+  }
+
+  ngOnDestroy(): void { this.liveSubs.forEach(s => s.unsubscribe()); }
+
+  loadLives(): void {
+    this.liveService.active().subscribe({ next: l => { this.lives = l; }, error: () => {} });
+  }
+
+  openLive(live: LiveInfo): void {
+    const mine = live.host.username === this.auth.currentUser()?.username;
+    this.router.navigate(mine ? ['/live'] : ['/live', live.id]);
+  }
+
+  goLive(): void {
+    this.cancelCreate();
+    this.router.navigate(['/live']);
+  }
 
   load(): void {
     this.api.getStories().subscribe({ next: g => { this.groups = g; }, error: () => {} });
