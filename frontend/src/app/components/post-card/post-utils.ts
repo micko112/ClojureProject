@@ -1,5 +1,6 @@
 import { Media } from '../../models/media.model';
 import { Post } from '../../models/post.model';
+import { ToastService } from '../../services/toast.service';
 
 /** Instagram-style short relative time: "now", "5m", "3h", "2d", "4w", "Oct 12". */
 export function timeAgo(dateStr?: string | null): string {
@@ -96,4 +97,15 @@ export function captionSegments(text: string): CaptionSegment[] {
   }
   if (last < text.length) out.push({ kind: 'text', value: text.slice(last) });
   return out;
+}
+
+export function postLink(post: Post): string {
+  return `${location.origin}/post/${post.id}`;
+}
+
+export function copyPostLink(post: Post, toast: ToastService): void {
+  const url = postLink(post);
+  const done = () => toast.success('Link copied');
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, () => toast.info(url));
+  else toast.info(url);
 }

@@ -34,6 +34,8 @@ export const routes: Routes = [
       { path: 'settings/:section', loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent) },
       { path: 'reels', loadComponent: () => import('./pages/reels/reels.component').then(m => m.ReelsComponent) },
       { path: 'notifications', loadComponent: () => import('./pages/notifications/notifications.component').then(m => m.NotificationsComponent) },
+      { path: 'live', loadComponent: () => import('./pages/live/go-live.component').then(m => m.GoLiveComponent) },
+      { path: 'live/:id', loadComponent: () => import('./pages/live/watch-live.component').then(m => m.WatchLiveComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

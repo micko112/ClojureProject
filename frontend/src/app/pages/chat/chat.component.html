@@ -1,178 +1,288 @@
 <div class="chat-page">
-  <!-- Sidebar: conversations list -->
-  <div class="conv-sidebar" [class.hidden-mobile]="activeConv">
-    <div class="conv-header">
-      <h2>Messages</h2>
-      <button class="new-chat-btn" (click)="showNewChat = !showNewChat" title="New message">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
+  <!-- ===== Inbox ===== -->
+  <aside class="inbox" [class.hidden-mobile]="active">
+    <header class="inbox-header">
+      <h2>{{ auth.currentUser()?.username }}</h2>
+      <button class="icon-btn" (click)="toggleNewChat()" [attr.aria-label]="showNewChat ? 'Close' : 'New message'" title="New message">
+        <span class="material-icons">{{ showNewChat ? 'close' : 'edit_square' }}</span>
       </button>
-    </div>
+    </header>
 
-    <!-- New chat search -->
-    <div class="new-chat-wrap" *ngIf="showNewChat">
-      <input [(ngModel)]="newChatUsername" (ngModelChange)="onNewChatInput()"
-             placeholder="Search user to message..." class="new-chat-input" autofocus>
-      <div class="user-dropdown" *ngIf="searchResults.length > 0">
-        <div class="user-result" *ngFor="let u of searchResults" (click)="selectUser(u)">
-          <div class="mini-avatar" [style.background]="'#2a2a2a'">
-            <img *ngIf="avatar(u)" [src]="avatar(u)" alt="">
-            <span *ngIf="!avatar(u)">{{ initials(u) }}</span>
-          </div>
-          <div class="user-info">
-            <span class="uname">{{ u.displayName || u.username }}</span>
-            <span class="usub">&#64;{{ u.username }}</span>
-          </div>
+    @if (showNewChat) {
+      <div class="new-chat">
+        <div class="search-field">
+          <span class="material-icons">search</span>
+          <input [(ngModel)]="newChatQuery" (ngModelChange)="onNewChatInput()" placeholder="Search people" autofocus>
         </div>
+        @for (u of searchResults; track u.username) {
+          <button class="person-row" (click)="selectUser(u)">
+            <div class="avatar sm">
+              @if (avatar(u)) { <img [src]="avatar(u)" alt=""> } @else { <span>{{ initials(u) }}</span> }
+            </div>
+            <div class="person-text">
+              <span class="name">{{ u.displayName || u.username }}</span>
+              <span class="sub">{{ u.username }}</span>
+            </div>
+          </button>
+        }
       </div>
-    </div>
+    }
 
-    <!-- Conversations -->
+    <nav class="folders" role="tablist">
+      <button role="tab" [class.on]="folder === 'primary'" (click)="setFolder('primary')">Primary</button>
+      <button role="tab" [class.on]="folder === 'requests'" (click)="setFolder('requests')">
+        Requests @if (requests.length) { <span class="count">{{ requests.length }}</span> }
+      </button>
+    </nav>
+
     <div class="conv-list">
-      <div *ngIf="conversations.length === 0" class="empty-convs">
-        No conversations yet. Start one!
-      </div>
-      <div class="conv-item" *ngFor="let c of conversations"
-           [class.active]="activeConv?.id === c.id"
-           (click)="openConversation(c)">
-        <div class="conv-avatar">
-          <img *ngIf="avatar(c.other)" [src]="avatar(c.other)" alt="">
-          <span *ngIf="!avatar(c.other)">{{ initials(c.other) }}</span>
+      @if (listLoaded && list.length === 0) {
+        <div class="empty">
+          <span class="material-icons">{{ folder === 'primary' ? 'forum' : 'mark_email_unread' }}</span>
+          @if (folder === 'primary') {
+            <p>No messages yet</p>
+            <button class="link-btn" (click)="toggleNewChat()">Send a message</button>
+          } @else {
+            <p>No message requests</p>
+            <small>Messages from people you don't follow show up here.</small>
+          }
         </div>
-        <div class="conv-info">
-          <div class="conv-name">{{ c.other?.displayName || c.other?.username }}</div>
-          <div class="conv-preview">{{ convPreview(c) }}</div>
-        </div>
-        <div class="conv-time">{{ timeAgo(c.updatedAt) }}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Main: message thread -->
-  <div class="chat-main" [class.hidden-mobile]="!activeConv">
-    <ng-container *ngIf="activeConv; else noChat">
-      <div class="chat-header">
-        <button class="back-btn" (click)="activeConv = null">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
+      }
+      @for (c of list; track c.id) {
+        <button class="conv-item" [class.active]="active?.id === c.id" [class.unread]="c.unreadCount > 0" (click)="open(c)">
+          <div class="avatar">
+            @if (avatar(c.other)) { <img [src]="avatar(c.other)" alt=""> } @else { <span>{{ initials(c.other) }}</span> }
+            @if (c.other.online) { <i class="online-dot" aria-label="Active now"></i> }
+          </div>
+          <div class="conv-text">
+            <span class="name">{{ c.other.displayName || c.other.username }}</span>
+            <span class="preview" [class.typing]="typing[c.id]">
+              <span class="preview-text">{{ convPreview(c) }}</span>
+              @if (!typing[c.id] && (c.last?.createdAt || c.updatedAt)) { <span class="dot-sep">·</span>{{ timeAgo(c.last?.createdAt || c.updatedAt) }} }
+            </span>
+          </div>
+          @if (c.unreadCount > 0) { <i class="unread-dot" aria-label="Unread"></i> }
         </button>
-        <div class="chat-avatar">
-          <img *ngIf="avatar(activeConv.other)" [src]="avatar(activeConv.other)" alt="">
-          <span *ngIf="!avatar(activeConv.other)">{{ initials(activeConv.other) }}</span>
-        </div>
-        <div>
-          <div class="chat-username">{{ activeConv.other?.displayName || activeConv.other?.username }}</div>
-          <div class="chat-sub">&#64;{{ activeConv.other?.username }}</div>
-        </div>
-      </div>
+      }
+    </div>
+  </aside>
 
-      <div class="messages-area">
-        <div *ngIf="messagesLoading" class="msgs-loading">Loading...</div>
-        <div *ngFor="let m of messages" class="msg-row" [class.mine]="isMine(m)">
-          <div class="msg-avatar" *ngIf="!isMine(m)">
-            <img *ngIf="avatar(m.sender)" [src]="avatar(m.sender)" alt="">
-            <span *ngIf="!avatar(m.sender)">{{ initials(m.sender) }}</span>
+  <!-- ===== Thread ===== -->
+  <section class="thread" [class.hidden-mobile]="!active">
+    @if (active) {
+      <header class="thread-header">
+        <button class="icon-btn back" (click)="backToList()" aria-label="Back">
+          <span class="material-icons">arrow_back_ios_new</span>
+        </button>
+        <a class="thread-user" [routerLink]="['/profile', active.other.username]">
+          <div class="avatar sm">
+            @if (avatar(active.other)) { <img [src]="avatar(active.other)" alt=""> } @else { <span>{{ initials(active.other) }}</span> }
+            @if (active.other.online) { <i class="online-dot"></i> }
           </div>
-          <div class="msg-bubble">
-            <!-- Image message -->
-            <div class="msg-media-image" *ngIf="isImage(m)">
-              <img [src]="m.mediaUrl" alt="Image" (click)="openMedia(m.mediaUrl)">
-            </div>
-            <!-- Audio message -->
-            <div class="msg-media-audio" *ngIf="isAudio(m)">
-              <audio controls [src]="m.mediaUrl" preload="metadata"></audio>
-            </div>
-            <!-- Video message -->
-            <div class="msg-media-video" *ngIf="isVideo(m)">
-              <video controls [src]="m.mediaUrl" preload="metadata"></video>
-            </div>
-            <!-- Text content -->
-            <div class="msg-content" *ngIf="m.content">{{ m.content }}</div>
-            <div class="msg-time">{{ timeAgo(m.createdAt) }}</div>
+          <div class="person-text">
+            <span class="name">{{ active.other.displayName || active.other.username }}</span>
+            <span class="sub">{{ statusLine(active.other) || active.other.username }}</span>
           </div>
-        </div>
+        </a>
+      </header>
+
+      <div class="messages" #messagesArea>
+        @if (hasOlder) {
+          <button class="load-older" (click)="loadOlder()" [disabled]="loadingOlder">{{ loadingOlder ? 'Loading…' : 'Load earlier messages' }}</button>
+        }
+        @if (messagesLoading) { <div class="center-note">Loading…</div> }
+
+        @if (!messagesLoading && messages.length === 0) {
+          <div class="thread-intro">
+            <div class="avatar xl">
+              @if (avatar(active.other)) { <img [src]="avatar(active.other)" alt=""> } @else { <span>{{ initials(active.other) }}</span> }
+            </div>
+            <strong>{{ active.other.displayName || active.other.username }}</strong>
+            <span class="sub">{{ active.other.username }}</span>
+            <a class="ghost-btn" [routerLink]="['/profile', active.other.username]">View profile</a>
+          </div>
+        }
+
+        @for (m of messages; track m.id; let i = $index) {
+          @if (showTimeSeparator(i)) { <div class="time-sep">{{ separatorLabel(m.createdAt) }}</div> }
+          <div class="msg-row" [id]="'msg-' + m.id" [class.mine]="isMine(m)" [class.run-end]="isRunEnd(i)"
+               [class.has-reactions]="m.reactions?.length">
+            @if (!isMine(m)) {
+              <div class="avatar xs" [class.invisible]="!isRunEnd(i)">
+                @if (avatar(m.sender)) { <img [src]="avatar(m.sender)" alt=""> } @else { <span>{{ initials(m.sender) }}</span> }
+              </div>
+            }
+            <div class="bubble-col">
+              @if (m.replyTo) {
+                <div class="reply-label">{{ replyAuthor(m) }}</div>
+                <button class="reply-quote" (click)="scrollToMessage(m.replyTo.id)">{{ replySnippet(m.replyTo) }}</button>
+              }
+              <div class="bubble-wrap">
+                <div class="bubble"
+                     [class.media-only]="!m.content && (m.mediaType === 'image' || m.mediaType === 'video' || m.post)"
+                     [class.emoji-only]="isEmojiOnly(m)"
+                     (click)="onBubbleTap(m)"
+                     (contextmenu)="openActions(m, $event)"
+                     (touchstart)="onPressStart(m)" (touchend)="onPressEnd()" (touchmove)="onPressEnd()">
+                  @if (m.post) {
+                    @if (m.post.unavailable) {
+                      <div class="shared-post unavailable"><span class="material-icons">lock</span> Post unavailable</div>
+                    } @else {
+                      <a class="shared-post" [routerLink]="['/post', m.post.id]" (click)="$event.stopPropagation()">
+                        <div class="sp-head">
+                          <div class="avatar xxs">
+                            @if (avatar(m.post.author)) { <img [src]="avatar(m.post.author)" alt=""> } @else { <span>{{ initials(m.post.author) }}</span> }
+                          </div>
+                          <span>{{ m.post.author?.username }}</span>
+                        </div>
+                        @if (m.post.thumbnailUrl) {
+                          @if (m.post.mediaType === 'video') {
+                            <video [src]="m.post.thumbnailUrl" muted playsinline preload="metadata"></video>
+                          } @else {
+                            <img [src]="m.post.thumbnailUrl" alt="" loading="lazy">
+                          }
+                        }
+                        @if (m.post.caption) { <p class="sp-caption"><b>{{ m.post.author?.username }}</b> {{ m.post.caption }}</p> }
+                      </a>
+                    }
+                  }
+                  @if (m.mediaType === 'image' && m.mediaUrl) {
+                    <img class="msg-image" [src]="m.mediaUrl" alt="Photo" loading="lazy">
+                  }
+                  @if (m.mediaType === 'video' && m.mediaUrl) {
+                    <video class="msg-video" controls playsinline [src]="m.mediaUrl" preload="metadata"></video>
+                  }
+                  @if (m.mediaType === 'audio' && m.mediaUrl) {
+                    <audio class="msg-audio" controls [src]="m.mediaUrl" preload="metadata"></audio>
+                  }
+                  @if (m.content) { <span class="text">{{ m.content }}</span> }
+                  @if (heartBurstId === m.id) { <span class="heart-burst material-icons">favorite</span> }
+                </div>
+                <button class="more-btn" (click)="openActions(m, $event)" aria-label="Message actions">
+                  <span class="material-icons">more_horiz</span>
+                </button>
+              </div>
+              @if (m.reactions?.length) {
+                <button class="reactions" (click)="openActions(m, $event)">
+                  @for (r of reactionSummary(m); track r.emoji) { <span>{{ r.emoji }}</span> }
+                  @if (m.reactions!.length > 1) { <span class="r-count">{{ m.reactions!.length }}</span> }
+                </button>
+              }
+              @if (receiptFor(i); as receipt) { <div class="receipt">{{ receipt }}</div> }
+            </div>
+          </div>
+        }
+
+        @if (active.id && typing[active.id]) {
+          <div class="msg-row run-end">
+            <div class="avatar xs">
+              @if (avatar(active.other)) { <img [src]="avatar(active.other)" alt=""> } @else { <span>{{ initials(active.other) }}</span> }
+            </div>
+            <div class="bubble typing-bubble" aria-label="typing"><i></i><i></i><i></i></div>
+          </div>
+        }
         <div #msgEnd></div>
       </div>
 
-      <!-- Image preview above input -->
-      <div class="image-preview-bar" *ngIf="imagePreviewUrl">
-        <div class="image-preview-wrap">
-          <img [src]="imagePreviewUrl" alt="Preview">
-          <button class="remove-preview-btn" (click)="removeImagePreview()" title="Remove">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+      @if (active.isRequest) {
+        <div class="request-bar">
+          <p><b>{{ active.other.displayName || active.other.username }}</b> wants to send you a message.
+            They won't know you've seen it until you accept.</p>
+          <div class="request-actions">
+            <button class="ghost-btn danger" (click)="decline()">Decline</button>
+            <button class="primary-btn" (click)="accept()">Accept</button>
+          </div>
         </div>
+      } @else {
+        @if (active.pending) {
+          <div class="pending-note">Your message request is pending until {{ active.other.username }} accepts.</div>
+        }
+        @if (replyTo) {
+          <div class="reply-bar">
+            <div>
+              <span class="reply-to-label">Replying to {{ isMine(replyTo) ? 'yourself' : (replyTo.sender.displayName || replyTo.sender.username) }}</span>
+              <span class="reply-to-text">{{ replySnippet(replyTo) }}</span>
+            </div>
+            <button class="icon-btn" (click)="replyTo = null" aria-label="Cancel reply"><span class="material-icons">close</span></button>
+          </div>
+        }
+        @if (imagePreviewUrl) {
+          <div class="preview-bar">
+            <div class="preview-thumb">
+              @if (selectedImage?.type?.startsWith('video/')) {
+                <video [src]="imagePreviewUrl" muted></video>
+              } @else {
+                <img [src]="imagePreviewUrl" alt="Preview">
+              }
+              <button (click)="removeImagePreview()" aria-label="Remove"><span class="material-icons">close</span></button>
+            </div>
+          </div>
+        }
+        @if (isRecording) {
+          <div class="recording-bar">
+            <i class="rec-dot"></i>
+            <span>{{ formatRecordingTime() }}</span>
+            <span class="rec-label">Recording…</span>
+            <button class="link-btn" (click)="cancelVoiceRecording()">Cancel</button>
+          </div>
+        }
+        <div class="composer">
+          <input #fileInput type="file" accept="image/*,video/mp4,video/webm,video/quicktime" hidden (change)="onImageSelected($event)">
+          <div class="composer-pill">
+            <button class="icon-btn" (click)="fileInput.click()" [disabled]="sending || isRecording" aria-label="Send photo or video">
+              <span class="material-icons">photo_camera</span>
+            </button>
+            <textarea #composer [(ngModel)]="newMessage" (ngModelChange)="onComposerInput()" (keydown)="onKeydown($event)"
+                      placeholder="Message…" rows="1" [disabled]="isRecording"></textarea>
+            @if (newMessage.trim() || selectedImage) {
+              <button class="send-text" (click)="send()" [disabled]="sending">{{ uploadingMedia ? 'Uploading…' : 'Send' }}</button>
+            } @else {
+              <button class="icon-btn" [class.recording]="isRecording" (click)="toggleVoiceRecording()"
+                      [attr.aria-label]="isRecording ? 'Stop and send' : 'Record voice message'">
+                <span class="material-icons">{{ isRecording ? 'stop_circle' : 'mic' }}</span>
+              </button>
+              <button class="icon-btn" (click)="newMessage = '❤️'; send()" aria-label="Send a heart" [disabled]="sending || isRecording">
+                <span class="material-icons">favorite_border</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="no-thread">
+        <span class="material-icons ring">send</span>
+        <h3>Your messages</h3>
+        <p>Send private photos and messages to a friend.</p>
+        <button class="primary-btn" (click)="toggleNewChat()">Send message</button>
       </div>
-
-      <!-- Recording indicator -->
-      <div class="recording-bar" *ngIf="isRecording">
-        <div class="rec-dot"></div>
-        <span class="rec-time">{{ formatRecordingTime() }}</span>
-        <span class="rec-label">Recording...</span>
-        <button class="cancel-rec-btn" (click)="cancelVoiceRecording()">Cancel</button>
-      </div>
-
-      <div class="message-input-wrap">
-        <!-- Hidden file input -->
-        <input #fileInput type="file" accept="image/*,video/mp4,video/webm,video/quicktime"
-               style="display:none" (change)="onImageSelected($event)">
-
-        <!-- Attach image button -->
-        <button class="attach-btn" (click)="fileInput.click()" title="Send image or video"
-                [disabled]="sending || isRecording">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-        </button>
-
-        <textarea [(ngModel)]="newMessage" (keydown)="onKeydown($event)"
-                  placeholder="Write a message... (Enter to send)"
-                  class="message-input" rows="1"
-                  [disabled]="isRecording"></textarea>
-
-        <!-- Voice record button -->
-        <button class="voice-btn" [class.recording]="isRecording"
-                (click)="toggleVoiceRecording()"
-                [disabled]="sending && !isRecording"
-                [title]="isRecording ? 'Stop recording' : 'Send voice message'">
-          <svg *ngIf="!isRecording" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="23"/>
-            <line x1="8" y1="23" x2="16" y2="23"/>
-          </svg>
-          <svg *ngIf="isRecording" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <rect x="6" y="6" width="12" height="12" rx="2"/>
-          </svg>
-        </button>
-
-        <!-- Send button -->
-        <button class="send-btn" (click)="send()"
-                [disabled]="sending || isRecording || (!newMessage.trim() && !selectedImage)">
-          <svg *ngIf="!uploadingMedia" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-          <svg *ngIf="uploadingMedia" class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" stroke-dasharray="30 60"/>
-          </svg>
-        </button>
-      </div>
-    </ng-container>
-
-    <ng-template #noChat>
-      <div class="no-chat-selected">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        <p>Select a conversation or start a new one</p>
-      </div>
-    </ng-template>
-  </div>
+    }
+  </section>
 </div>
+
+<!-- Message action sheet (long-press / right-click / ⋯) -->
+@if (actionMsg) {
+  <div class="sheet-backdrop" (click)="closeActions()">
+    <div class="action-sheet" (click)="$event.stopPropagation()" role="dialog" aria-label="Message actions">
+      <div class="emoji-row">
+        @for (e of quickReactions; track e) {
+          <button [class.picked]="myReaction(actionMsg) === e" (click)="react(actionMsg, e)">{{ e }}</button>
+        }
+      </div>
+      @if (actionMsg.reactions?.length) {
+        <div class="who-reacted">
+          @for (r of actionMsg.reactions; track r.username) {
+            <span>{{ r.emoji }} {{ r.username === auth.currentUser()?.username ? 'You' : r.username }}</span>
+          }
+        </div>
+      }
+      <button class="sheet-item" (click)="startReply(actionMsg)"><span class="material-icons">reply</span> Reply</button>
+      @if (actionMsg.content) {
+        <button class="sheet-item" (click)="copyText(actionMsg)"><span class="material-icons">content_copy</span> Copy</button>
+      }
+      @if (isMine(actionMsg)) {
+        <button class="sheet-item danger" (click)="unsend(actionMsg)"><span class="material-icons">undo</span> Unsend</button>
+      }
+      <button class="sheet-item cancel" (click)="closeActions()">Cancel</button>
+    </div>
+  </div>
+}

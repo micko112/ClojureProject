@@ -186,7 +186,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   // ---------- Legacy notification helpers (kept for compatibility) ----------
   notifIcon(type: string): string {
     const icons: Record<string, string> = {
-      like: 'favorite', comment: 'chat_bubble', follow: 'person_add', mention: 'campaign'
+      like: 'favorite', comment: 'chat_bubble', follow: 'person_add', mention: 'campaign', live: 'sensors'
     };
     return icons[type] || 'notifications';
   }

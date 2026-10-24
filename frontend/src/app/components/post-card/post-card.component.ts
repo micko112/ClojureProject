@@ -3,14 +3,14 @@ import { Router, RouterModule } from '@angular/router';
 import { MediaCarouselComponent } from '../media-carousel/media-carousel.component';
 import { CaptionComponent } from '../caption/caption.component';
 import { PostActionsComponent, likePost } from './post-actions.component';
-import { ShareSheetComponent, copyPostLink } from './share-sheet.component';
+import { ShareSheetComponent } from '../share-sheet/share-sheet.component';
 import { PostEditComponent } from './post-edit.component';
 import { PostService } from '../../services/post.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { Post } from '../../models/post.model';
 import { Media } from '../../models/media.model';
-import { initials, postMedia, timeAgo, timeAgoLong } from './post-utils';
+import { copyPostLink, initials, postMedia, timeAgo, timeAgoLong } from './post-utils';
 
 /** Instagram feed post card. */
 @Component({

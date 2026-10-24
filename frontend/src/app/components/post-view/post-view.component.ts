@@ -5,14 +5,14 @@ import { RouterModule } from '@angular/router';
 import { MediaCarouselComponent } from '../media-carousel/media-carousel.component';
 import { CaptionComponent } from '../caption/caption.component';
 import { PostActionsComponent, likePost } from '../post-card/post-actions.component';
-import { ShareSheetComponent, copyPostLink } from '../post-card/share-sheet.component';
+import { ShareSheetComponent } from '../share-sheet/share-sheet.component';
 import { PostEditComponent } from '../post-card/post-edit.component';
 import { PostService } from '../../services/post.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { Post, PostComment } from '../../models/post.model';
 import { Media } from '../../models/media.model';
-import { aspectOf, initials, postMedia, timeAgo, timeAgoLong } from '../post-card/post-utils';
+import { aspectOf, copyPostLink, initials, postMedia, timeAgo, timeAgoLong } from '../post-card/post-utils';
 
 /**
  * Full post with threaded comments. Instagram desktop layout (media left,

@@ -11,7 +11,8 @@
                               not-found parse-id instant->str ddb user-e author-dto]]
             [web.notifications :refer [create-notif!]]
             [web.media :as media]
-            [web.accounts :as accounts])
+            [web.accounts :as accounts]
+            [web.realtime :as realtime])
   (:import (java.util Date)
            (java.time LocalDate ZoneId)))
 
@@ -512,6 +513,10 @@
               db2      (:db-after r)
               pid      (get (:tempids r) "new-post")]
           (notify-mentions! db2 pid u username mentions "post")
+          ;; Close-friends posts are not announced: other followers must not
+          ;; learn that a post they can't see exists.
+          (when-not (= "close-friends" audience)
+            (realtime/notify-followers-new-post! u pid))
           (created (post-dto db2 pid u)))))
     (unauth)))
 

@@ -25,6 +25,28 @@
       <span class="s-label">Your story</span>
     </div>
 
+    <!-- Live now (realtime area) -->
+    @for (live of lives; track live.id) {
+      <div class="story-bubble live-bubble"
+           role="button"
+           tabindex="0"
+           [attr.aria-label]="live.host.username + ' is live'"
+           (click)="openLive(live)"
+           (keydown.enter)="openLive(live)">
+        <div class="ring-wrap live-ring">
+          <div class="s-avatar">
+            @if (live.host.profilePic) {
+              <img [src]="live.host.profilePic" alt="" />
+            } @else {
+              <span>{{ initials(live.host) }}</span>
+            }
+          </div>
+          <span class="live-label">LIVE</span>
+        </div>
+        <span class="s-label">{{ live.host.displayName || live.host.username }}</span>
+      </div>
+    }
+
     <!-- Others' stories -->
     @for (group of groups; track group.username) {
       @if (!group.isMe) {
@@ -97,6 +119,10 @@
         {{ storyFile ? storyFile.name : 'Add Photo / Video' }}
         <input type="file" accept="image/*,video/*" (change)="onFileChange($event)" hidden />
       </label>
+
+      <button class="go-live-btn" (click)="goLive()">
+        <span class="material-icons">sensors</span> Go live instead
+      </button>
 
       <button class="share-btn"
               [disabled]="creating || (!storyText.trim() && !storyFile)"

@@ -15,6 +15,7 @@ export interface NotificationItem {
   createdAt?: string;
   actor?: { username: string; displayName?: string; profilePic?: string };
   postId?: string;
+  liveId?: string;
   post?: { mediaUrl?: string; thumbnailUrl?: string; media?: { url?: string; posterUrl?: string; type?: string }[] };
   thumbnailUrl?: string;
   /** client-only state for follow requests */
@@ -141,6 +142,7 @@ export class NotificationsComponent implements OnInit {
       case 'comment': return 'commented on your post.';
       case 'follow': return 'started following you.';
       case 'mention': return 'mentioned you.';
+      case 'live': return 'started a live video.';
       default: return REQUEST_TYPES.has(type) ? 'requested to follow you.' : 'New activity';
     }
   }
@@ -165,7 +167,8 @@ export class NotificationsComponent implements OnInit {
   }
 
   open(n: NotificationItem): void {
-    if (n.postId) this.go(['/post', n.postId]);
+    if (n.liveId) this.go(['/live', n.liveId]);
+    else if (n.postId) this.go(['/post', n.postId]);
     else if (n.actor?.username) this.go(['/profile', n.actor.username]);
   }
 

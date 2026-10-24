@@ -1,0 +1,83 @@
+<div class="live-stage">
+  <div class="live-frame">
+    <video #video class="live-video" autoplay playsinline muted (click)="onVideoTap()"></video>
+    <div class="live-shade"></div>
+
+    <div class="live-top">
+      @if (info) {
+        <a class="live-host" [routerLink]="['/profile', info.host.username]">
+          <div class="lc-avatar ring">
+            @if (info.host.profilePic) { <img [src]="info.host.profilePic" alt=""> } @else { <span>{{ initials(info.host) }}</span> }
+          </div>
+          <span>{{ info.host.username }}</span>
+        </a>
+        @if (phase !== 'ended' && phase !== 'error') {
+          <span class="live-badge">LIVE</span>
+          @if (room) { <span class="live-pill"><span class="material-icons">visibility</span>{{ room.viewerCount }}</span> }
+        }
+      }
+      <span class="spacer"></span>
+      <button class="live-icon" (click)="close()" aria-label="Close"><span class="material-icons">close</span></button>
+    </div>
+
+    @if (info?.title && phase !== 'ended') { <div class="live-title">{{ info?.title }}</div> }
+
+    @if (phase === 'loading' || phase === 'connecting') {
+      <div class="live-center">
+        <div class="live-spinner"></div>
+        <p>{{ phase === 'loading' ? 'Loading…' : 'Connecting to live video…' }}</p>
+        @if (room?.error) { <p class="err">{{ room?.error }}</p> }
+      </div>
+    }
+
+    @if (phase === 'playing' && muted) {
+      <button class="live-unmute" (click)="toggleMute()"><span class="material-icons">volume_off</span> Tap to unmute</button>
+    }
+
+    @if (phase === 'ended') {
+      <div class="live-center ended">
+        <span class="material-icons big">videocam_off</span>
+        <h2>Live ended</h2>
+        <p>{{ info?.host?.username }}'s live video has ended.</p>
+        <div class="live-row">
+          @if (info) { <a class="live-btn ghost" [routerLink]="['/profile', info.host.username]">View profile</a> }
+          <button class="live-btn" (click)="close()">Close</button>
+        </div>
+      </div>
+    }
+
+    @if (phase === 'error') {
+      <div class="live-center ended">
+        <span class="material-icons big">error_outline</span>
+        <p>{{ errorText }}</p>
+        <button class="live-btn" (click)="close()">Close</button>
+      </div>
+    }
+
+    @if (room && (phase === 'playing' || phase === 'connecting')) {
+      <div class="live-hearts" aria-hidden="true">
+        @for (h of room.hearts; track h.id) {
+          <span class="material-icons fheart" [style.--dx]="h.x + 'px'" [style.filter]="'hue-rotate(' + h.hue + 'deg)'">favorite</span>
+        }
+      </div>
+      <div class="live-bottom">
+        <div class="live-comments">
+          @for (c of room.comments; track c.id) {
+            <div class="live-comment">
+              <div class="lc-avatar">
+                @if (c.user.profilePic) { <img [src]="c.user.profilePic" alt=""> } @else { <span>{{ initials(c.user) }}</span> }
+              </div>
+              <div><b>{{ c.user.username }}</b> {{ c.text }}</div>
+            </div>
+          }
+        </div>
+        <form class="live-compose" (ngSubmit)="sendComment()">
+          <input class="live-input" name="comment" [(ngModel)]="commentText" maxlength="300" placeholder="Comment…" autocomplete="off" />
+          <button type="button" class="live-icon heart" (click)="heart()" aria-label="Send a heart">
+            <span class="material-icons">favorite</span>
+          </button>
+        </form>
+      </div>
+    }
+  </div>
+</div>

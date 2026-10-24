@@ -118,5 +118,5 @@
   </div>
 </ng-template>
 
-@if (shareOpen) { <app-share-sheet [post]="post" (closed)="shareOpen = false"></app-share-sheet> }
+@if (shareOpen) { <app-share-sheet [postId]="post.id" (closed)="shareOpen = false"></app-share-sheet> }
 @if (editOpen) { <app-post-edit [post]="post" (closed)="editOpen = false" (saved)="onEdited($event)"></app-post-edit> }

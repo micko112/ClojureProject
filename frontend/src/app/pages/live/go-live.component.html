@@ -1,0 +1,92 @@
+<div class="live-stage">
+  <div class="live-frame">
+    <video #preview class="live-video" [class.mirror]="facing === 'user'" autoplay playsinline muted></video>
+    <div class="live-shade"></div>
+
+    @if (permissionError) {
+      <div class="live-center">
+        <span class="material-icons big">videocam_off</span>
+        <p>{{ permissionError }}</p>
+        <button class="live-btn" (click)="retryCamera()">Try again</button>
+      </div>
+    }
+
+    <!-- top bar -->
+    <div class="live-top">
+      @if (phase === 'live' && room) {
+        <span class="live-badge">LIVE</span>
+        <span class="live-pill">{{ timeLabel(elapsed) }}</span>
+        <span class="live-pill"><span class="material-icons">visibility</span>{{ room.viewerCount }}</span>
+        <span class="spacer"></span>
+        <button class="live-end" (click)="endLive()">End</button>
+      } @else if (phase !== 'ended') {
+        <span class="spacer"></span>
+        <button class="live-icon" (click)="close()" aria-label="Close"><span class="material-icons">close</span></button>
+      }
+    </div>
+
+    <!-- side controls -->
+    @if (phase !== 'ended' && !permissionError) {
+      <div class="live-side">
+        <button class="live-icon" (click)="flipCamera()" aria-label="Flip camera"><span class="material-icons">flip_camera_ios</span></button>
+        <button class="live-icon" (click)="toggleMic()" [attr.aria-label]="micOn ? 'Mute microphone' : 'Unmute microphone'">
+          <span class="material-icons">{{ micOn ? 'mic' : 'mic_off' }}</span>
+        </button>
+      </div>
+    }
+
+    <!-- setup -->
+    @if (phase === 'setup' || phase === 'starting') {
+      <div class="live-bottom setup">
+        <input class="live-input" [(ngModel)]="title" maxlength="80" placeholder="Add a title (optional)" />
+        <button class="live-go" (click)="goLive()" [disabled]="!cameraReady || !!permissionError || phase === 'starting'">
+          <span class="material-icons">sensors</span>
+          {{ phase === 'starting' ? 'Starting…' : (cameraReady ? 'Go live' : 'Starting camera…') }}
+        </button>
+        <small class="live-hint">Your followers will be notified when you go live.</small>
+      </div>
+    }
+
+    <!-- live overlay -->
+    @if (phase === 'live' && room) {
+      <div class="live-hearts" aria-hidden="true">
+        @for (h of room.hearts; track h.id) {
+          <span class="material-icons fheart" [style.--dx]="h.x + 'px'" [style.filter]="'hue-rotate(' + h.hue + 'deg)'">favorite</span>
+        }
+      </div>
+      <div class="live-bottom">
+        <div class="live-comments">
+          @if (!room.comments.length) {
+            <div class="live-comment muted">Comments will appear here</div>
+          }
+          @for (c of room.comments; track c.id) {
+            <div class="live-comment">
+              <div class="lc-avatar">
+                @if (c.user.profilePic) { <img [src]="c.user.profilePic" alt=""> } @else { <span>{{ initials(c.user) }}</span> }
+              </div>
+              <div><b>{{ c.user.username }}</b> {{ c.text }}</div>
+            </div>
+          }
+        </div>
+        <form class="live-compose" (ngSubmit)="sendComment()">
+          <input class="live-input" name="comment" [(ngModel)]="commentText" maxlength="300" placeholder="Comment…" autocomplete="off" />
+          <span class="live-pill"><span class="material-icons">favorite</span>{{ room.heartCount }}</span>
+        </form>
+      </div>
+    }
+
+    <!-- ended -->
+    @if (phase === 'ended') {
+      <div class="live-center ended">
+        <span class="material-icons big">check_circle</span>
+        <h2>Your live video has ended</h2>
+        <div class="live-stats">
+          <div><b>{{ durationLabel }}</b><small>Duration</small></div>
+          <div><b>{{ room?.peakViewers || 0 }}</b><small>Peak viewers</small></div>
+          <div><b>{{ info?.hearts ?? room?.heartCount ?? 0 }}</b><small>Hearts</small></div>
+        </div>
+        <button class="live-btn" (click)="close()">Done</button>
+      </div>
+    }
+  </div>
+</div>
