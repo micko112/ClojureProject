@@ -3,7 +3,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: var(--z-dropdown); /* above nav/panels, below modals, composer and viewers */
   background: var(--bg-elevated);
   border-top: 1px solid var(--border-mid);
   padding: 16px 24px;
@@ -44,4 +44,10 @@
     padding: 14px 16px;
     gap: 12px;
   }
+}
+
+/* Phones: sit above the bottom tab bar (50px + iOS safe area, see layout)
+   instead of covering it. */
+@media (max-width: 767px) {
+  .cookie-banner { bottom: calc(50px + env(safe-area-inset-bottom, 0px)); }
 }

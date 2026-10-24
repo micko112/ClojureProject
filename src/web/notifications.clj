@@ -47,6 +47,25 @@
            db recipient-e)
       0))
 
+;; Toggle-style actions (unlike → like again, unfollow → follow again) must
+;; not stack identical notifications, like on Instagram.
+(def ^:private dedup-types #{:like :follow :reaction :comment-like})
+
+(defn- repeat-notif?
+  "True when the same actor already caused the same notification (same type,
+   post and text — so a comment like doesn't collapse into a post like)."
+  [db recipient-e type msg actor-e post-e]
+  (and actor-e
+       (dedup-types type)
+       (some (fn [n]
+               (let [e (d/entity db n)]
+                 (and (= msg (:notification/message e))
+                      (= post-e (some-> e :notification/post :db/id)))))
+             (d/q '[:find [?n ...] :in $ ?r ?t ?a
+                    :where [?n :notification/recipient ?r] [?n :notification/type ?t]
+                    [?n :notification/actor ?a]]
+                  db recipient-e type actor-e))))
+
 (defn create-notif!
   "opts: {:actor-e eid, :post-e eid, :live-e eid} — all optional.
    Skips self-notifications, notifications from hidden (blocked/muted) actors
@@ -59,7 +78,8 @@
      (when (and recipient-e
                 (not (and actor-e (= actor-e recipient-e)))
                 (notification-enabled? db recipient-e type)
-                (not (hidden-actor? db recipient-e actor-e)))
+                (not (hidden-actor? db recipient-e actor-e))
+                (not (repeat-notif? db recipient-e type msg actor-e post-e)))
        (let [tid (d/tempid :db.part/user)
              res @(d/transact s/conn [(cond-> {:db/id tid
                                                :notification/recipient recipient-e

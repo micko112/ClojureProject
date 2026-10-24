@@ -301,3 +301,16 @@
         uros (connect! "Uros")]
     (api (request :post (str "/api/groups/" (:id g) "/messages") {:content "5k today"} "Micko"))
     (is (= "5k today" (get-in (first (of-type uros "group:message")) [:message :content])))))
+
+(deftest toggled-like-does-not-stack-notifications
+  (let [db       (d/db s/conn)
+        micko    (web.http/user-e db "Micko")
+        uros     (web.http/user-e db "Uros")
+        notif!   #(notifications/create-notif! micko :like "Uros liked your post" {:actor-e uros})
+        count-of #(count (d/q '[:find [?n ...] :in $ ?r :where [?n :notification/recipient ?r]]
+                              (d/db s/conn) micko))]
+    (notif!)
+    (notif!)
+    (is (= 1 (count-of)))
+    (notifications/create-notif! micko :like "Uros liked your comment" {:actor-e uros})
+    (is (= 2 (count-of)) "different text (comment like) is not a duplicate")))

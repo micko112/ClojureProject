@@ -83,15 +83,21 @@ export class LayoutComponent implements OnInit, OnDestroy {
       const u = (e as NavigationEnd).urlAfterRedirects;
       this.url.set(u);
       this.moreOpen.set(false);
-      // PWA shortcut / deep link: any URL with ?create=1 opens the composer
-      const tree = this.router.parseUrl(u);
-      if (tree.queryParams['create'] === '1') {
-        this.composer.open();
-        const { create, ...rest } = tree.queryParams;
-        tree.queryParams = rest;
-        this.router.navigateByUrl(tree, { replaceUrl: true });
-      }
+      this.openComposerFromUrl(u);
     });
+    // The layout is lazy-loaded, so the navigation that created it has already
+    // ended by now — handle its URL too (e.g. onboarding → /feed?create=1).
+    this.openComposerFromUrl(this.router.url);
+  }
+
+  /** PWA shortcut / deep link: any URL with ?create=1 opens the composer. */
+  private openComposerFromUrl(url: string): void {
+    const tree = this.router.parseUrl(url);
+    if (tree.queryParams['create'] !== '1') return;
+    this.composer.open();
+    const { create, ...rest } = tree.queryParams;
+    tree.queryParams = rest;
+    this.router.navigateByUrl(tree, { replaceUrl: true });
   }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }

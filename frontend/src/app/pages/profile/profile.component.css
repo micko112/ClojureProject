@@ -38,7 +38,7 @@
 }
 
 .stats { list-style: none; display: flex; gap: 36px; font-size: 15px; }
-.stats li, .stats button { color: var(--text); }
+.stats li, .stats button { color: var(--text); display: inline-flex; align-items: baseline; gap: 4px; }
 .stats button { background: none; border: none; font-size: 15px; padding: 0; }
 .stats button:disabled { cursor: default; }
 .stats strong { font-weight: 600; }
@@ -180,7 +180,7 @@
   .avatar { font-size: 32px; }
   .header-main { gap: 10px; }
   .stats { gap: 0; justify-content: space-between; font-size: 14px; }
-  .stats li, .stats button { display: flex; flex-direction: column; align-items: center; font-size: 13px; line-height: 1.3; }
+  .stats li, .stats button { display: flex; flex-direction: column; align-items: center; gap: 0; font-size: 13px; line-height: 1.3; }
   .stats strong { font-size: 16px; }
   .stats span { color: var(--text-muted); }
   .username { font-size: 18px; }
