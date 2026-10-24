@@ -46,3 +46,6 @@ Thumbs.db
 
 # Claude Code agent worktrees (temporary)
 .claude/worktrees/
+
+# Leiningen build output
+/target/
