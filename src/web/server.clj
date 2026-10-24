@@ -23,6 +23,9 @@
             [web.posts :as posts]
             [web.accounts :as accounts]
             [web.realtime :as realtime]
+            [web.notifications :as notifications]
+            [web.dm :as dm]
+            [web.live :as live]
             [buddy.hashers :as hashers])
   (:import (java.util UUID Date)
            (java.time Instant LocalDate ZoneId)))
@@ -691,25 +694,7 @@
         (ok (mapv #(author-dto (d/entity db %)) (take 20 matched)))))))
 
 ;; ===== NOTIFICATIONS =====
-
-(defn- handle-get-notifications [req]
-  (if-let [username (me req)]
-    (let [db  (ddb)
-          u-e (user-e db username)
-          nids (sort #(compare %2 %1)
-                     (d/q '[:find [?n ...] :in $ ?u :where [?n :notification/recipient ?u]] db u-e))]
-      (ok (mapv #(notif-dto db %) (take 30 nids))))
-    (unauth)))
-
-(defn- handle-mark-notifs-read [req]
-  (if-let [username (me req)]
-    (let [db  (ddb)
-          u-e (user-e db username)
-          nids (d/q '[:find [?n ...] :in $ ?u :where [?n :notification/recipient ?u] [?n :notification/read false]] db u-e)
-          tx-data (mapv #(vector :db/add % :notification/read true) nids)]
-      (when (seq tx-data) @(d/transact s/conn tx-data))
-      (ok {:ok true}))
-    (unauth)))
+;; Moved to web.notifications (handlers + routes).
 
 ;; ===== TRENDING =====
 
@@ -746,109 +731,7 @@
       {:status 404 :body "Not found"})))
 
 ;; ===== CONVERSATIONS / DMs =====
-
-(defn- find-or-create-conv! [me-e other-e]
-  (let [db (ddb)
-        existing (d/q '[:find ?c .
-                         :in $ ?a ?b
-                         :where
-                         [?c :conversation/participants ?a]
-                         [?c :conversation/participants ?b]]
-                       db me-e other-e)]
-    (or existing
-        (let [result @(d/transact s/conn [{:conversation/participants #{me-e other-e}
-                                            :conversation/last-message-at (Date.)}])
-              cid (first (vals (:tempids result)))]
-          cid))))
-
-(defn- conv-dto [db me-e conv-e]
-  (let [c (d/entity db conv-e)
-        parts (map :db/id (:conversation/participants c))
-        other-e (first (remove #(= % me-e) parts))
-        other (when other-e (d/entity db other-e))
-        last-msg (first (sort-by #(:message/created-at (d/entity db %)) #(compare %2 %1)
-                                 (d/q '[:find [?m ...] :in $ ?c :where [?m :message/conversation ?c]] db conv-e)))]
-    {:id           (str conv-e)
-     :other        (author-dto other)
-     :lastMessage  (when last-msg (:message/content (d/entity db last-msg)))
-     :lastMessageAt (instant->str (:conversation/last-message-at c))
-     :unreadCount  (or (d/q '[:find (count ?m) . :in $ ?c ?me
-                               :where [?m :message/conversation ?c]
-                               (not [?m :message/read-by ?me])]
-                             db conv-e me-e) 0)}))
-
-(defn- handle-get-conversations [req]
-  (if-let [username (me req)]
-    (let [db (ddb)
-          u-e (user-e db username)
-          cids (d/q '[:find [?c ...] :in $ ?u :where [?c :conversation/participants ?u]] db u-e)
-          sorted (sort-by #(or (:conversation/last-message-at (d/entity db %)) (Date. 0)) #(compare %2 %1) cids)]
-      (ok (mapv #(conv-dto db u-e %) sorted)))
-    (unauth)))
-
-(defn- handle-send-message [req]
-  (if-let [username (me req)]
-    (let [{:keys [to content mediaUrl mediaType]} (parse-body req)
-          db (ddb)
-          me-e (user-e db username)
-          other-e (user-e db to)]
-      (if-not other-e
-        (not-found)
-        (let [conv-e (find-or-create-conv! me-e other-e)
-              msg-id (d/tempid :db.part/user)
-              result @(d/transact s/conn (cond-> [{:db/id msg-id
-                                                    :message/conversation conv-e
-                                                    :message/sender me-e
-                                                    :message/content (or content "")
-                                                    :message/created-at (Date.)}
-                                                   [:db/add conv-e :conversation/last-message-at (Date.)]]
-                                           (seq mediaUrl)  (conj [:db/add msg-id :message/media-url mediaUrl])
-                                           (seq mediaType) (conj [:db/add msg-id :message/media-type mediaType])))
-              new-id (d/resolve-tempid (:db-after result) (:tempids result) msg-id)]
-          (created (msg-dto (:db-after result) new-id)))))
-    (unauth)))
-
-(defn- handle-get-messages [req]
-  (if-let [username (me req)]
-    (let [conv-id (Long/parseLong (get-in req [:path-params :id]))
-          db (ddb)
-          u-e (user-e db username)
-          ;; check user is a participant
-          participants (map :db/id (:conversation/participants (d/entity db conv-id)))]
-      (if-not (some #(= % u-e) participants)
-        (jresp 403 {:error "Forbidden"})
-        (let [mids (sort (d/q '[:find [?m ...] :in $ ?c :where [?m :message/conversation ?c]] db conv-id))]
-          (ok (mapv #(msg-dto db %) mids)))))
-    (unauth)))
-
-(defn- handle-mark-conv-read [req]
-  (if-let [username (me req)]
-    (let [conv-id (Long/parseLong (get-in req [:path-params :id]))
-          db (ddb)
-          u-e (user-e db username)
-          mids (d/q '[:find [?m ...] :in $ ?c ?u
-                      :where [?m :message/conversation ?c]
-                      (not [?m :message/read-by ?u])]
-                    db conv-id u-e)
-          tx-data (mapv #(vector :db/add % :message/read-by u-e) mids)]
-      (when (seq tx-data) @(d/transact s/conn tx-data))
-      (ok {:ok true}))
-    (unauth)))
-
-(defn- handle-unread-messages [req]
-  (if-let [username (me req)]
-    (let [db  (ddb)
-          u-e (user-e db username)
-          cnt (or (d/q '[:find (count ?m) .
-                          :in $ ?u
-                          :where
-                          [?c :conversation/participants ?u]
-                          [?m :message/conversation ?c]
-                          (not [?m :message/sender ?u])
-                          (not [?m :message/read-by ?u])]
-                        db u-e) 0)]
-      (ok {:count cnt}))
-    (unauth)))
+;; Moved to web.dm (handlers + routes).
 
 ;; ===== GROUPS =====
 
@@ -899,6 +782,16 @@
             (ok {:action "joined"}))))
     (unauth)))
 
+(defn- group-msg-dto [db mid]
+  (let [e (d/entity db mid)
+        s (d/entity db (-> e :group-message/sender :db/id))]
+    {:id (str mid)
+     :groupId (some-> e :group-message/group :db/id str)
+     :sender (author-dto s)
+     :content (:group-message/content e)
+     :mediaUrl (:group-message/media-url e)
+     :createdAt (instant->str (:group-message/created-at e))}))
+
 (defn- handle-get-group-messages [req]
   (if-let [username (me req)]
     (let [gid (Long/parseLong (get-in req [:path-params :id]))
@@ -908,15 +801,7 @@
       (if-not (some #(= (:db/id %) u-e) (:group/members g))
         (jresp 403 {:error "Forbidden"})
         (let [mids (sort (d/q '[:find [?m ...] :in $ ?g :where [?m :group-message/group ?g]] db gid))]
-          (ok (mapv (fn [mid]
-                      (let [e (d/entity db mid)
-                            s (d/entity db (-> e :group-message/sender :db/id))]
-                        {:id (str mid)
-                         :sender (author-dto s)
-                         :content (:group-message/content e)
-                         :mediaUrl (:group-message/media-url e)
-                         :createdAt (instant->str (:group-message/created-at e))}))
-                    mids)))))
+          (ok (mapv #(group-msg-dto db %) mids)))))
     (unauth)))
 
 (defn- handle-send-group-message [req]
@@ -936,8 +821,14 @@
                                 :group-message/created-at (Date.)}]
                         (seq mediaUrl) (conj [:db/add msg-id :group-message/media-url mediaUrl]))
               result @(d/transact s/conn tx-data)
-              new-id (d/resolve-tempid (:db-after result) (:tempids result) msg-id)]
-          (created {:id (str new-id) :content content}))))
+              db2    (:db-after result)
+              new-id (d/resolve-tempid db2 (:tempids result) msg-id)
+              dto    (group-msg-dto db2 new-id)]
+          ;; live push to every member (incl. the sender's other tabs)
+          (realtime/publish-all! (keep #(:user/username (d/entity db2 (:db/id %)))
+                                       (:group/members (d/entity db2 gid)))
+                                 {:type "group:message" :groupId (str gid) :message dto})
+          (created dto))))
     (unauth)))
 
 ;; ===== COMPETITIONS =====
@@ -1314,17 +1205,9 @@
 
    ["/api/leaderboard"      {:get handle-get-leaderboard}]
    ["/api/trending"         {:get handle-trending}]
-   ["/api/notifications"    {:get handle-get-notifications}]
-   ["/api/notifications/read" {:post handle-mark-notifs-read}]
 
    ["/api/upload"           {:post handle-upload}]
    ["/uploads/:filename"    {:get handle-serve-upload}]
-
-   ["/api/conversations"    {:get handle-get-conversations}]
-   ["/api/messages"         {:post handle-send-message}]
-   ["/api/messages/unread"  {:get handle-unread-messages}]
-   ["/api/conversations/:id/messages" {:get handle-get-messages}]
-   ["/api/conversations/:id/read"     {:post handle-mark-conv-read}]
 
    ["/api/groups"           {:get handle-get-groups :post handle-create-group}]
    ["/api/groups/:id"       {:get handle-get-group}]
@@ -1356,7 +1239,10 @@
                media/routes
                posts/routes
                accounts/routes
-               realtime/routes)))
+               realtime/routes
+               notifications/routes
+               dm/routes
+               live/routes)))
 
 ;; ===== APP =====
 
@@ -1404,5 +1290,6 @@
   (when (= "true" (System/getenv "BEBETTER_SEED"))
     (println "[bootstrap] BEBETTER_SEED=true — running reset-db!")
     (s/reset-db! db/get-all-tx-functions))
+  (live/end-stale-lives!)
   (start-server)
   @(promise))

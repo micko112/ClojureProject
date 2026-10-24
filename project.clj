@@ -5,8 +5,8 @@
                  [com.datomic/peer "1.0.7387"]
                  [metosin/malli "0.20.0"]
 
-                 [ring/ring-core "1.9.6"]
-                 [ring/ring-jetty-adapter "1.9.6"]
+                 [ring/ring-core "1.12.2"]
+                 [ring/ring-jetty-adapter "1.12.2"]
                  [ring/ring-defaults "0.3.4"]
                  [metosin/reitit "0.7.1"]
                  [cheshire "5.11.0"]
