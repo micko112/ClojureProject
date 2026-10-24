@@ -17,6 +17,8 @@ const soundOn = signal(false);
  *   `fill`), the media then covers/contains that box.
  * - Videos: poster, muted autoplay only while >= 60% visible
  *   (IntersectionObserver), paused otherwise; source attached on first view.
+ *   With `controls` the native controls are shown too (and still autoplay).
+ *   The sound preference is shared by all videos on the page.
  *
  * Stable inputs: `media`, `sizes`, `controls`. Optional: `fit`, `priority`,
  * `fill`, `ratio`, `alt`, `autoplay`.
@@ -47,6 +49,7 @@ const soundOn = signal(false);
              [attr.aria-label]="alt || 'Video'"
              playsinline loop preload="metadata"
              (loadeddata)="onLoad()" (playing)="paused.set(false)" (pause)="paused.set(true)"
+             (volumechange)="onVolumeChange()"
              (error)="onLoad()"></video>
       @if (!controls) {
         @if (paused() && userPaused) {
@@ -173,6 +176,12 @@ export class MediaComponent implements OnChanges, AfterViewInit, OnDestroy {
 
   onLoad(): void { this.loaded.set(true); }
 
+  /** Native controls changed mute: remember it for every video. */
+  onVolumeChange(): void {
+    const v = this.vid?.nativeElement;
+    if (v && this.controls && !v.paused && v.muted === soundOn()) soundOn.set(!v.muted);
+  }
+
   toggleSound(ev: Event): void {
     ev.stopPropagation();
     soundOn.set(!soundOn());
@@ -193,7 +202,7 @@ export class MediaComponent implements OnChanges, AfterViewInit, OnDestroy {
     setTimeout(() => {
       const v = this.vid?.nativeElement;
       if (!v) return;
-      const canAuto = this.autoplay && !this.reducedMotion && !this.controls;
+      const canAuto = this.autoplay && !this.reducedMotion;
       const onScreen = this.visible && !document.hidden;
       if (onScreen && canAuto && !this.userPaused && v.paused) this.play(v);
       else if (!onScreen && !v.paused) v.pause();

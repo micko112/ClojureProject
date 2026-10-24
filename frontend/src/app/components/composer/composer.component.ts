@@ -8,6 +8,7 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { MediaService, MAX_VIDEO_BYTES, UploadEvent, loadImage } from '../../services/media.service';
 import { ToastService } from '../../services/toast.service';
+import { ComposerService } from '../../services/composer.service';
 import { CreatePostRequest, Post, PostAudience, PostLayout } from '../../models/post.model';
 import { Media } from '../../models/media.model';
 
@@ -42,10 +43,11 @@ const MAX_RATIO = 1.91;
  * Before/After layout for exactly two photos, then caption, activity tag,
  * audience and options, and share with upload progress.
  *
- * Full-screen on phones, centred dialog on desktop. Emits `posted` with
- * the created post (and dispatches a `bb:post-created` window event so
- * pages can refresh without being wired to the composer), `closed` when
- * dismissed.
+ * Full-screen on phones, centred dialog on desktop. Mount it while
+ * `ComposerService.isOpen()` is true. On success it calls
+ * `ComposerService.posted(post)` (feed/streak listen to `posted$`; this also
+ * closes it) and emits `posted`; on cancel it calls `ComposerService.close()`
+ * and emits `closed`.
  */
 @Component({
   selector: 'app-composer',
@@ -121,6 +123,7 @@ export class ComposerComponent implements OnInit, OnDestroy {
     private api: ApiService,
     private media: MediaService,
     private toast: ToastService,
+    private composer: ComposerService,
     public auth: AuthService,
   ) {}
 
@@ -154,11 +157,16 @@ export class ComposerComponent implements OnInit, OnDestroy {
   requestClose(): void {
     if (this.sharing()) return;
     if (this.dirty) { this.confirmDiscard.set(true); return; }
-    this.closed.emit();
+    this.dismiss();
   }
 
   discard(): void {
     this.confirmDiscard.set(false);
+    this.dismiss();
+  }
+
+  private dismiss(): void {
+    this.composer.close();
     this.closed.emit();
   }
 
@@ -454,7 +462,6 @@ export class ComposerComponent implements OnInit, OnDestroy {
       const total = jobs.reduce((s, j) => s + (j.blob?.size || 0), 0) || 1;
       let done = 0;
       const ids: string[] = [];
-      const uploaded: Media[] = [];
       for (let n = 0; n < jobs.length; n++) {
         const job = jobs[n];
         if (!job.blob) { ids.push(job.item.mediaId!); continue; }
@@ -463,7 +470,6 @@ export class ComposerComponent implements OnInit, OnDestroy {
           this.progress.set(Math.min(0.98, (done + loaded) / total)));
         done += job.blob.size;
         ids.push(m.id);
-        uploaded.push(m);
         this.patch(job.item.id, { ...this.items().find(i => i.id === job.item.id)!, mediaId: m.id, uploadedKey: job.key });
       }
       // 3. Create the post.
@@ -477,14 +483,11 @@ export class ComposerComponent implements OnInit, OnDestroy {
       };
       if (ids.length) req.layout = this.layout();
       if (this.activityTag.trim()) req.activityTag = this.activityTag.trim().replace(/^#/, '');
-      // `mediaUrl` keeps single-media posts working on a backend without mediaIds support.
-      const firstUrl = uploaded[0]?.url;
-      const body = firstUrl ? { ...req, mediaUrl: firstUrl } : req;
-      const post = await firstValueFrom(this.api.createPost(body)) as Post;
+      const post = await firstValueFrom(this.api.createPost(req)) as Post;
       this.progress.set(1);
       this.toast.success('Shared! Another day of progress.');
       this.posted.emit(post);
-      window.dispatchEvent(new CustomEvent('bb:post-created', { detail: post }));
+      this.composer.posted(post); // also closes the composer
       this.closed.emit();
     } catch (err: any) {
       this.toast.error(err?.error?.error || err?.message || 'Could not share the post');
