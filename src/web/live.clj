@@ -193,6 +193,18 @@
                               :viewerCount (viewer-count live-e)})
       (broadcast-viewers! live-e))))
 
+(defn enforce-access!
+  "Re-checks can-watch? for every room `username` hosts or watches and
+   removes viewers that may no longer watch (called after a block). leave!
+   tells the host, whose browser then drops that viewer's peer connection."
+  [username]
+  (let [db (ddb)]
+    (doseq [[lid r] @rooms
+            v (:viewers r)
+            :when (or (= username (:host r)) (= username v))
+            :when (not (can-watch? db (user-e db v) lid))]
+      (leave! lid v))))
+
 (defn- member? [live-e username]
   (contains? (set (room-members live-e)) username))
 

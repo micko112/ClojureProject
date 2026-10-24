@@ -98,6 +98,18 @@
         (try (f username) (catch Throwable t (log "offline hook" k "failed:" (.getMessage t))))))
     nil))
 
+(defn disconnect-user!
+  "Closes and forgets every open connection of `username`. Called when the
+   user's sessions are invalidated (log out of all devices, password change
+   or reset, deactivation, deletion) or the username changes (the registry is
+   keyed by username): an already-open socket would otherwise keep receiving
+   DMs/notifications, and keep acting under that name, indefinitely.
+   Clients whose session is still valid simply reconnect."
+  [username]
+  (doseq [[cid sink] (get @registry username)]
+    (try (-close! sink) (catch Throwable _ nil))
+    (unregister! username cid)))
+
 (defn- send-to-sink! [username conn-id sink text]
   (try (-send! sink text) true
        (catch Throwable t
@@ -155,21 +167,53 @@
         {:online     on
          :lastActive (if on (instant->str (Date.)) (instant->str (:user/last-active-at u)))}))))
 
+(defn- blocked-either?
+  "Block in either direction (web.accounts, resolved at runtime)."
+  [db a b]
+  (boolean (and a b
+                (when-let [f (resolve-optional 'web.accounts/blocked-either?)]
+                  (try (f db a b) (catch Throwable _ false))))))
+
+(defn- share-conversation? [db a b]
+  (some? (d/q '[:find ?c . :in $ ?a ?b
+                :where [?c :conversation/participants ?a] [?c :conversation/participants ?b]]
+              db a b)))
+
+(defn presence-visible?
+  "May `viewer-e` see `target-e`'s online status / last active time?
+   Instagram's rule: a user's activity status is shown to accounts they
+   follow and to people they have a conversation with; never across a block.
+   (Hiding it entirely is handled by `presence` / activity-hidden?.)"
+  [db viewer-e target-e]
+  (boolean
+   (and viewer-e target-e
+        (or (= viewer-e target-e)
+            (and (not (blocked-either? db viewer-e target-e))
+                 (or (share-conversation? db viewer-e target-e)
+                     (contains? (set (map :db/id (:user/follows (d/entity db target-e)))) viewer-e)))))))
+
 (defn with-presence
-  "Adds :online/:lastActive to an author-dto-like map for user entity `u`."
-  [db dto u]
-  (if-let [p (and dto (presence db u))] (merge dto p) dto))
+  "Adds :online/:lastActive to an author-dto-like map for user entity `u`.
+   With `viewer-e`, only when the viewer may see it (no blocks)."
+  ([db dto u]
+   (if-let [p (and dto (presence db u))] (merge dto p) dto))
+  ([db viewer-e dto u]
+   (if (and u (not (blocked-either? db viewer-e (:db/id u))))
+     (with-presence db dto u)
+     dto)))
 
 (defn- contacts
-  "Usernames that share a DM conversation with `username`."
+  "Usernames that share a DM conversation with `username` (minus blocks)."
   [db username]
   (when-let [e (user-e db username)]
-    (d/q '[:find [?un ...] :in $ ?me
-           :where [?c :conversation/participants ?me]
-           [?c :conversation/participants ?o]
-           [(!= ?o ?me)]
-           [?o :user/username ?un]]
-         db e)))
+    (->> (d/q '[:find ?o ?un :in $ ?me
+                :where [?c :conversation/participants ?me]
+                [?c :conversation/participants ?o]
+                [(!= ?o ?me)]
+                [?o :user/username ?un]]
+              db e)
+         (remove (fn [[o _]] (blocked-either? db e o)))
+         (map second))))
 
 (defn- broadcast-presence! [username online]
   (try
@@ -185,14 +229,19 @@
                                      :lastActive (instant->str (Date.))}))))))
     (catch Throwable t (log "presence broadcast failed:" (.getMessage t)))))
 
-(defn- handle-presence [req]
-  (if (me req)
+(defn- handle-presence
+  "GET /api/presence?users=a,b — only for users whose status the viewer may
+   see (presence-visible?); others come back as null, like hidden status."
+  [req]
+  (if-let [un-me (me req)]
     (let [db  (ddb)
+          me-e (user-e db un-me)
           uns (->> (str/split (str (get-in req [:query-params "users"])) #",")
                    (map str/trim) (remove empty?) (take 100))]
       (ok (into {} (keep (fn [un]
                            (let [u (d/entity db [:user/username un])]
-                             (when (:db/id u) [un (presence db u)]))))
+                             (when (:db/id u)
+                               [un (when (presence-visible? db me-e (:db/id u)) (presence db u))]))))
                 uns)))
     (unauth)))
 

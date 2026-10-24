@@ -537,8 +537,10 @@
 
 (defn handle-user-streak [req]
   (let [db (ddb)
-        a  (user-e db (get-in req [:path-params :username]))]
-    (if a
+        a  (user-e db (get-in req [:path-params :username]))
+        v  (some->> (me req) (user-e db))]
+    ;; blocked (either way) / deactivated accounts look like they don't exist
+    (if (and a (not (contains? (accounts/unreachable-ids db v) a)))
       (ok (dissoc (streak-info (user-days db a) (today)) :today))
       (not-found))))
 

@@ -93,6 +93,18 @@
             (into (ref-ids v :user/mutes))
             (into (d/q '[:find [?u ...] :in $ ?v :where [?u :user/blocks ?v]] db viewer-e)))))))
 
+(defn unreachable-ids
+  "Users `viewer-e` must not be able to find at all (search, leaderboards,
+   badges...): deactivated accounts and blocks in either direction. Unlike
+   hidden-author-ids, muted accounts are still reachable."
+  [db viewer-e]
+  (let [base (disj (deactivated-ids db) viewer-e)]
+    (if-not viewer-e
+      base
+      (-> base
+          (into (ref-ids (d/entity db viewer-e) :user/blocks))
+          (into (d/q '[:find [?u ...] :in $ ?v :where [?u :user/blocks ?v]] db viewer-e))))))
+
 (defn can-view-posts?
   "Can `viewer-e` (may be nil = logged out) see posts of `author-e`?
    False for private accounts the viewer doesn't follow, and for blocks."
@@ -270,6 +282,15 @@
             (let [resp (handler (assoc req :session valid))]
               (if (and resp (not (contains? resp :session))) (assoc resp :session valid) resp))))))))
 
+(defn- drop-realtime!
+  "Closes the open WebSockets of `username` (see web.realtime/disconnect-user!).
+   Resolved at runtime: this namespace must not require web.realtime."
+  [username]
+  (when username
+    (try ((requiring-resolve 'web.realtime/disconnect-user!) username)
+         (catch Throwable e
+           (println "[accounts] closing sockets failed:" (.getMessage e))))))
+
 (defn- bump-session-version-tx [u]
   [:db/add (:db/id u) :user/session-version (inc (or (:user/session-version u) 0))])
 
@@ -336,10 +357,16 @@
 
 (defonce login-attempts (atom {}))
 (def ^:private window-ms (* 15 60 1000))
-(def ^:private limits {:user 10 :ip 50 :forgot 10})
+(def ^:private limits {:user 10 :ip 50 :forgot 10 :forgot-user 5})
 
-(defn- client-ip [req]
-  (or (some-> (get-in req [:headers "x-forwarded-for"]) (str/split #",") first str/trim blank->nil)
+(defn- client-ip
+  "The address our own proxy saw. nginx appends $remote_addr to whatever
+   X-Forwarded-For the client sent, so only the LAST entry is trustworthy;
+   the first one is attacker-controlled and would let every request use a
+   fresh rate-limit bucket."
+  [req]
+  (or (some-> (get-in req [:headers "x-forwarded-for"]) (str/split #",") last str/trim blank->nil)
+      (some-> (get-in req [:headers "x-real-ip"]) str/trim blank->nil)
       (:remote-addr req)
       "unknown"))
 
@@ -371,6 +398,13 @@
       (if e (ok (me-dto db e)) (unauth)))
     (unauth)))
 
+(defn login-session
+  "Session for a fresh login. ^:recreate makes wrap-session issue a NEW
+   session id (and drop the old one), so a session id planted in the
+   victim's browser before login (session fixation) never becomes theirs."
+  [db eid]
+  (with-meta (session-for db eid) {:recreate true}))
+
 (defn- login-ok [eid status]
   (let [db   (ddb)
         u    (d/entity db eid)
@@ -378,12 +412,16 @@
                (:db-after @(d/transact s/conn [[:db/retract eid :user/deactivated? true]]))
                db)]
     (-> (jresp status (me-dto db eid))
-        (assoc :session (session-for db eid)))))
+        (assoc :session (login-session db eid)))))
 
 (defn handle-login [req]
   (let [{:keys [username email login password]} (parse-body req)
         ident (str/trim (str (or login username email "")))
-        ukey  [:user (str/lower-case ident)]
+        db    (ddb)
+        eid   (when-not (str/blank? ident) (find-user-by-login db ident))
+        ;; one bucket per account, whether it's addressed by username
+        ;; (any case) or by email
+        ukey  [:user (or eid (str/lower-case ident))]
         ikey  [:ip (client-ip req)]
         fail! (fn [msg & [extra]]
                 (record-attempt! ukey)
@@ -397,9 +435,7 @@
       (jresp 429 {:error "Too many login attempts. Please wait a few minutes and try again."})
 
       :else
-      (let [db   (ddb)
-            eid  (find-user-by-login db ident)
-            hash (:user/password-hash (entity db eid))]
+      (let [hash (:user/password-hash (entity db eid))]
         (cond
           (nil? eid)
           (fail! "User not found")
@@ -450,6 +486,7 @@
     (fn [db me-e]
       (let [{:keys [keepCurrent]} (parse-body req)
             r (tx! [(bump-session-version-tx (d/entity db me-e))])]
+        (drop-realtime! (:user/username (d/entity db me-e)))
         (if keepCurrent
           (-> (ok {:ok true}) (assoc :session (session-for (:db-after r) me-e)))
           (-> (ok {:ok true}) (assoc :session nil)))))))
@@ -475,7 +512,14 @@
 (defn deliver-reset!
   "Sends the reset link by SMTP when configured, otherwise logs it to stdout."
   [to username link]
-  (if (and to (mail/configured?))
+  (cond
+    ;; Production (SMTP configured) but the account has no email: there is
+    ;; nobody to send it to, and the link must not end up in the server logs
+    ;; (anyone who can read them could take the account over).
+    (and (nil? to) (mail/configured?))
+    (println "[password-reset] no email on file for" username "- nothing sent")
+
+    (and to (mail/configured?))
     (future
       (try
         (mail/send! {:to to
@@ -488,6 +532,8 @@
         (println "[password-reset] email sent to" to)
         (catch Exception e
           (println "[password-reset] SMTP send failed for" username ":" (.getMessage e)))))
+
+    :else
     (println (str "[password-reset] SMTP not configured — reset link for " username ": " link))))
 
 (defn create-reset-token!
@@ -515,8 +561,12 @@
       (do (record-attempt! k)
           (let [db  (ddb)
                 eid (find-user-by-login db ident)
-                u   (entity db eid)]
-            (when (:user/username u)
+                u   (entity db eid)
+                uk  [:forgot-user eid]]
+            ;; per-account cap too, so one inbox can't be flooded from many
+            ;; IPs (the response stays the same either way)
+            (when (and (:user/username u) (not (limited? uk)))
+              (record-attempt! uk)
               (let [token (create-reset-token! eid)]
                 (deliver-reset! (:user/email u) (:user/username u)
                                 (str (app-base-url) "/reset-password?token=" token)))))
@@ -547,7 +597,10 @@
                                         [:db/add (:db/id u) :user/password-hash (hashers/derive (str password))]
                                         (bump-session-version-tx u)])
                    (catch Exception _ nil))]
-        (if r (login-ok (:db/id u) 200) invalid)))))
+        (if r
+          (do (drop-realtime! (:user/username u))
+              (login-ok (:db/id u) 200))
+          invalid)))))
 
 ;; ===== ACCOUNT SETTINGS =====
 
@@ -584,9 +637,15 @@
                    (when (has? :profilePic) (set-or-retract u :user/profile-pic (blank->nil profilePic))))})))
 
 (defn- respond-me
-  "200 with the fresh me-dto; refreshes the session (username may change)."
+  "200 with the fresh me-dto; refreshes the session (username may change).
+   When the username changed, sockets registered under the old name are
+   closed (the realtime registry is keyed by username, and the old name may
+   be claimed by someone else)."
   [req eid]
-  (let [db (ddb)]
+  (let [db  (ddb)
+        old (me req)]
+    (when (and old (not= old (:user/username (d/entity db eid))))
+      (drop-realtime! old))
     (-> (ok (me-dto db eid))
         (assoc :session (merge (:session req) (session-for db eid))))))
 
@@ -636,6 +695,7 @@
           :else
           (do (tx! [[:db/add me-e :user/password-hash (hashers/derive (str newPassword))]
                     (bump-session-version-tx u)])
+              (drop-realtime! (:user/username u))
               (respond-me req me-e)))))))
 
 (defn- confirm-identity
@@ -700,21 +760,39 @@
         (if-not (confirm-identity u (parse-body req))
           (bad (if (seq (:user/password-hash u)) "Incorrect password." "Type your username to confirm."))
           (do (tx! [[:db/add me-e :user/deactivated? true] (bump-session-version-tx u)])
+              (drop-realtime! (:user/username u))
               (-> (ok {:ok true}) (assoc :session nil))))))))
+
+(defn- owned-media-ids [db eid]
+  (d/q '[:find [?m ...] :in $ ?u :where [?m :media/owner ?u]] db eid))
 
 (defn delete-user-tx
   "Tx data removing a user and the content they own: posts (with their
    comments and notifications), comments, stories, notifications, activities,
-   tracking entries, DMs, challenges, follow requests and reset tokens. Likes,
+   tracking entries, DMs, challenges, follow requests, reset tokens, auth
+   tokens, uploaded media, post reactions, vision labels and lives. Likes,
    saves, follows, blocks etc. pointing at the user disappear with
    :db/retractEntity."
   [db eid]
   (let [by   (fn [attr v] (d/q '[:find [?x ...] :in $ ?a ?v :where [?x ?a ?v]] db attr v))
         posts (by :post/author eid)
-        convs (by :conversation/participants eid)]
+        convs (by :conversation/participants eid)
+        media (owned-media-ids db eid)
+        lives (by :live/host eid)]
     (->> (concat posts
                  (mapcat #(by :comment/post %) posts)
                  (mapcat #(by :notification/post %) posts)
+                 ;; reactions/labels would otherwise survive as orphans with
+                 ;; their user/post ref retracted
+                 (mapcat #(by :reaction/post %) posts)
+                 (by :reaction/user eid)
+                 (mapcat #(by :vision-label/post %) posts)
+                 (mapcat #(by :vision-label/media %) media)
+                 (by :vision-label/user eid)
+                 media
+                 (by :auth-token/user eid)
+                 lives
+                 (mapcat #(by :notification/live %) lives)
                  (by :comment/author eid)
                  (by :story/creator eid)
                  (by :notification/recipient eid)
@@ -746,7 +824,17 @@
           (not (confirm-identity u (parse-body req)))
           (bad (if (seq (:user/password-hash u)) "Incorrect password." "Type your username to confirm."))
           :else
-          (do (tx! (delete-user-tx db me-e))
+          (do (doseq [l (d/q '[:find [?l ...] :in $ ?h :where [?l :live/host ?h] [?l :live/status :active]] db me-e)]
+                (try ((requiring-resolve 'web.live/end-live!) l)
+                     (catch Throwable e (println "[accounts] ending live failed:" (.getMessage e)))))
+              (let [db    (ddb)
+                    media (owned-media-ids db me-e)]
+                (tx! (delete-user-tx db me-e))
+                ;; uploaded files (local disk / S3) go too; read keys from
+                ;; the db value from before the retraction
+                (try ((requiring-resolve 'web.media/delete-stored-files!) db media)
+                     (catch Throwable e (println "[accounts] deleting media files failed:" (.getMessage e)))))
+              (drop-realtime! (:user/username u))
               (-> (ok {:ok true}) (assoc :session nil))))))))
 
 ;; ===== PROFILE =====
@@ -777,7 +865,11 @@
             my-follows (if me-e (ref-ids (d/entity db me-e) :user/follows) #{})
             mutual    (if (and me-e (not mine?)) (filter my-follows followers) [])
             status    (if me-e (follow-status db me-e eid) "none")
-            posts     (or (d/q '[:find (count ?p) . :in $ ?u :where [?p :post/author ?u]] db eid) 0)]
+            ;; archived posts are hidden from the grid, so they don't count
+            posts     (or (d/q '[:find (count ?p) . :in $ ?u
+                                 :where [?p :post/author ?u]
+                                 (not [?p :post/archived true])]
+                               db eid) 0)]
         (ok (merge (user-dto u)
                    {:followersCount  (count followers)
                     :followingCount  (count following)
@@ -956,6 +1048,10 @@
             (do (tx! (if (= attr :user/blocks)
                        (block-tx db me-e t-e)
                        [[:db/add me-e attr t-e]]))
+                (when (= attr :user/blocks)
+                  ;; a blocked viewer must not keep watching my live (or I theirs)
+                  (try ((requiring-resolve 'web.live/enforce-access!) (:user/username (d/entity db me-e)))
+                       (catch Throwable e (println "[accounts] live access check failed:" (.getMessage e)))))
                 (ok {:ok true}))))))))
 
 (defn- relation-remove-handler [attr]

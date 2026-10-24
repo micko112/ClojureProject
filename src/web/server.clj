@@ -16,8 +16,8 @@
             [project.leaderboard :as lb]
             [project.time :as t]
             [web.oauth :as oauth]
-            [web.http :refer [jresp parse-body me ok created bad unauth not-found
-                              instant->str ddb user-e author-dto parse-id]]
+            [web.http :refer [jresp parse-body me ok created bad unauth forbidden not-found
+                              parse-id instant->str ddb user-e author-dto]]
             [web.notifications :refer [notif-dto create-notif!]]
             [web.media :as media]
             [web.posts :as posts]
@@ -128,22 +128,48 @@
                sorted)))
     (unauth)))
 
+(defn- activity-input-error
+  "nil when duration/intensity are sane. The UI allows 1-600 minutes and
+   intensity 1-5; anything else only serves to inflate (or deflate) XP."
+  [{:keys [duration intensity]}]
+  (cond
+    (not (and (integer? duration) (<= 1 duration 1440)))
+    "Duration must be a whole number of minutes between 1 and 1440."
+    (not (and (integer? intensity) (<= 1 intensity 5)))
+    "Intensity must be a whole number between 1 and 5."
+    :else nil))
+
+(defn- activity-type-row [db type]
+  (first (d/q '[:find ?e ?xpm :in $ ?t
+                :where [?e :activity-type/key ?t]
+                [?e :activity-type/xp-per-minute ?xpm]]
+              db (keyword (str type)))))
+
+(defn- activity-xp [duration intensity xpm]
+  (long (Math/round (* (double duration) (double intensity) (double xpm)))))
+
+(defn- stored-activity-xp
+  "XP an existing activity entity granted when it was logged."
+  [act-e]
+  (activity-xp (or (:activity/duration act-e) 0) (or (:activity/intensity act-e) 0)
+               (or (-> act-e :activity/type :activity-type/xp-per-minute) 0)))
+
+(defn- xp-delta-tx [db username delta]
+  (let [cur (or (:user/xp (d/entity db [:user/username username])) 0)]
+    [:db/add [:user/username username] :user/xp (max 0 (+ cur delta))]))
+
 (defn- handle-create-activity [req]
   (if-let [username (me req)]
-    (let [{:keys [type duration intensity note startTime]} (parse-body req)
+    (let [{:keys [type duration intensity note startTime] :as body} (parse-body req)
           db (ddb)
-          type-kw (keyword type)
           u-e (user-e db username)
-          at-row (first (d/q '[:find ?e ?xpm :in $ ?t
-                               :where [?e :activity-type/key ?t]
-                               [?e :activity-type/xp-per-minute ?xpm]]
-                             db type-kw))]
-      (if-not at-row
-        (bad "Unknown activity type")
+          at-row (activity-type-row db type)]
+      (cond
+        (not at-row) (bad "Unknown activity type")
+        (activity-input-error body) (bad (activity-input-error body))
+        :else
         (let [[at-e xpm] at-row
               start   (parse-instant startTime)
-              gained  (long (Math/round (* (double duration) (double intensity) (double xpm))))
-              cur-xp  (or (:user/xp (d/entity db u-e)) 0)
               act-id  (d/tempid :db.part/user)
               tx-data (cond-> [{:db/id act-id
                                 :activity/user u-e
@@ -151,45 +177,57 @@
                                 :activity/duration (long duration)
                                 :activity/intensity (long intensity)
                                 :activity/start-time start}
-                               [:db/add [:user/username username] :user/xp (+ cur-xp gained)]]
-                        (seq note) (conj [:db/add act-id :activity/note note]))
+                               (xp-delta-tx db username (activity-xp duration intensity xpm))]
+                        (seq note) (conj [:db/add act-id :activity/note (str note)]))
               result  @(d/transact s/conn tx-data)
               new-id  (d/resolve-tempid (:db-after result) (:tempids result) act-id)]
           (created {:id (str new-id) :type type :duration duration
                     :intensity intensity :startTime startTime :note (or note "")}))))
     (unauth)))
 
-(defn- handle-update-activity [req]
+(defn- with-own-activity
+  "Runs (f db username act-id act-e) for the session user's activity at path :id."
+  [req f]
   (if-let [username (me req)]
-    (let [act-id (Long/parseLong (get-in req [:path-params :id]))
-          {:keys [type duration intensity note startTime]} (parse-body req)
-          db (ddb)
-          act-e (d/entity db act-id)
-          owner (-> act-e :activity/user :user/username)]
-      (if (not= owner username)
-        (jresp 403 {:error "Forbidden"})
-        (let [type-kw (keyword type)
-              at-e (d/q '[:find ?e . :in $ ?t :where [?e :activity-type/key ?t]] db type-kw)
-              start (parse-instant startTime)
-              tx-data (cond-> [[:db/add act-id :activity/type at-e]
-                               [:db/add act-id :activity/duration (long duration)]
-                               [:db/add act-id :activity/intensity (long intensity)]
-                               [:db/add act-id :activity/start-time start]]
-                        note (conj [:db/add act-id :activity/note note]))]
-          @(d/transact s/conn tx-data)
-          (ok {:id (str act-id) :type type :duration duration :intensity intensity :startTime startTime :note (or note "")}))))
+    (let [act-id (parse-id (get-in req [:path-params :id]))
+          db     (ddb)
+          act-e  (when act-id (d/entity db act-id))
+          owner  (some-> act-e :activity/user :user/username)]
+      (cond
+        (nil? act-id)         (bad "Invalid id")
+        (nil? owner)          (not-found)
+        (not= owner username) (forbidden)
+        :else (f db username act-id act-e)))
     (unauth)))
 
+(defn- handle-update-activity [req]
+  (with-own-activity req
+    (fn [db username act-id act-e]
+      (let [{:keys [type duration intensity note startTime] :as body} (parse-body req)
+            [at-e xpm] (activity-type-row db type)]
+        (cond
+          (not at-e) (bad "Unknown activity type")
+          (activity-input-error body) (bad (activity-input-error body))
+          :else
+          (let [delta   (- (activity-xp duration intensity xpm) (stored-activity-xp act-e))
+                tx-data (cond-> [[:db/add act-id :activity/type at-e]
+                                 [:db/add act-id :activity/duration (long duration)]
+                                 [:db/add act-id :activity/intensity (long intensity)]
+                                 [:db/add act-id :activity/start-time (parse-instant startTime)]
+                                 (xp-delta-tx db username delta)]
+                          note (conj [:db/add act-id :activity/note (str note)]))]
+            @(d/transact s/conn tx-data)
+            (ok {:id (str act-id) :type type :duration duration :intensity intensity
+                 :startTime startTime :note (or note "")})))))))
+
 (defn- handle-delete-activity [req]
-  (if-let [username (me req)]
-    (let [act-id (Long/parseLong (get-in req [:path-params :id]))
-          act-e (d/entity (ddb) act-id)
-          owner (-> act-e :activity/user :user/username)]
-      (if (not= owner username)
-        (jresp 403 {:error "Forbidden"})
-        (do @(d/transact s/conn [[:db/retractEntity act-id]])
-            (ok {:ok true}))))
-    (unauth)))
+  ;; Deleting takes back the XP the activity granted; otherwise "log a 10h
+  ;; activity, delete it, repeat" inflates :user/xp (the global leaderboard).
+  (with-own-activity req
+    (fn [db username act-id act-e]
+      @(d/transact s/conn [(xp-delta-tx db username (- (stored-activity-xp act-e)))
+                           [:db/retractEntity act-id]])
+      (ok {:ok true}))))
 
 ;; ===== TRACKING ENTRIES =====
 
@@ -368,8 +406,13 @@
     (let [filter-p (get-in req [:query-params "filter"] "global")
           db       (ddb)
           today    (LocalDate/now)
+          me-e     (user-e db username)
+          ;; blocked (either way) and deactivated accounts never show up
+          hidden   (accounts/unreachable-ids db me-e)
           lb-raw   (lb/leaderboard db :all today)
-          lb       (mapv #(lb-entry->dto db %) lb-raw)]
+          lb       (->> lb-raw
+                        (remove #(contains? hidden (user-e db (:user/username %))))
+                        (mapv #(lb-entry->dto db %)))]
       (if (= filter-p "friends")
         (let [me-e    (user-e db username)
               friends (set (map :db/id (:user/follows (d/entity db me-e))))]
@@ -381,11 +424,15 @@
 
 (defn- handle-search [req]
   (let [q  (get-in req [:query-params "q"] "")
-        db (ddb)]
+        db (ddb)
+        me-e (some->> (me req) (user-e db))]
     (if (str/blank? q)
       (ok [])
       (let [q-lower (str/lower-case q)
-            all (d/q '[:find [?e ...] :where [?e :user/username]] db)
+            ;; people who blocked you (or you blocked) and deactivated
+            ;; accounts can't be found; muted accounts can.
+            hidden  (accounts/unreachable-ids db me-e)
+            all (remove hidden (d/q '[:find [?e ...] :where [?e :user/username]] db))
             matched (filter (fn [eid]
                               (let [u (d/entity db eid)]
                                 (or (str/includes? (str/lower-case (or (:user/username u) "")) q-lower)
@@ -438,26 +485,32 @@
       (created (group-dto (:db-after result) new-id)))
     (unauth)))
 
+(defn- with-typed-id
+  "Parses path :id and calls (f db id) only when it names an entity that has
+   `attr` (so a user/post id can't be passed as a group/competition/...).
+   400 for non-numeric ids, 404 for ids of anything else."
+  [req attr f]
+  (let [id (parse-id (get-in req [:path-params :id]))
+        db (ddb)]
+    (cond
+      (nil? id) (bad "Invalid id")
+      (nil? (get (d/entity db id) attr)) (not-found)
+      :else (f db id))))
+
 (defn- handle-get-group [req]
-  (let [gid (Long/parseLong (get-in req [:path-params :id]))
-        db (ddb)
-        g (d/entity db gid)]
-    (if (:group/name g)
-      (ok (group-dto db gid))
-      (not-found))))
+  (with-typed-id req :group/name (fn [db gid] (ok (group-dto db gid)))))
 
 (defn- handle-toggle-group [req]
   (if-let [username (me req)]
-    (let [gid (Long/parseLong (get-in req [:path-params :id]))
-          db  (ddb)
-          u-e (user-e db username)
-          g   (d/entity db gid)
-          member? (some #(= (:db/id %) u-e) (:group/members g))]
-      (if member?
-        (do @(d/transact s/conn [[:db/retract gid :group/members u-e]])
-            (ok {:action "left"}))
-        (do @(d/transact s/conn [[:db/add gid :group/members u-e]])
-            (ok {:action "joined"}))))
+    (with-typed-id req :group/name
+      (fn [db gid]
+        (let [u-e (user-e db username)
+              member? (some #(= (:db/id %) u-e) (:group/members (d/entity db gid)))]
+          (if member?
+            (do @(d/transact s/conn [[:db/retract gid :group/members u-e]])
+                (ok {:action "left"}))
+            (do @(d/transact s/conn [[:db/add gid :group/members u-e]])
+                (ok {:action "joined"}))))))
     (unauth)))
 
 (defn- group-msg-dto [db mid]
@@ -472,10 +525,10 @@
 
 (defn- handle-get-group-messages [req]
   (if-let [username (me req)]
-    (let [gid (Long/parseLong (get-in req [:path-params :id]))
+    (let [gid (parse-id (get-in req [:path-params :id]))
           db  (ddb)
           u-e (user-e db username)
-          g   (d/entity db gid)]
+          g   (when gid (d/entity db gid))]
       (if-not (some #(= (:db/id %) u-e) (:group/members g))
         (jresp 403 {:error "Forbidden"})
         (let [mids (sort (d/q '[:find [?m ...] :in $ ?g :where [?m :group-message/group ?g]] db gid))]
@@ -484,11 +537,11 @@
 
 (defn- handle-send-group-message [req]
   (if-let [username (me req)]
-    (let [gid (Long/parseLong (get-in req [:path-params :id]))
+    (let [gid (parse-id (get-in req [:path-params :id]))
           {:keys [content mediaUrl]} (parse-body req)
           db  (ddb)
           u-e (user-e db username)
-          g   (d/entity db gid)]
+          g   (when gid (d/entity db gid))]
       (if-not (some #(= (:db/id %) u-e) (:group/members g))
         (jresp 403 {:error "Forbidden"})
         (let [msg-id (d/tempid :db.part/user)
@@ -545,25 +598,19 @@
     (unauth)))
 
 (defn- handle-get-competition [req]
-  (let [cid (Long/parseLong (get-in req [:path-params :id]))
-        db  (ddb)
-        e   (d/entity db cid)]
-    (if (:competition/name e)
-      (ok (comp-dto db cid))
-      (not-found))))
+  (with-typed-id req :competition/name (fn [db cid] (ok (comp-dto db cid)))))
 
 (defn- handle-toggle-competition [req]
   (if-let [username (me req)]
-    (let [cid (Long/parseLong (get-in req [:path-params :id]))
-          db  (ddb)
-          u-e (user-e db username)
-          c   (d/entity db cid)
-          member? (some #(= (:db/id %) u-e) (:competition/members c))]
-      (if member?
-        (do @(d/transact s/conn [[:db/retract cid :competition/members u-e]])
-            (ok {:action "left"}))
-        (do @(d/transact s/conn [[:db/add cid :competition/members u-e]])
-            (ok {:action "joined"}))))
+    (with-typed-id req :competition/name
+      (fn [db cid]
+        (let [u-e (user-e db username)
+              member? (some #(= (:db/id %) u-e) (:competition/members (d/entity db cid)))]
+          (if member?
+            (do @(d/transact s/conn [[:db/retract cid :competition/members u-e]])
+                (ok {:action "left"}))
+            (do @(d/transact s/conn [[:db/add cid :competition/members u-e]])
+                (ok {:action "joined"}))))))
     (unauth)))
 
 (defn- handle-join-by-code [req]
@@ -571,7 +618,8 @@
     (let [{:keys [code]} (parse-body req)
           db (ddb)
           u-e (user-e db username)
-          c-e (d/q '[:find ?c . :in $ ?code :where [?c :competition/invite-code ?code]] db code)]
+          c-e (when-not (str/blank? (str code))
+                (d/q '[:find ?c . :in $ ?code :where [?c :competition/invite-code ?code]] db (str code)))]
       (if-not c-e
         (not-found)
         (do @(d/transact s/conn [[:db/add c-e :competition/members u-e]])
@@ -579,22 +627,23 @@
     (unauth)))
 
 (defn- handle-competition-leaderboard [req]
-  (let [cid (Long/parseLong (get-in req [:path-params :id]))
-        db  (ddb)
-        c   (d/entity db cid)
-        members (map :db/id (:competition/members c))
-        start (or (:competition/start-date c) (Date. 0))
-        end   (or (:competition/end-date c) (Date.))
-        now   (LocalDate/now)
-        entries (map (fn [m-e]
-                       (let [un (:user/username (d/entity db m-e))
-                             rows (db/get-activities-in-interval db un start end)
-                             xp   (db/calculate-xp-from-rows rows)]
-                         {:username un :xp xp :rank 0}))
-                     members)
-        sorted (sort-by :xp #(compare %2 %1) entries)
-        ranked (map-indexed (fn [i e] (assoc e :rank (inc i))) sorted)]
-    (ok (vec ranked))))
+  (with-typed-id req :competition/name
+    (fn [db cid]
+      (let [c       (d/entity db cid)
+            viewer  (some->> (me req) (user-e db))
+            hidden  (accounts/unreachable-ids db viewer)
+            members (remove hidden (map :db/id (:competition/members c)))
+            start (or (:competition/start-date c) (Date. 0))
+            end   (or (:competition/end-date c) (Date.))
+            entries (map (fn [m-e]
+                           (let [un (:user/username (d/entity db m-e))
+                                 rows (db/get-activities-in-interval db un start end)
+                                 xp   (db/calculate-xp-from-rows rows)]
+                             {:username un :xp xp :rank 0}))
+                         members)
+            sorted (sort-by :xp #(compare %2 %1) entries)
+            ranked (map-indexed (fn [i e] (assoc e :rank (inc i))) sorted)]
+        (ok (vec ranked))))))
 
 (defn- handle-competition-feed
   "Newest 30 posts of the competition's members that the viewer may see
@@ -627,6 +676,8 @@
     {:id         (str eid)
      :challenger (author-dto challenger)
      :target     (author-dto target)
+     ;; the challenges page reads `challenged`
+     :challenged (author-dto target)
      :status     (name (or (:challenge/status e) :pending))
      :createdAt  (instant->str (:challenge/created-at e))
      :expiresAt  (instant->str (:challenge/expires-at e))}))
@@ -648,9 +699,11 @@
     (let [{:keys [target]} (parse-body req)
           db  (ddb)
           me-e (user-e db username)
-          t-e  (user-e db target)]
-      (if-not t-e
-        (not-found)
+          t-e  (accounts/find-user db target)]
+      (cond
+        (or (nil? t-e) (contains? (accounts/unreachable-ids db me-e) t-e)) (not-found)
+        (= t-e me-e) (bad "You can't challenge yourself")
+        :else
         (let [expires (Date. (+ (System/currentTimeMillis) (* 7 24 60 60 1000)))
               result @(d/transact s/conn [{:challenge/challenger me-e
                                             :challenge/target t-e
@@ -662,45 +715,63 @@
           (created (challenge-dto (:db-after result) cid)))))
     (unauth)))
 
-(defn- handle-respond-challenge [req]
+(def ^:private challenge-actions {"accept" :active "decline" :declined})
+
+(defn- handle-respond-challenge
+  "PUT /api/challenges/:id {action: accept|decline} — only the challenged
+   user may answer, and only while the challenge is pending."
+  [req]
   (if-let [username (me req)]
-    (let [cid (Long/parseLong (get-in req [:path-params :id]))
-          {:keys [action]} (parse-body req)
-          status (keyword action)]
-      @(d/transact s/conn [[:db/add cid :challenge/status status]])
-      (ok (challenge-dto (ddb) cid)))
+    (with-typed-id req :challenge/target
+      (fn [db cid]
+        (let [c      (d/entity db cid)
+              status (get challenge-actions (str (:action (parse-body req))))]
+          (cond
+            (not= username (-> c :challenge/target :user/username)) (forbidden)
+            (nil? status) (bad "action must be accept or decline")
+            (not= :pending (or (:challenge/status c) :pending)) (bad "This challenge was already answered")
+            :else (do @(d/transact s/conn [[:db/add cid :challenge/status status]])
+                      (ok (challenge-dto (ddb) cid)))))))
     (unauth)))
 
 ;; ===== RECAP =====
 
+(defn- recap-response [req db uname]
+  (let [period (get-in req [:query-params "period"] "week")
+        now    (LocalDate/now)
+        {:keys [start-day end-day]} (case period
+                                      "week"  (t/week-interval now)
+                                      "month" (t/month-interval now)
+                                      "year"  {:start-day (Date/from (.toInstant (.atStartOfDay (.withDayOfYear now 1) (ZoneId/of "Europe/Belgrade"))))
+                                               :end-day (Date.)}
+                                      (t/week-interval now))
+        rows   (db/get-activities-in-interval db uname start-day end-day)
+        by-day (group-by (fn [[start _ _ _ _]]
+                           (.toString (.toLocalDate (.atZone (.toInstant start) (ZoneId/of "Europe/Belgrade")))))
+                         rows)
+        daily  (into {} (map (fn [[day day-rows]]
+                               [day {:xp (db/calculate-xp-from-rows day-rows)
+                                     :count (count day-rows)}])
+                             by-day))
+        total-xp (db/calculate-xp-from-rows rows)
+        by-type (frequencies (map #(name (second %)) rows))]
+    (ok {:username uname
+         :period period
+         :totalXp total-xp
+         :activityCount (count rows)
+         :daily daily
+         :byType by-type})))
+
 (defn- handle-get-recap [req]
-  (if-let [_username (me req)]
-    (let [uname  (get-in req [:path-params :username])
-          period (get-in req [:query-params "period"] "week")
-          db     (ddb)
-          now    (LocalDate/now)
-          {:keys [start-day end-day]} (case period
-                                        "week"  (t/week-interval now)
-                                        "month" (t/month-interval now)
-                                        "year"  {:start-day (Date/from (.toInstant (.atStartOfDay (.withDayOfYear now 1) (ZoneId/of "Europe/Belgrade"))))
-                                                  :end-day (Date.)}
-                                        (t/week-interval now))
-          rows   (db/get-activities-in-interval db uname start-day end-day)
-          by-day (group-by (fn [[start _ _ _ _]]
-                             (.toString (.toLocalDate (.atZone (.toInstant start) (ZoneId/of "Europe/Belgrade")))))
-                           rows)
-          daily  (into {} (map (fn [[day day-rows]]
-                                 [day {:xp (db/calculate-xp-from-rows day-rows)
-                                       :count (count day-rows)}])
-                               by-day))
-          total-xp (db/calculate-xp-from-rows rows)
-          by-type (frequencies (map #(name (second %)) rows))]
-      (ok {:username uname
-           :period period
-           :totalXp total-xp
-           :activityCount (count rows)
-           :daily daily
-           :byType by-type}))
+  (if-let [username (me req)]
+    (let [db      (ddb)
+          me-e    (user-e db username)
+          owner-e (accounts/find-user db (get-in req [:path-params :username]))]
+      (cond
+        (or (nil? owner-e) (contains? (accounts/unreachable-ids db me-e) owner-e)) (not-found)
+        ;; activity history is as private as the account's posts
+        (not (accounts/can-view-posts? db me-e owner-e)) (forbidden)
+        :else (recap-response req db (:user/username (d/entity db owner-e)))))
     (unauth)))
 
 ;; ===== BADGES =====
@@ -719,10 +790,12 @@
    {:id "coder"        :name "Coder"          :desc "Log 5 coding sessions"    :icon "💻"}])
 
 (defn- handle-get-badges [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u     (d/entity db [:user/username uname])]
-    (if-not (:db/id u)
+  (let [db    (ddb)
+        me-e  (some->> (me req) (user-e db))
+        u-e   (accounts/find-user db (get-in req [:path-params :username]))
+        u     (when u-e (d/entity db u-e))
+        uname (:user/username u)]
+    (if (or (nil? uname) (contains? (accounts/unreachable-ids db me-e) u-e))
       (not-found)
       (let [xp       (or (:user/xp u) 0)
             act-rows (d/q '[:find ?a ?t :in $ ?u
@@ -776,7 +849,9 @@
           me-e    (d/entity db [:user/username un])
           me-eid  (:db/id me-e)
           follows (set (map :db/id (:user/follows me-e)))
-          visible (conj follows me-eid)
+          ;; deactivated, blocked and muted accounts' stories are hidden
+          hidden  (set (accounts/hidden-author-ids db me-eid))
+          visible (conj (set (remove hidden follows)) me-eid)
           active  (active-stories db)
           grouped (->> active
                        (keep (fn [sid]
@@ -831,11 +906,18 @@
 (defn- handle-view-story [req]
   (if-let [un (me req)]
     (let [sid (try (Long/parseLong (get-in req [:path-params :id])) (catch Exception _ nil))]
-      (if-not sid
-        (not-found)
-        (let [me-eid (:db/id (d/entity (ddb) [:user/username un]))]
-          @(d/transact s/conn [[:db/add sid :story/viewed-by me-eid]])
-          (ok {:ok true}))))
+      (let [db      (ddb)
+            me-eid  (user-e db un)
+            creator (when sid (some-> (d/entity db sid) :story/creator :db/id))]
+        (cond
+          (nil? creator) (not-found)
+          (and (not= creator me-eid)
+               (or (not (accounts/follows? db me-eid creator))
+                   (contains? (set (accounts/hidden-author-ids db me-eid)) creator)
+                   (not (accounts/can-view-posts? db me-eid creator))))
+          (not-found)
+          :else (do @(d/transact s/conn [[:db/add sid :story/viewed-by me-eid]])
+                    (ok {:ok true})))))
     (unauth)))
 
 (defn- handle-delete-story [req]
@@ -844,10 +926,12 @@
       (if-not sid
         (not-found)
         (let [e (d/entity (ddb) sid)]
-          (if (not= un (-> e :story/creator :user/username))
-            (unauth)
-            (do @(d/transact s/conn [[:db/retractEntity sid]])
-                (ok {:ok true}))))))
+          (cond
+            (nil? (:story/creator e)) (not-found)
+            ;; 403, not 401: the user is logged in, just not the owner
+            (not= un (-> e :story/creator :user/username)) (forbidden)
+            :else (do @(d/transact s/conn [[:db/retractEntity sid]])
+                      (ok {:ok true}))))))
     (unauth)))
 
 ;; ===== ROUTES =====
@@ -913,6 +997,94 @@
 
 ;; ===== APP =====
 
+(defn- header [req k] (get-in req [:headers k]))
+
+(defn- strip-port [h]
+  (let [h (str/lower-case (str/trim (str h)))]
+    (if (str/starts-with? h "[")
+      (str/replace h #"(\])(:\d+)?$" "$1")      ; [::1]:3000
+      (str/replace h #":\d+$" ""))))
+
+(defn- uri-host [s]
+  (try (some-> (java.net.URI. (str s)) .getHost strip-port) (catch Exception _ nil)))
+
+(defn- own-hosts
+  "Host names this request was addressed to (ports ignored: nginx's $host
+   drops them, and the dev proxy rewrites them)."
+  [req]
+  (->> (concat (some-> (header req "x-forwarded-host") (str/split #","))
+               [(header req "host") (:server-name req)
+                (uri-host (System/getenv "APP_BASE_URL"))])
+       (remove str/blank?)
+       (map strip-port)
+       set))
+
+(defn- cross-site-request?
+  "True when a browser tells us the request comes from another site. Uses
+   Sec-Fetch-Site when present, otherwise the Origin header. Requests with
+   neither (curl, tests, older same-origin GETs) are let through."
+  [req]
+  (let [site   (some-> (header req "sec-fetch-site") str/lower-case)
+        origin (header req "origin")]
+    (cond
+      (#{"cross-site" "same-site"} site) true
+      (= "same-origin" site)             false
+      (str/blank? origin)                false
+      :else (let [h (uri-host origin)]
+              (or (nil? h) (not (contains? (own-hosts req) h)))))))
+
+(defn- websocket-upgrade? [req]
+  (= "websocket" (some-> (header req "upgrade") str/lower-case)))
+
+(defn- token-auth-request?
+  "Bearer-token requests (mobile app, web.tokens) ignore the cookie session,
+   and a page on another site can't attach someone's token, so they are not
+   CSRF-able and must not be blocked (native/webview clients send odd
+   Origins)."
+  [req]
+  (or (some-> (header req "authorization") str/lower-case (str/starts-with? "bearer "))
+      (and (= "/api/ws" (:uri req))
+           (some->> (:query-string req) (re-find #"(?:^|&)access_token=[^&]+")))))
+
+(defn wrap-csrf-guard
+  "CSRF / cross-site WebSocket hijacking protection. parse-body accepts JSON
+   whatever the Content-Type, so a cross-site <form enctype=text/plain> (or a
+   no-cors fetch) could otherwise drive state-changing endpoints whenever the
+   browser sends the session cookie (same-site sibling domains, browsers that
+   ignore SameSite). The Angular app only makes same-origin requests, so it
+   is unaffected (multipart uploads included)."
+  [handler]
+  (fn [req]
+    (if (and (str/starts-with? (str (:uri req)) "/api/")
+             (or (#{:post :put :patch :delete} (:request-method req))
+                 (websocket-upgrade? req))
+             (not (token-auth-request? req))
+             (cross-site-request? req))
+      (jresp 403 {:error "Cross-site request blocked"})
+      (handler req))))
+
+(defn- https-request? [req]
+  (or (= :https (:scheme req))
+      (= "https" (some-> (header req "x-forwarded-proto") (str/split #",") first str/trim str/lower-case))))
+
+(defn- secure-cookie [c]
+  (if (and (str/starts-with? c "bb-session=") (not (re-find #"(?i);\s*Secure(;|$)" c)))
+    (str c ";Secure")
+    c))
+
+(defn wrap-secure-session-cookie
+  "Marks the session cookie Secure when the client reached us over HTTPS
+   (directly or through nginx, which sets X-Forwarded-Proto). Without it the
+   cookie would also be sent over plain http:// requests (e.g. the port-80
+   redirect), where it can be sniffed."
+  [handler]
+  (fn [req]
+    (let [resp (handler req)
+          cs   (get-in resp [:headers "Set-Cookie"])]
+      (if (and cs (https-request? req))
+        (assoc-in resp [:headers "Set-Cookie"] (mapv secure-cookie (if (string? cs) [cs] cs)))
+        resp))))
+
 (def app
   (-> (ring/ring-handler
        (ring/router routes
@@ -926,7 +1098,9 @@
       (wrap-session {:cookie-name "bb-session"
                      :cookie-attrs {:same-site :lax
                                     :http-only true
-                                    :max-age (* 60 60 24 30)}})))
+                                    :max-age (* 60 60 24 30)}})
+      (wrap-secure-session-cookie)
+      (wrap-csrf-guard)))
 
 (defonce server (atom nil))
 

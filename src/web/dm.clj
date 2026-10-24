@@ -148,7 +148,7 @@
                    (vec (keep (fn [u] (when (not= (:db/id u) me-e) (:user/username u)))
                               (:message/read-by last-e))))]
     {:id            (str conv-e)
-     :other         (rt/with-presence db (author-dto other) other)
+     :other         (rt/with-presence db me-e (author-dto other) other)
      :lastMessage   (when last-e (preview-text last-e))
      :last          (when last-e {:id        (str last-id)
                                   :content   (preview-text last-e)
