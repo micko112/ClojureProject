@@ -22,7 +22,8 @@
       <div class="pv-menu-wrap">
         <button type="button" class="pv-icon" aria-label="More options" (click)="toggleMenu($event)"><span class="material-icons">more_horiz</span></button>
         @if (menuOpen) {
-          <div class="pv-menu" (click)="$event.stopPropagation()">
+          <div class="pv-backdrop" aria-hidden="true"></div>
+          <div class="pv-menu bb-sheet" (click)="$event.stopPropagation()">
             @if (isOwner) {
               <button type="button" (click)="menuOpen = false; editOpen = true">Edit</button>
               <button type="button" (click)="archive()">{{ post.archived ? 'Show on profile' : 'Archive' }}</button>

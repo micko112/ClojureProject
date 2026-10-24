@@ -693,7 +693,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   convPreview(c: DmConversation): string {
     if (this.typing[c.id]) return 'typing…';
     const text = c.last?.content || c.lastMessage;
-    if (!text) return c.isRequest ? 'Wants to send you a message' : 'Say hi 👋';
+    if (!text) return c.isRequest ? 'Wants to send you a message' : 'Say hi';
     if (c.last?.mine) {
       if (c.seenBy?.length) return 'Seen';
       return `You: ${text}`;

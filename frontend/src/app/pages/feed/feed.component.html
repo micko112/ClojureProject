@@ -12,21 +12,21 @@
 
     @if (streak) {
       @if (!streak.postedToday && !bannerDismissed) {
-        <section class="streak-banner" aria-live="polite">
-          <div class="sb-icon"><span class="material-icons">local_fire_department</span></div>
-          <div class="sb-text">
-            <strong>Day {{ streak.nextDayNumber }} is waiting — post your progress</strong>
-            <span>{{ streakMessage(streak) }}</span>
-            <div class="sb-actions">
-              <button type="button" class="sb-btn" (click)="openComposer()">Post today's progress</button>
-              <button type="button" class="sb-later" (click)="dismissBanner()">Maybe later</button>
-            </div>
-          </div>
+        <section class="streak-row" aria-live="polite">
+          <span class="material-icons sr-flame" aria-hidden="true">local_fire_department</span>
+          <span class="sr-text" [title]="streakMessage(streak)">
+            <strong>Day {{ streak.nextDayNumber }} is waiting.</strong>{{ " " }}
+            <span class="sr-sub">{{ streakMessage(streak) }}</span>
+          </span>
+          <button type="button" class="sr-post" (click)="openComposer()">Post</button>
+          <button type="button" class="sr-close" (click)="dismissBanner()" aria-label="Maybe later" title="Maybe later">
+            <span class="material-icons" aria-hidden="true">close</span>
+          </button>
         </section>
       } @else if (streak.postedToday) {
-        <div class="streak-done">
-          <span class="material-icons">local_fire_department</span>
-          <span><strong>{{ streak.current }}-day streak</strong> · Day {{ streak.totalDays }} shared</span>
+        <div class="streak-row done">
+          <span class="material-icons sr-flame" aria-hidden="true">local_fire_department</span>
+          <span class="sr-text"><strong>{{ streak.current }}-day streak</strong>{{ " " }}<span class="sr-sub">· Day {{ streak.totalDays }} shared</span></span>
           @if (streak.best > streak.current) { <span class="sd-best">Best {{ streak.best }}</span> }
           @else if (streak.current > 1) { <span class="sd-best">Your best yet</span> }
         </div>

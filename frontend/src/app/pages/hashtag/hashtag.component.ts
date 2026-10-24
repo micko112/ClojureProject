@@ -44,7 +44,8 @@ import { thumbUrl, postMedia } from '../../components/post-card/post-utils';
     .ht-cover img { width: 100%; height: 100%; object-fit: cover; }
     h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; word-break: break-all; }
     .ht-count { font-size: 16px; margin-bottom: 14px; min-height: 24px; }
-    .ht-btn { background: #0095f6; color: #fff; border: none; border-radius: 8px; padding: 7px 16px; font-weight: 600; font-size: 14px; }
+    .ht-btn { background: var(--brand-solid); color: #fff; border: none; border-radius: 8px; height: 32px; padding: 0 16px; font-weight: 600; font-size: 14px; }
+    .ht-btn:hover { background: var(--brand-solid-hover); }
     .ht-sub { font-size: 14px; color: var(--text-muted); font-weight: 600; margin: 8px 0 12px; }
     .ht-empty { color: var(--text-muted); padding: 32px 0; text-align: center; }
     @media (max-width: 735px) {

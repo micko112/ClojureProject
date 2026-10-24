@@ -44,26 +44,35 @@ export function savePost(svc: PostService, post: Post): void {
             }
           </div>
         }
-        <button type="button" class="pa-btn" [class.liked]="post.liked" aria-label="Like"
+        <button type="button" class="pa-btn" [class.liked]="post.liked" [attr.aria-label]="post.liked ? 'Unlike' : 'Like'"
                 (pointerdown)="pressStart($event)" (pointerup)="pressEnd()" (pointerleave)="pressEnd()"
                 (contextmenu)="$event.preventDefault()" (click)="likeClick()">
-          <span class="material-icons">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
+          <svg class="pa-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16.8 3.5c-2 0-3.6 1.1-4.8 2.8-1.2-1.7-2.8-2.8-4.8-2.8A5.3 5.3 0 0 0 2 9c0 3.2 2.5 5.8 5.3 8.3 1.4 1.2 2.9 2.4 4.2 3.5a.8.8 0 0 0 1 0c1.3-1.1 2.8-2.3 4.2-3.5C19.5 14.8 22 12.2 22 9a5.3 5.3 0 0 0-5.2-5.5Z"
+                  [attr.fill]="post.liked ? 'currentColor' : 'none'"/>
+          </svg>
         </button>
       </div>
       @if (!post.commentsOff) {
         <button type="button" class="pa-btn" aria-label="Comment" (click)="comment.emit()">
-          <span class="material-icons flip">chat_bubble_outline</span>
+          <svg class="pa-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20.7 16.6A9.5 9.5 0 1 0 17 20.3L21.5 21.5Z"/>
+          </svg>
         </button>
       }
       <button type="button" class="pa-btn" aria-label="Share" (click)="share.emit()">
-        <span class="material-icons send">send</span>
+        <svg class="pa-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21.5 2.5 10.6 13.4M21.5 2.5 14.6 21.2l-4-7.8-7.9-4.2Z"/>
+        </svg>
       </button>
       @if (post.myReaction) {
         <span class="pa-mine" title="Your reaction">{{ post.myReaction }}</span>
       }
       <span class="pa-spacer"></span>
       <button type="button" class="pa-btn" [attr.aria-label]="post.saved ? 'Remove from saved' : 'Save'" (click)="save()">
-        <span class="material-icons">{{ post.saved ? 'bookmark' : 'bookmark_border' }}</span>
+        <svg class="pa-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19.5 21.5 12 14.6l-7.5 6.9V3.5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1Z" [attr.fill]="post.saved ? 'currentColor' : 'none'"/>
+        </svg>
       </button>
     </div>
     @if (reactionList.length) {
@@ -83,31 +92,32 @@ export function savePost(svc: PostService, post: Post): void {
   `,
   styles: [`
     :host { display: block; }
-    .pa-row { display: flex; align-items: center; gap: 2px; margin-left: -8px; }
-    .pa-btn { background: none; border: none; color: var(--text); padding: 8px; border-radius: 50%;
-              display: flex; align-items: center; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }
-    .pa-btn .material-icons { font-size: 26px; transition: transform .12s; }
-    .pa-btn:hover .material-icons { opacity: .6; }
-    .pa-btn:active .material-icons { transform: scale(.85); }
-    .pa-btn.liked { color: #ff3040; }
-    .pa-btn.liked .material-icons { animation: pop .35s ease; }
-    .pa-btn .flip { transform: scaleX(-1); }
-    .pa-btn .send { transform: rotate(-20deg) translateY(-2px); font-size: 24px; }
+    .pa-row { display: flex; align-items: center; height: 46px; margin-left: -8px; margin-right: -8px; }
+    .pa-btn { background: none; border: none; color: var(--text); padding: 8px; display: flex; align-items: center;
+              touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }
+    .pa-ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round;
+              stroke-linecap: round; transition: transform .12s; display: block; }
+    .pa-btn:hover { color: var(--text-muted); }
+    .pa-btn:active .pa-ico { transform: scale(.85); }
+    .pa-btn.liked, .pa-btn.liked:hover { color: var(--like); }
+    .pa-btn.liked .pa-ico { animation: pop .35s ease; }
     .pa-spacer { flex: 1; }
-    .pa-mine { font-size: 18px; margin-left: 4px; }
+    .pa-mine { font-size: 16px; margin-left: 6px; }
     .pa-like-wrap { position: relative; }
     .pa-picker { position: absolute; bottom: 100%; left: 0; display: flex; gap: 2px; padding: 6px 8px;
-                 background: var(--bg2); border: 1px solid var(--border); border-radius: 28px; z-index: 20;
-                 box-shadow: 0 6px 24px rgba(0,0,0,.35); animation: rise .18s ease; }
+                 background: var(--modal-bg); border-radius: 28px; z-index: 20;
+                 box-shadow: var(--shadow-lg); animation: rise .18s ease; }
     .pa-emoji { background: none; border: none; font-size: 26px; padding: 2px 4px; border-radius: 50%;
                 transition: transform .12s; line-height: 1.1; }
     .pa-emoji:hover { transform: scale(1.3) translateY(-3px); }
-    .pa-emoji.mine { background: var(--bg3); }
-    .pa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
-    .pa-chip { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 14px;
-               padding: 2px 9px; font-size: 13px; }
-    .pa-chip.mine { border-color: #4f8ff7; background: rgba(79,143,247,.12); }
-    .pa-likes { font-size: 14px; margin-bottom: 4px; }
+    .pa-emoji.mine { background: var(--surface2); }
+    .pa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+    .pa-chip { background: none; border: 1px solid var(--border-mid); color: var(--text); border-radius: 999px;
+               padding: 2px 8px; font-size: 12px; line-height: 18px; }
+    .pa-chip:hover { background: var(--hover-bg); }
+    .pa-chip.mine { border-color: var(--text-muted); font-weight: 600; }
+    .pa-likes { font-size: 14px; line-height: 18px; margin-bottom: 8px; }
+    .pa-likes strong { font-weight: 600; }
     .pa-first { color: var(--text-muted); }
     .pa-hidden { color: var(--text-muted); font-size: 12px; }
     @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }

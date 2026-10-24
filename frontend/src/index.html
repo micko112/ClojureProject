@@ -9,8 +9,7 @@
   <meta name="description" content="BeBetter - Post one photo or video of your progress every day. No filters needed. Only your effort counts.">
   <meta name="application-name" content="BeBetter">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000">
   <!-- iOS / installable PWA -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,23 +23,27 @@
   <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- UI text uses the system font stack (like Instagram); only the wordmark is a web font -->
+  <link href="https://fonts.googleapis.com/css2?family=Satisfy&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet">
   <script>
-    // Apply the theme before first paint: explicit choice wins, else follow the OS.
+    // Apply the theme before first paint: black by default for everyone;
+    // light only when the user picked it in Settings -> Theme.
     (function () {
       var t = null;
       try { t = localStorage.getItem('bb-theme'); } catch (e) {}
-      if (t !== 'light' && t !== 'dark') {
-        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-      }
+      if (t !== 'light') t = 'dark';
       document.documentElement.setAttribute('data-theme', t);
+      if (t === 'light') {
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', '#ffffff');
+      }
     })();
   </script>
   <style>
     /* Splash background while the app boots (matches manifest background_color) */
-    html { background: #0a0a0a; }
-    html[data-theme="light"] { background: #f4f4f5; }
+    html { background: #000000; }
+    html[data-theme="light"] { background: #ffffff; }
   </style>
   <!-- OAuth SDKs — replace the IDs below with your own app credentials -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>

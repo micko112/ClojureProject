@@ -44,7 +44,7 @@ import { Media } from '../../models/media.model';
     .cmp-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px;
                 border-radius: 50%; background: #fff; color: #111; display: flex; align-items: center;
                 justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: auto; outline: none; }
-    .cmp-knob:focus-visible { box-shadow: 0 0 0 3px #4f8ff7; }
+    .cmp-knob:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); }
     .cmp-knob .material-icons { font-size: 18px; margin: 0 -4px; }
   `]
 })

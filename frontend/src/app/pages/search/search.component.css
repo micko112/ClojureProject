@@ -33,14 +33,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--r-lg);
-  padding: 10px 14px;
-  transition: border-color 0.14s;
+  background: var(--bg3);
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  height: 40px;
 }
 
-.search-box:focus-within { border-color: var(--accent); }
+.search-box:focus-within { background: var(--bg3); }
 
 .search-icon {
   width: 18px; height: 18px;
@@ -165,31 +165,27 @@
 }
 
 .follow-btn {
-  padding: 7px 16px;
-  border-radius: 20px;
-  font-size: 13px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
-  background: var(--accent);
+  background: var(--brand-solid);
   color: #fff;
   border: none;
   cursor: pointer;
-  transition: all 0.14s var(--ease);
+  transition: background 0.14s var(--ease);
   flex-shrink: 0;
 }
 
-.follow-btn:hover { background: var(--accent-hover); }
+.follow-btn:hover { background: var(--brand-solid-hover); }
 
 .follow-btn.following {
-  background: var(--bg-elevated);
-  color: var(--text-2);
-  border: 1px solid var(--border-mid);
+  background: var(--btn-secondary);
+  color: var(--text);
 }
 
-.follow-btn.following:hover {
-  background: var(--red-dim);
-  color: var(--red);
-  border-color: var(--red);
-}
+.follow-btn.following:hover { background: var(--btn-secondary-hover); }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {

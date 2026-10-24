@@ -1,12 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { ThemeService } from '../../../services/theme.service';
 import { BRAND } from '../../../core/brand';
-
-/** Same localStorage key and attribute the layout's theme toggle uses. */
-const THEME_KEY = 'bb-theme';
 
 @Component({
   selector: 'app-settings-theme',
@@ -26,18 +24,13 @@ const THEME_KEY = 'bb-theme';
   `
 })
 export class ThemeSectionComponent {
-  theme: 'dark' | 'light';
+  private themes = inject(ThemeService);
+  theme: 'dark' | 'light' = this.themes.theme();
 
-  constructor() {
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(THEME_KEY); } catch { /* storage blocked */ }
-    this.theme = saved === 'light' ? 'light' : 'dark';
-  }
-
+  /** Shares ThemeService with the layout's appearance switch (dark is the default). */
   set(t: 'dark' | 'light'): void {
     this.theme = t;
-    try { localStorage.setItem(THEME_KEY, t); } catch { /* storage blocked */ }
-    document.documentElement.setAttribute('data-theme', t);
+    this.themes.set(t);
   }
 }
 

@@ -60,30 +60,31 @@ import { ListUser } from '../../models/user.model';
     </div>
   `,
   styles: [`
-    .ulm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 400; display: flex; align-items: center; justify-content: center; }
-    .ulm-sheet { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 400px; max-width: calc(100vw - 32px); height: min(560px, 80vh); display: flex; flex-direction: column; overflow: hidden; }
-    .ulm-header { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .ulm-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 400; display: flex; align-items: center; justify-content: center; }
+    .ulm-sheet { background: var(--modal-bg); border-radius: 12px; width: 400px; max-width: calc(100vw - 32px); height: min(560px, 80vh); display: flex; flex-direction: column; overflow: hidden; }
+    .ulm-header { display: flex; align-items: center; padding: 0 12px; min-height: 43px; border-bottom: 1px solid var(--modal-sep); }
     .ulm-header h3 { flex: 1; text-align: center; font-size: 16px; font-weight: 700; }
     .ulm-spacer { width: 32px; }
     .ulm-close { width: 32px; background: none; border: none; color: var(--text); display: flex; align-items: center; justify-content: center; }
-    .ulm-search { margin: 10px 16px; display: flex; align-items: center; gap: 8px; background: var(--bg3); border-radius: 8px; padding: 0 10px; color: var(--text-muted); }
+    .ulm-search { margin: 8px 16px; display: flex; align-items: center; gap: 8px; background: var(--surface2); border-radius: 8px; padding: 0 10px; color: var(--text-muted); }
     .ulm-search input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: 14px; padding: 8px 0; min-width: 0; }
     .ulm-list { flex: 1; overflow-y: auto; padding: 4px 0 12px; }
     .ulm-empty { text-align: center; color: var(--text-muted); padding: 32px 16px; font-size: 14px; }
     .ulm-row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
     .ulm-user { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .ulm-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg3); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .ulm-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--surface2); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
     .ulm-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .ulm-names { display: flex; flex-direction: column; min-width: 0; }
     .ulm-username { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ulm-lock { font-size: 13px; color: var(--text-muted); }
     .ulm-display { color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ulm-btn { background: var(--bg3); color: var(--text); border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
-    .ulm-btn.primary { background: #0095f6; color: #fff; }
+    .ulm-btn { background: var(--btn-secondary); color: var(--text); border: none; border-radius: 8px; height: 32px; padding: 0 16px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .ulm-btn.primary { background: var(--brand-solid); color: #fff; }
+    .ulm-btn.primary:hover { background: var(--brand-solid-hover); }
     .ulm-btn:disabled { opacity: .5; }
     @media (max-width: 600px) {
       .ulm-overlay { align-items: flex-end; }
-      .ulm-sheet { width: 100%; max-width: 100%; height: 85vh; border-radius: 16px 16px 0 0; border-bottom: none; }
+      .ulm-sheet { width: 100%; max-width: 100%; height: 85vh; border-radius: 12px 12px 0 0; }
     }
   `]
 })

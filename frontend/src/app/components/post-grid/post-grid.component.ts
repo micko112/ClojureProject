@@ -34,15 +34,15 @@ import { compact, likeCountOf, postMedia, thumbUrl } from '../post-card/post-uti
     </div>
   `,
   styles: [`
-    .pg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-    .pg-cell { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--bg3); border: none; padding: 0;
+    .pg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+    .pg-cell { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--surface); border: none; padding: 0;
                display: block; color: #fff; }
     .pg-cell img, .pg-cell video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pg-text { position: absolute; inset: 0; padding: 12px; display: flex; align-items: center; justify-content: center;
                text-align: center; font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden;
-               background: linear-gradient(135deg, var(--bg3), var(--bg2)); line-height: 1.35; }
+               background: var(--surface); line-height: 1.35; }
     .pg-badge { position: absolute; top: 8px; right: 8px; font-size: 20px; color: #fff; filter: drop-shadow(0 0 3px rgba(0,0,0,.6)); }
-    .pg-hover { position: absolute; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center;
+    .pg-hover { position: absolute; inset: 0; background: rgba(0,0,0,.3); color: #fff; display: flex; align-items: center;
                 justify-content: center; gap: 24px; font-weight: 700; font-size: 16px; opacity: 0; transition: opacity .15s; }
     .pg-hover > span { display: flex; align-items: center; gap: 6px; }
     .pg-hover .material-icons { font-size: 20px; }

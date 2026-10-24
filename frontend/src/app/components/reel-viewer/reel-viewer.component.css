@@ -84,7 +84,7 @@
   height: calc(100vh - 60px);
   max-height: 860px;
   margin: 30px 80px;
-  background: #111;
+  background: #000;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -187,7 +187,7 @@
   font-size: 26px;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.8));
 }
-.rv-act-btn.liked { color: #e74c3c; }
+.rv-act-btn.liked { color: #ff3040; }
 .rv-act-btn.saved { color: #fff; }
 .rv-act-btn .material-icons { font-size: 28px; }
 .rv-act-label { font-size: 11px; font-weight: 700; }
@@ -198,8 +198,8 @@
   min-width: 380px;
   display: flex;
   flex-direction: column;
-  background: #111;
-  border-left: 1px solid #222;
+  background: #000;
+  border-left: 1px solid #262626;
   overflow: hidden;
 }
 
@@ -208,7 +208,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid #262626;
   flex-shrink: 0;
 }
 
@@ -229,25 +229,25 @@
 
 .rv-c-time {
   font-size: 11px;
-  color: #666;
+  color: #a8a8a8;
 }
 
 .rv-tag {
   font-size: 11px;
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: #262626;
+  border: 1px solid #363636;
   border-radius: 12px;
   padding: 3px 10px;
-  color: #888;
+  color: #a8a8a8;
   flex-shrink: 0;
 }
 
 .rv-c-caption {
   padding: 12px 16px;
   font-size: 14px;
-  color: #ccc;
+  color: #f5f5f5;
   line-height: 1.5;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid #262626;
   flex-shrink: 0;
 }
 
@@ -267,7 +267,7 @@
 
 .rv-c-loading, .rv-c-empty {
   text-align: center;
-  color: #555;
+  color: #a8a8a8;
   font-size: 13px;
   padding: 20px 0;
 }
@@ -283,18 +283,18 @@
 .rv-c-name {
   font-size: 13px;
   font-weight: 700;
-  color: #e0e0e0;
+  color: #f5f5f5;
 }
 
 .rv-c-text {
   font-size: 13px;
-  color: #ccc;
+  color: #f5f5f5;
   word-break: break-word;
 }
 
 .rv-c-meta {
   font-size: 11px;
-  color: #555;
+  color: #a8a8a8;
   margin-top: 3px;
   display: flex;
   gap: 10px;
@@ -303,12 +303,12 @@
 .rv-c-del {
   background: none;
   border: none;
-  color: #666;
+  color: #a8a8a8;
   font-size: 11px;
   cursor: pointer;
   padding: 0;
 }
-.rv-c-del:hover { color: #e63946; }
+.rv-c-del:hover { color: #ed4956; }
 
 /* Like / save row */
 .rv-c-actions {
@@ -316,14 +316,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px 6px;
-  border-top: 1px solid #1e1e1e;
+  border-top: 1px solid #262626;
   flex-shrink: 0;
 }
 
 .rv-c-like-btn {
   background: none;
   border: none;
-  color: #aaa;
+  color: #a8a8a8;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -331,8 +331,8 @@
   font-size: 13px;
   font-weight: 600;
 }
-.rv-c-like-btn:hover { color: #e74c3c; }
-.rv-c-like-btn.liked { color: #e74c3c; }
+.rv-c-like-btn:hover { color: #ff3040; }
+.rv-c-like-btn.liked { color: #ff3040; }
 .rv-c-like-btn .material-icons { font-size: 20px; }
 
 .rv-c-right { display: flex; gap: 4px; }
@@ -340,7 +340,7 @@
 .rv-c-icon-btn {
   background: none;
   border: none;
-  color: #666;
+  color: #a8a8a8;
   cursor: pointer;
   width: 32px;
   height: 32px;
@@ -360,7 +360,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px 12px;
-  border-top: 1px solid #1e1e1e;
+  border-top: 1px solid #262626;
   flex-shrink: 0;
 }
 
@@ -368,19 +368,19 @@
   flex: 1;
   background: none;
   border: none;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #363636;
   padding: 6px 0;
-  color: #e0e0e0;
+  color: #f5f5f5;
   font-size: 14px;
   outline: none;
 }
-.rv-c-input::placeholder { color: #555; }
-.rv-c-input:focus { border-bottom-color: #666; }
+.rv-c-input::placeholder { color: #a8a8a8; }
+.rv-c-input:focus { border-bottom-color: #a8a8a8; }
 
 .rv-c-post-btn {
   background: none;
   border: none;
-  color: #3897f0;
+  color: #0095f6;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -394,7 +394,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #2a2a2a;
+  background: #363636;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -420,8 +420,8 @@
 }
 
 .rv-share-modal {
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: #262626;
+  border: 1px solid #363636;
   border-radius: 12px;
   width: 340px;
   max-width: calc(100vw - 32px);
@@ -440,10 +440,10 @@
 }
 
 .rv-share-header h3 { font-size: 15px; font-weight: 700; color: #fff; margin: 0; }
-.rv-share-header button { background: none; border: none; color: #888; cursor: pointer; font-size: 18px; }
+.rv-share-header button { background: none; border: none; color: #a8a8a8; cursor: pointer; font-size: 18px; }
 
 .rv-share-list { overflow-y: auto; padding: 8px; }
-.rv-share-empty { text-align: center; color: #555; font-size: 13px; padding: 20px; }
+.rv-share-empty { text-align: center; color: #a8a8a8; font-size: 13px; padding: 20px; }
 
 .rv-share-item {
   display: flex;
@@ -453,7 +453,7 @@
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #e0e0e0;
+  color: #f5f5f5;
   transition: background 0.15s;
 }
 .rv-share-item:hover { background: #222; }
@@ -477,7 +477,7 @@
     min-width: 0;
     max-height: 50vh;
     border-left: none;
-    border-top: 1px solid #222;
+    border-top: 1px solid #262626;
   }
 
   .rv-comments-col.rv-comments-open {

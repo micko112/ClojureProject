@@ -32,21 +32,21 @@ import { Post, PostAudience } from '../../models/post.model';
     </div>
   `,
   styles: [`
-    .pe-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 6000; display: flex;
+    .pe-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 6000; display: flex;
                   align-items: center; justify-content: center; }
-    .pe-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    .pe-box { background: var(--modal-bg); border-radius: 12px;
               width: min(480px, calc(100vw - 24px)); display: flex; flex-direction: column; overflow: hidden; }
-    .pe-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
-               border-bottom: 1px solid var(--border); font-weight: 600; }
+    .pe-head { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; min-height: 44px;
+               border-bottom: 1px solid var(--modal-sep); font-weight: 600; font-size: 16px; }
     .pe-link { background: none; border: none; color: var(--text); font-size: 14px; }
-    .pe-done { color: #4f8ff7; font-weight: 600; }
-    textarea { background: transparent; color: var(--text); border: none; border-bottom: 1px solid var(--border);
-               padding: 14px 16px; font-size: 14px; resize: vertical; outline: none; }
+    .pe-done { color: var(--link); font-weight: 600; }
+    textarea { background: transparent; color: var(--text); border: none; border-bottom: 1px solid var(--modal-sep);
+               padding: 14px 16px; font-size: 14px; resize: vertical; outline: none; font-family: inherit; }
     .pe-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
-              border-bottom: 1px solid var(--border); font-size: 14px; }
+              border-bottom: 1px solid var(--modal-sep); font-size: 14px; }
     .pe-row:last-child { border-bottom: none; }
-    select { background: var(--bg3); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
-    input[type=checkbox] { width: 18px; height: 18px; accent-color: #4f8ff7; }
+    select { background: var(--input-bg); color: var(--text); border: 1px solid var(--input-border); border-radius: 8px; padding: 6px 8px; font: inherit; }
+    input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-solid); }
   `]
 })
 export class PostEditComponent implements OnInit {

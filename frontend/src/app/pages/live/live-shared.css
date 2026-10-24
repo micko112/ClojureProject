@@ -42,7 +42,7 @@
 }
 .spacer { flex: 1; }
 .live-badge {
-  background: linear-gradient(135deg, #ff1f4b, #ff4f2b);
+  background: #ff3040;
   font-weight: 800;
   font-size: 12px;
   letter-spacing: .06em;
@@ -170,13 +170,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ff1f4b, #ff6a2b);
+  background: #ff3040;
   color: #fff;
   border: none;
-  border-radius: 28px;
-  padding: 14px 32px;
-  font-size: 16px;
-  font-weight: 800;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 24px rgba(255, 31, 75, .45);
   font-family: inherit;
