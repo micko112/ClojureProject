@@ -724,26 +724,11 @@
 ;; ===== UPLOAD =====
 
 (defn- handle-upload [req]
-  (if-let [_username (me req)]
-    (let [file-data (get-in req [:multipart-params "file"])]
-      (if-not file-data
-        (bad "No file")
-        (let [orig-name (:filename file-data)
-              ext  (last (str/split (or orig-name "file.bin") #"\."))
-              fname (str (UUID/randomUUID) "." ext)
-              dir  (uploads-dir)
-              _    (.mkdirs dir)
-              dest (io/file dir fname)]
-          (io/copy (:tempfile file-data) dest)
-          (ok {:url (str "/uploads/" fname)}))))
-    (unauth)))
+  ;; Legacy endpoint, implemented on the media storage layer (local disk or S3/R2).
+  (media/handle-legacy-upload req))
 
 (defn- handle-serve-upload [req]
-  (let [fname (get-in req [:path-params :filename])
-        f (io/file (uploads-dir) fname)]
-    (if (.exists f)
-      (resp/file-response (.getPath f))
-      {:status 404 :body "Not found"})))
+  (media/handle-serve-upload req))
 
 ;; ===== CONVERSATIONS / DMs =====
 

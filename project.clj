@@ -15,7 +15,17 @@
                  [buddy/buddy-hashers "2.0.167"]
 
                  [org.clojure/tools.logging "1.3.0"]
-                 [ch.qos.logback/logback-classic "1.5.16"]]
+                 [ch.qos.logback/logback-classic "1.5.16"]
+
+                 ;; Media pipeline: S3-compatible storage (Cloudflare R2 / AWS S3 / MinIO)
+                 [software.amazon.awssdk/s3 "2.31.78" :exclusions [software.amazon.awssdk/netty-nio-client
+                                                                   software.amazon.awssdk/apache-client]]
+                 [software.amazon.awssdk/url-connection-client "2.31.78"]
+                 ;; Media pipeline: image decoding/resizing/EXIF
+                 [net.coobird/thumbnailator "0.4.20"]
+                 [com.drewnoakes/metadata-extractor "2.19.0"]
+                 [com.twelvemonkeys.imageio/imageio-jpeg "3.12.0"]
+                 [com.twelvemonkeys.imageio/imageio-webp "3.12.0"]]
 
   :source-paths ["src"]
   :test-paths ["test"]
