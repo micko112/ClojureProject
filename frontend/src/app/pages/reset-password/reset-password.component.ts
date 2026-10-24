@@ -61,7 +61,7 @@ export class ResetPasswordComponent {
     this.loading = true;
     this.error = '';
     this.auth.resetPassword(this.token, this.password).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => this.router.navigate(['/feed']),
       error: e => {
         this.loading = false;
         this.error = e?.error?.error || 'Something went wrong.';

@@ -38,7 +38,7 @@ export class LoginComponent implements AfterViewInit {
   seedUsers = ['Micko', 'Uros', 'Milan', 'Pavel', 'Toda', 'Vule'];
 
   constructor(private auth: AuthService, private router: Router, route: ActivatedRoute) {
-    if (this.auth.isLoggedIn()) this.router.navigate(['/dashboard']);
+    if (this.auth.isLoggedIn()) this.router.navigate(['/feed']);
     const q = route.snapshot.queryParamMap;
     if (q.get('mode') === 'register') this.mode = 'register';
     if (q.get('reason') === 'deleted') this.info = 'Your account was deleted.';
@@ -76,7 +76,7 @@ export class LoginComponent implements AfterViewInit {
     this.oauthLoading = true;
     this.error = '';
     this.auth.loginWithOAuth('/api/oauth/google', { idToken }).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => this.router.navigate(['/feed']),
       error: e => { this.oauthLoading = false; this.error = e?.error?.error || 'Google login failed.'; }
     });
   }
@@ -89,7 +89,7 @@ export class LoginComponent implements AfterViewInit {
     FB.login((response: any) => {
       if (response.authResponse?.accessToken) {
         this.auth.loginWithOAuth('/api/oauth/facebook', { accessToken: response.authResponse.accessToken }).subscribe({
-          next: () => this.router.navigate(['/dashboard']),
+          next: () => this.router.navigate(['/feed']),
           error: e => { this.oauthLoading = false; this.error = e?.error?.error || 'Facebook login failed.'; }
         });
       } else {
@@ -136,7 +136,7 @@ export class LoginComponent implements AfterViewInit {
       next: () => {
         const dest = (this.mode === 'register' && !localStorage.getItem('bb-onboarded'))
           ? '/onboarding'
-          : '/dashboard';
+          : '/feed';
         this.router.navigate([dest]);
       },
       error: (e) => {

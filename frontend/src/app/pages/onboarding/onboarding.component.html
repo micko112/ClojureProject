@@ -1,52 +1,117 @@
-<div class="onboarding">
+<main class="onboarding">
   <div class="ob-card">
-    <div class="ob-progress">
+    <div class="ob-progress" role="progressbar" aria-label="Onboarding progress" [attr.aria-valuenow]="progress" aria-valuemin="0" aria-valuemax="100">
       <div class="progress-bar" [style.width.%]="progress"></div>
     </div>
 
-    <div class="ob-content">
-      <span class="ob-icon material-icons">{{ step.icon }}</span>
-      <h2>{{ step.title }}</h2>
-      <p>{{ step.subtitle }}</p>
-
-      @if (step.hasForm) {
-        <div class="ob-form">
-          <input
-            type="text"
-            [(ngModel)]="displayName"
-            placeholder="Display name (npr. Micko)"
-            maxlength="40"
-          />
-          <textarea
-            [(ngModel)]="bio"
-            placeholder="Kratko o sebi (opcionalno)"
-            rows="3"
-            maxlength="160"
-          ></textarea>
-        </div>
+    <div class="ob-content" [attr.data-step]="step.id">
+      @switch (step.id) {
+        @case ('welcome') {
+          <div class="ob-logo"><span class="bb-wordmark">{{ brand.name }}</span><span class="bb-wordmark-dot"></span></div>
+          <h1>Welcome. You're in the right place.</h1>
+          <p class="ob-lead">Post one photo or video of your progress every day. No filters needed. Only your effort counts.</p>
+          <ul class="ob-principles">
+            <li><span class="material-icons-outlined" aria-hidden="true">wb_twilight</span><span><strong>Day 1 is welcome here.</strong> Everyone starts somewhere.</span></li>
+            <li><span class="material-icons-outlined" aria-hidden="true">trending_up</span><span><strong>Progress, not perfection.</strong> Messy, real and small all count.</span></li>
+            <li><span class="material-icons-outlined" aria-hidden="true">favorite</span><span><strong>Missed a day?</strong> No guilt. Just post the next one.</span></li>
+          </ul>
+        }
+        @case ('goals') {
+          <span class="ob-icon material-icons-outlined" aria-hidden="true">flag</span>
+          <h2>What are you working on?</h2>
+          <p>Pick a few. We'll use them to show you people on a similar path. You can change this anytime.</p>
+          <div class="chips" role="group" aria-label="Goals and interests">
+            @for (i of interests; track i.id) {
+              <button type="button" class="chip" [class.on]="picked().has(i.id)" [attr.aria-pressed]="picked().has(i.id)" (click)="toggleInterest(i.id)">
+                <span class="material-icons-outlined" aria-hidden="true">{{ picked().has(i.id) ? 'check' : i.icon }}</span>{{ i.label }}
+              </button>
+            }
+          </div>
+        }
+        @case ('profile') {
+          <span class="ob-icon material-icons-outlined" aria-hidden="true">badge</span>
+          <h2>How should we call you?</h2>
+          <p>A name and a line about your journey help friends find you.</p>
+          <div class="ob-form">
+            <label class="sr-only" for="ob-name">Display name</label>
+            <input id="ob-name" type="text" [(ngModel)]="displayName" placeholder="Display name" maxlength="40" />
+            <label class="sr-only" for="ob-bio">Bio</label>
+            <textarea id="ob-bio" [(ngModel)]="bio" placeholder="e.g. Learning to run 5K, one day at a time (optional)" rows="3" maxlength="160"></textarea>
+          </div>
+        }
+        @case ('people') {
+          <span class="ob-icon material-icons-outlined" aria-hidden="true">group_add</span>
+          <h2>People on a similar path</h2>
+          <p>Following others makes showing up easier. Cheer them on, and they'll cheer you on.</p>
+          <div class="people">
+            @if (suggestedLoading()) {
+              @for (k of [0,1,2]; track k) {
+                <div class="person"><span class="bb-skeleton bb-skeleton-circle" style="width:44px;height:44px"></span>
+                  <span style="flex:1"><span class="bb-skeleton bb-skeleton-text" style="width:50%"></span><span class="bb-skeleton bb-skeleton-text" style="width:30%"></span></span></div>
+              }
+            } @else if (!suggested().length) {
+              <p class="people-empty">You're one of the first here — that's exciting. Invite a friend and start your streaks together.</p>
+            } @else {
+              @for (u of suggested(); track u.username) {
+                <div class="person">
+                  <span class="bb-avatar bb-avatar-md">
+                    @if (u.profilePic) { <img [src]="u.profilePic" alt="" /> } @else { <span>{{ initials(u) }}</span> }
+                  </span>
+                  <span class="person-text">
+                    <strong>{{ u.username }}</strong>
+                    <span>{{ u.reason || u.displayName || 'Posting progress' }}</span>
+                  </span>
+                  @if (followed().has(u.username)) {
+                    <button class="bb-btn bb-btn--secondary bb-btn--sm" (click)="toggleFollow(u)">Following</button>
+                  } @else {
+                    <button class="bb-btn bb-btn--primary bb-btn--sm" (click)="toggleFollow(u)" [attr.aria-label]="'Follow ' + u.username">Follow</button>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+        @case ('first') {
+          <span class="ob-icon day1" aria-hidden="true">1</span>
+          <h2>Ready for Day 1?</h2>
+          <p>Your first post doesn't need to be impressive. Your running shoes, your notebook, one push-up — anything that shows you showed up.</p>
+          <div class="ob-first-actions">
+            <button class="bb-btn bb-btn--primary bb-btn--lg bb-btn--block" (click)="finish(true)" [disabled]="saving">
+              <span class="material-icons" aria-hidden="true">add_a_photo</span> Post my Day 1
+            </button>
+            <button class="bb-btn bb-btn--ghost bb-btn--block" (click)="finish(false)" [disabled]="saving">I'll post later</button>
+          </div>
+        }
       }
     </div>
 
-    <div class="ob-footer">
-      <button class="ob-skip" (click)="skip()">Preskoči</button>
-      <div class="ob-nav">
-        @if (currentStep > 0) {
-          <button class="ob-back" (click)="prev()">
-            <span class="material-icons md-18">arrow_back</span>
-            Nazad
+    @if (!isLast) {
+      <div class="ob-footer">
+        <button class="ob-skip" (click)="skip()">Skip</button>
+        <div class="ob-nav">
+          @if (currentStep > 0) {
+            <button class="bb-btn bb-btn--outline" (click)="prev()">
+              <span class="material-icons" aria-hidden="true">arrow_back</span> Back
+            </button>
+          }
+          <button class="bb-btn bb-btn--primary" (click)="next()">
+            {{ currentStep === 0 ? "Let's start" : 'Next' }}
+            <span class="material-icons" aria-hidden="true">arrow_forward</span>
           </button>
-        }
-        <button class="ob-next" (click)="next()" [disabled]="saving">
-          {{ isLast ? (saving ? 'Čuvanje...' : 'Završi') : 'Dalje' }}
-          @if (!isLast) { <span class="material-icons md-18">arrow_forward</span> }
+        </div>
+      </div>
+    } @else {
+      <div class="ob-footer single">
+        <button class="bb-btn bb-btn--outline" (click)="prev()">
+          <span class="material-icons" aria-hidden="true">arrow_back</span> Back
         </button>
       </div>
-    </div>
+    }
 
-    <div class="ob-steps">
+    <div class="ob-steps" aria-hidden="true">
       @for (s of steps; track s.id; let i = $index) {
         <div class="ob-dot" [class.active]="i === currentStep" [class.done]="i < currentStep"></div>
       }
     </div>
   </div>
-</div>
+</main>

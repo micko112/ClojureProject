@@ -1,142 +1,271 @@
-<div class="app-shell">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">BeBetter</div>
+<a class="skip-link" href="#main-content">Skip to content</a>
 
-    <div class="sidebar-search">
-      <input
-        type="text"
-        placeholder="Search..."
-        [(ngModel)]="searchQuery"
-        (input)="onSearchInput()"
-        (keydown.enter)="onSearchEnter()"
-        (blur)="closeSearchDrop()"
-      />
-      @if (showSearchDrop && searchResults.length) {
-        <div class="search-dropdown">
-          @for (u of searchResults; track u.username) {
-            <div class="search-item" (mousedown)="selectResult(u)">
-              <div class="search-avatar">
-                @if (u.profilePic) { <img [src]="u.profilePic" alt="" /> }
-                @else { <span>{{ u.username.charAt(0).toUpperCase() }}</span> }
-              </div>
-              <span>{{ u.displayName || u.username }}</span>
-              <span class="search-username">{{ '@' + u.username }}</span>
-            </div>
-          }
-        </div>
-      }
-    </div>
+<div class="shell" [class.reels-mode]="isReels()" [class.panel-open]="panel() !== null">
 
-    <nav class="sidebar-nav">
-      <a routerLink="/dashboard" routerLinkActive="active">
-        <span class="nav-icon material-icons">dashboard</span>
-        <span class="nav-label">Dashboard</span>
-      </a>
-      <a routerLink="/feed" routerLinkActive="active">
-        <span class="nav-icon material-icons">home</span>
-        <span class="nav-label">Feed</span>
-      </a>
-      <a routerLink="/leaderboard" routerLinkActive="active">
-        <span class="nav-icon material-icons">emoji_events</span>
-        <span class="nav-label">Leaderboard</span>
-      </a>
-      <a routerLink="/competitions" routerLinkActive="active">
-        <span class="nav-icon material-icons">bolt</span>
-        <span class="nav-label">Competitions</span>
-      </a>
-      <a routerLink="/groups" routerLinkActive="active">
-        <span class="nav-icon material-icons">group</span>
-        <span class="nav-label">Groups</span>
-      </a>
-      <a routerLink="/chat" routerLinkActive="active" class="nav-with-badge">
-        <span class="nav-icon material-icons">forum</span>
-        <span class="nav-label">Messages</span>
-        @if (unreadMsgCount() > 0) {
-          <span class="badge">{{ unreadMsgCount() }}</span>
-        }
-      </a>
-      <a routerLink="/challenges" routerLinkActive="active">
-        <span class="nav-icon material-icons">flag</span>
-        <span class="nav-label">Challenges</span>
-      </a>
-      <a routerLink="/recap" routerLinkActive="active">
-        <span class="nav-icon material-icons">show_chart</span>
-        <span class="nav-label">Recap</span>
-      </a>
-      <a routerLink="/stats" routerLinkActive="active">
-        <span class="nav-icon material-icons">bar_chart</span>
-        <span class="nav-label">Stats</span>
-      </a>
-    </nav>
-
-    <button class="create-btn" (click)="openCreate()">+ New Post</button>
-
-    <div class="sidebar-user">
-      <a [routerLink]="profileUrl()" class="user-info">
-        <div class="user-avatar">
-          @if (avatar()) { <img [src]="avatar()" alt="" /> }
-          @else { <span>{{ initials() }}</span> }
-        </div>
-        <div class="user-details">
-          <div class="user-name">{{ user?.displayName || user?.username }}</div>
-          <div class="user-sub">{{ '@' + user?.username }}</div>
-        </div>
-      </a>
-      <div class="sidebar-actions">
-        <button class="icon-btn notif-btn" (click)="toggleNotifPanel()">
-          <span class="material-icons">notifications</span>
-          @if (unreadNotifCount() > 0) {
-            <span class="badge">{{ unreadNotifCount() }}</span>
-          }
-        </button>
-        <button class="icon-btn" (click)="toggleTheme()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-          <span class="material-icons">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
-        </button>
-        <button class="icon-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-        </button>
+  <!-- ============ Mobile top bar (< 768px) ============ -->
+  @if (!isReels()) {
+    <header class="topbar">
+      <button class="topbar-logo" (click)="toggleMore()" [attr.aria-expanded]="moreOpen()" aria-haspopup="menu"
+              [attr.aria-label]="brand.name + ' menu'">
+        <span class="bb-wordmark">{{ brand.name }}</span>
+        <span class="material-icons topbar-chevron" aria-hidden="true">expand_more</span>
+      </button>
+      <div class="topbar-actions">
+        <app-streak-badge />
+        <a routerLink="/notifications" routerLinkActive #rlaN="routerLinkActive" class="top-icon"
+           [attr.aria-label]="'Notifications' + (badges.unreadNotifications() ? ', ' + badges.unreadNotifications() + ' unread' : '')">
+          <span class="material-icons" aria-hidden="true">{{ rlaN.isActive ? 'favorite' : 'favorite_border' }}</span>
+          @if (badges.unreadNotifications() > 0) { <span class="bb-dot top-dot"></span> }
+        </a>
+        <a routerLink="/chat" class="top-icon"
+           [attr.aria-label]="'Messages' + (badges.unreadMessages() ? ', ' + badges.unreadMessages() + ' unread' : '')">
+          <span class="material-icons-outlined dm-icon" aria-hidden="true">send</span>
+          @if (badges.unreadMessages() > 0) { <span class="bb-badge top-badge">{{ badgeText(badges.unreadMessages()) }}</span> }
+        </a>
       </div>
+    </header>
+  }
+
+  <!-- ============ Sidebar (>= 768px) ============ -->
+  <div class="sidebar-space" aria-hidden="true"></div>
+  <nav class="sidebar" [class.compact]="panel() !== null" aria-label="Main navigation">
+    <a routerLink="/feed" class="side-logo" [attr.aria-label]="brand.name + ' home'">
+      <span class="logo-full"><span class="bb-wordmark">{{ brand.name }}</span><span class="bb-wordmark-dot"></span></span>
+      <span class="logo-mark" aria-hidden="true">{{ brand.name.charAt(0) }}</span>
+    </a>
+
+    <ul class="side-nav">
+      <li>
+        <a routerLink="/feed" routerLinkActive="active" #rlaHome="routerLinkActive" class="side-item" [class.active]="rlaHome.isActive && !panel()">
+          <span class="side-icon" aria-hidden="true"><span [class]="rlaHome.isActive && !panel() ? 'material-icons' : 'material-icons-outlined'">home</span></span>
+          <span class="side-label">Home</span>
+        </a>
+      </li>
+      <li>
+        <button class="side-item" [class.active]="panel() === 'search'" (click)="togglePanel('search')"
+                [attr.aria-expanded]="panel() === 'search'" aria-controls="slide-panel">
+          <span class="side-icon" aria-hidden="true"><span class="material-icons">search</span></span>
+          <span class="side-label">Search</span>
+        </button>
+      </li>
+      <li>
+        <a routerLink="/explore" routerLinkActive #rlaEx="routerLinkActive" class="side-item" [class.active]="rlaEx.isActive && !panel()">
+          <span class="side-icon" aria-hidden="true"><span [class]="rlaEx.isActive ? 'material-icons' : 'material-icons-outlined'">explore</span></span>
+          <span class="side-label">Explore</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/reels" routerLinkActive #rlaR="routerLinkActive" class="side-item" [class.active]="rlaR.isActive && !panel()">
+          <span class="side-icon" aria-hidden="true"><span [class]="rlaR.isActive ? 'material-icons' : 'material-icons-outlined'">movie</span></span>
+          <span class="side-label">Reels</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/chat" routerLinkActive #rlaM="routerLinkActive" class="side-item" [class.active]="rlaM.isActive && !panel()"
+           [attr.aria-label]="'Messages' + (badges.unreadMessages() ? ', ' + badges.unreadMessages() + ' unread' : '')">
+          <span class="side-icon" aria-hidden="true">
+            <span [class]="(rlaM.isActive ? 'material-icons' : 'material-icons-outlined') + ' dm-icon'">send</span>
+            @if (badges.unreadMessages() > 0) { <span class="bb-badge side-badge">{{ badgeText(badges.unreadMessages()) }}</span> }
+          </span>
+          <span class="side-label">Messages</span>
+        </a>
+      </li>
+      <li>
+        <button class="side-item" [class.active]="panel() === 'notifications'" (click)="togglePanel('notifications')"
+                [attr.aria-expanded]="panel() === 'notifications'" aria-controls="slide-panel"
+                [attr.aria-label]="'Notifications' + (badges.unreadNotifications() ? ', ' + badges.unreadNotifications() + ' unread' : '')">
+          <span class="side-icon" aria-hidden="true">
+            <span class="material-icons">{{ panel() === 'notifications' ? 'favorite' : 'favorite_border' }}</span>
+            @if (badges.unreadNotifications() > 0) { <span class="bb-dot side-dot"></span> }
+          </span>
+          <span class="side-label">Notifications</span>
+        </button>
+      </li>
+      <li>
+        <button class="side-item" (click)="create()">
+          <span class="side-icon" aria-hidden="true"><span class="material-icons-outlined">add_box</span></span>
+          <span class="side-label">Create</span>
+        </button>
+      </li>
+      <li>
+        <a [routerLink]="profileUrl()" class="side-item" [class.active]="isProfileActive() && !panel()">
+          <span class="side-icon" aria-hidden="true">
+            <span class="bb-avatar side-avatar" [class.ring]="isProfileActive()">
+              @if (avatar()) { <img [src]="avatar()" alt="" /> } @else { <span>{{ initials() }}</span> }
+            </span>
+          </span>
+          <span class="side-label">Profile</span>
+          <app-streak-badge class="side-streak" />
+        </a>
+      </li>
+    </ul>
+
+    <div class="side-bottom">
+      <button class="side-item" [class.active]="moreOpen() || isToolActive()" (click)="toggleMore()"
+              [attr.aria-expanded]="moreOpen()" aria-haspopup="menu">
+        <span class="side-icon" aria-hidden="true"><span class="material-icons">menu</span></span>
+        <span class="side-label">More</span>
+      </button>
     </div>
+  </nav>
+
+  <!-- ============ Slide-out panel: search / notifications ============ -->
+  @if (panel()) {
+    <div class="panel-backdrop" (click)="closePanel()" aria-hidden="true"></div>
+  }
+  <aside id="slide-panel" class="slide-panel" [class.open]="panel() !== null" role="dialog"
+         [attr.aria-hidden]="panel() === null" [attr.aria-label]="panel() === 'search' ? 'Search' : 'Notifications'">
+    @if (panel() === 'search') {
+      <div class="search-panel">
+        <h2 class="panel-title">Search</h2>
+        <div class="search-box">
+          <span class="material-icons search-glyph" aria-hidden="true">search</span>
+          <input #searchInput type="search" placeholder="Search people" aria-label="Search people"
+                 [(ngModel)]="searchQuery" (input)="onSearchInput()" (keydown.enter)="onSearchEnter()" autocomplete="off" />
+          @if (searchQuery) {
+            <button class="search-clear" (click)="clearSearch()" aria-label="Clear search">
+              <span class="material-icons" aria-hidden="true">cancel</span>
+            </button>
+          }
+        </div>
+        <div class="search-body">
+          @if (searchQuery.trim()) {
+            @if (searching && !searchResults.length) {
+              @for (r of [0,1,2,3]; track r) {
+                <div class="person-row">
+                  <span class="bb-skeleton bb-skeleton-circle" style="width:44px;height:44px"></span>
+                  <span style="flex:1"><span class="bb-skeleton bb-skeleton-text" style="width:50%"></span><span class="bb-skeleton bb-skeleton-text" style="width:30%"></span></span>
+                </div>
+              }
+            } @else if (!searchResults.length) {
+              <p class="search-hint">No one found for "{{ searchQuery.trim() }}". Try another name.</p>
+            } @else {
+              @for (u of searchResults; track u.username) {
+                <button class="person-row" (click)="selectResult(u)">
+                  <span class="bb-avatar bb-avatar-md">
+                    @if (u.profilePic) { <img [src]="u.profilePic" alt="" /> } @else { <span>{{ initials(u) }}</span> }
+                  </span>
+                  <span class="person-text">
+                    <span class="person-name">{{ u.username }}</span>
+                    <span class="person-sub">{{ u.displayName || u.username }}</span>
+                  </span>
+                </button>
+              }
+            }
+          } @else {
+            <div class="recent-head">
+              <h3>Recent</h3>
+              @if (recent().length) { <button class="link-btn" (click)="clearRecent()">Clear all</button> }
+            </div>
+            @if (!recent().length) {
+              <p class="search-hint center">No recent searches.<br>Find friends who are working on the same goals as you.</p>
+            }
+            @for (u of recent(); track u.username) {
+              <div class="person-row" role="button" tabindex="0" (click)="selectResult(u)" (keydown.enter)="selectResult(u)">
+                <span class="bb-avatar bb-avatar-md">
+                  @if (u.profilePic) { <img [src]="u.profilePic" alt="" /> } @else { <span>{{ initials(u) }}</span> }
+                </span>
+                <span class="person-text">
+                  <span class="person-name">{{ u.username }}</span>
+                  <span class="person-sub">{{ u.displayName || u.username }}</span>
+                </span>
+                <button class="bb-icon-btn recent-x" (click)="removeRecent(u.username, $event)" [attr.aria-label]="'Remove ' + u.username + ' from recent'">
+                  <span class="material-icons" aria-hidden="true">close</span>
+                </button>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+    @if (panel() === 'notifications') {
+      <app-notifications variant="panel" (closed)="closePanel()" (navigated)="closePanel()" />
+    }
   </aside>
 
-  <!-- Main content -->
-  <main class="main-content">
+  <!-- ============ Main content ============ -->
+  <main class="main-content" id="main-content" tabindex="-1">
     <router-outlet />
   </main>
 
-  <!-- Notifications panel -->
-  @if (showNotifPanel) {
-    <div class="notif-panel">
-      <div class="notif-header">
-        <h3>Notifications</h3>
-        <button (click)="showNotifPanel = false">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      @if (!notifications.length) {
-        <div class="notif-empty">No notifications yet</div>
-      }
-      @for (n of notifications; track n.id) {
-        <div class="notif-item" [class.unread]="!n.read">
-          <span class="notif-icon material-icons">{{ notifIcon(n.type) }}</span>
-          <div class="notif-body">
-            <div class="notif-msg">{{ n.message }}</div>
-            <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
+  <!-- ============ Mobile bottom tab bar (< 768px) ============ -->
+  <nav class="tabbar" aria-label="Main navigation">
+    <a routerLink="/feed" routerLinkActive #tH="routerLinkActive" aria-label="Home">
+      <span [class]="tH.isActive ? 'material-icons' : 'material-icons-outlined'" aria-hidden="true">home</span>
+    </a>
+    <a routerLink="/explore" routerLinkActive #tE="routerLinkActive" aria-label="Search and explore">
+      <span class="material-icons" [class.tab-strong]="tE.isActive" aria-hidden="true">search</span>
+    </a>
+    <button (click)="create()" aria-label="Create a progress post">
+      <span class="material-icons-outlined" aria-hidden="true">add_box</span>
+    </button>
+    <a routerLink="/reels" routerLinkActive #tR="routerLinkActive" aria-label="Reels">
+      <span [class]="tR.isActive ? 'material-icons' : 'material-icons-outlined'" aria-hidden="true">movie</span>
+    </a>
+    <a [routerLink]="profileUrl()" aria-label="Your profile">
+      <span class="bb-avatar tab-avatar" [class.ring]="isProfileActive()">
+        @if (avatar()) { <img [src]="avatar()" alt="" /> } @else { <span>{{ initials() }}</span> }
+      </span>
+    </a>
+  </nav>
+
+  <!-- ============ More menu (desktop popover / mobile bottom sheet) ============ -->
+  @if (moreOpen()) {
+    <div class="more-backdrop" (click)="closeMore()" aria-hidden="true"></div>
+    <div class="more-menu" role="menu" [attr.aria-label]="moreView() === 'tools' ? 'Your progress tools' : 'More'">
+      <div class="sheet-grip" aria-hidden="true"></div>
+      @switch (moreView()) {
+        @case ('tools') {
+          <div class="more-sub-head">
+            <button class="bb-icon-btn" (click)="moreView.set('main')" aria-label="Back"><span class="material-icons" aria-hidden="true">chevron_left</span></button>
+            <span>Your progress tools</span>
           </div>
-        </div>
+          @for (t of tools; track t.path) {
+            <a class="more-item" role="menuitem" [routerLink]="t.path" routerLinkActive="current" (click)="closeMore()">
+              <span class="material-icons-outlined" aria-hidden="true">{{ t.icon }}</span>{{ t.label }}
+            </a>
+          }
+        }
+        @case ('appearance') {
+          <div class="more-sub-head">
+            <button class="bb-icon-btn" (click)="moreView.set('main')" aria-label="Back"><span class="material-icons" aria-hidden="true">chevron_left</span></button>
+            <span>Switch appearance</span>
+            <span class="material-icons-outlined head-glyph" aria-hidden="true">{{ isDark ? 'dark_mode' : 'light_mode' }}</span>
+          </div>
+          <button class="more-item" role="menuitemcheckbox" [attr.aria-checked]="isDark" (click)="toggleTheme()">
+            Dark mode
+            <span class="switch" [class.on]="isDark" aria-hidden="true"><span></span></span>
+          </button>
+        }
+        @default {
+          <a class="more-item" role="menuitem" routerLink="/settings" (click)="closeMore()">
+            <span class="material-icons-outlined" aria-hidden="true">settings</span>Settings
+          </a>
+          <button class="more-item" role="menuitem" (click)="moreView.set('tools')">
+            <span class="material-icons-outlined" aria-hidden="true">trending_up</span>Your progress tools
+            <span class="material-icons more-chev" aria-hidden="true">chevron_right</span>
+          </button>
+          <button class="more-item" role="menuitem" (click)="moreView.set('appearance')">
+            <span class="material-icons-outlined" aria-hidden="true">{{ isDark ? 'dark_mode' : 'light_mode' }}</span>Switch appearance
+            <span class="material-icons more-chev" aria-hidden="true">chevron_right</span>
+          </button>
+          <div class="more-sep"></div>
+          <button class="more-item" role="menuitem" (click)="logout()">
+            <span class="material-icons-outlined" aria-hidden="true">logout</span>Log out
+          </button>
+        }
       }
     </div>
   }
 
-  <!-- Create post modal -->
+  <!-- Legacy create post modal (kept until the new composer is wired in) -->
   @if (showCreatePost) {
     <div class="modal-overlay" (click)="closeCreate()">
-      <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="legacy-create-title" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>New Post</h3>
-          <button (click)="closeCreate()">
-            <span class="material-icons">close</span>
+          <h3 id="legacy-create-title">Share today's progress</h3>
+          <button (click)="closeCreate()" aria-label="Close">
+            <span class="material-icons" aria-hidden="true">close</span>
           </button>
         </div>
         <div class="modal-body">
@@ -147,47 +276,35 @@
               } @else {
                 <img [src]="createMediaPreview" alt="" />
               }
-              <button class="remove-media" (click)="createMediaFile = null; createMediaPreview = ''">
-                <span class="material-icons">close</span>
+              <button class="remove-media" (click)="createMediaFile = null; createMediaPreview = ''" aria-label="Remove media">
+                <span class="material-icons" aria-hidden="true">close</span>
               </button>
             </div>
           }
           <label class="media-upload-btn">
-            <span class="material-icons">photo_camera</span> Add photo/video
+            <span class="material-icons" aria-hidden="true">photo_camera</span> Add photo/video
             <input type="file" accept="image/*,video/*" (change)="onMediaSelect($event)" hidden />
           </label>
           <textarea
             [(ngModel)]="createCaption"
-            placeholder="What did you accomplish?"
+            placeholder="What did you work on today? Small steps count."
+            aria-label="Caption"
             rows="3"
           ></textarea>
           <input
             type="text"
             [(ngModel)]="createActivityTag"
+            aria-label="Activity tag"
             placeholder="Activity tag (e.g. running, coding...)"
           />
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary" (click)="closeCreate()">Cancel</button>
-          <button class="btn-primary" (click)="submitPost()" [disabled]="creating">
-            {{ creating ? 'Posting...' : 'Post' }}
+          <button class="bb-btn bb-btn--secondary" (click)="closeCreate()">Cancel</button>
+          <button class="bb-btn bb-btn--primary" (click)="submitPost()" [disabled]="creating">
+            {{ creating ? 'Sharing...' : 'Share' }}
           </button>
         </div>
       </div>
     </div>
   }
 </div>
-
-<!-- Mobile bottom nav -->
-<nav class="bottom-nav">
-  <a routerLink="/dashboard" routerLinkActive="active"><span class="material-icons">dashboard</span></a>
-  <a routerLink="/feed" routerLinkActive="active"><span class="material-icons">home</span></a>
-  <a routerLink="/leaderboard" routerLinkActive="active"><span class="material-icons">emoji_events</span></a>
-  <a routerLink="/stats" routerLinkActive="active"><span class="material-icons">bar_chart</span></a>
-  <a routerLink="/chat" routerLinkActive="active" class="nav-with-badge">
-    <span class="material-icons">forum</span>
-    @if (unreadMsgCount() > 0) { <span class="badge-dot"></span> }
-  </a>
-  <a routerLink="/groups" routerLinkActive="active"><span class="material-icons">group</span></a>
-  <a [routerLink]="profileUrl()" routerLinkActive="active"><span class="material-icons">person</span></a>
-</nav>

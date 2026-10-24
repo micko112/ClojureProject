@@ -1,0 +1,112 @@
+<section class="activity" [class.panel]="variant === 'panel'" aria-labelledby="activity-title">
+  <header class="act-header">
+    <h2 id="activity-title">Notifications</h2>
+    @if (variant === 'panel') {
+      <button class="bb-icon-btn act-close" (click)="close()" aria-label="Close notifications">
+        <span class="material-icons" aria-hidden="true">close</span>
+      </button>
+    }
+  </header>
+
+  <div class="act-scroll">
+    @if (loading()) {
+      <div class="act-section" aria-busy="true" aria-label="Loading notifications">
+        @for (r of skeletonRows; track r) {
+          <div class="act-row skeleton-row">
+            <span class="bb-skeleton bb-skeleton-circle sk-avatar"></span>
+            <span class="sk-lines">
+              <span class="bb-skeleton bb-skeleton-text" style="width: 70%"></span>
+              <span class="bb-skeleton bb-skeleton-text" style="width: 35%"></span>
+            </span>
+          </div>
+        }
+      </div>
+    } @else if (!items().length) {
+      <div class="bb-empty act-empty">
+        <span class="bb-empty-icon"><span class="material-icons" aria-hidden="true">favorite_border</span></span>
+        <h3>Your cheer squad will show up here</h3>
+        <p>When people like, comment on or follow your progress, you'll see it here. Every small step you share counts.</p>
+      </div>
+    } @else {
+      @if (requests().length) {
+        <div class="act-section">
+          <h3 class="act-label">Follow requests</h3>
+          @for (n of requests(); track n.id) {
+            <div class="act-row" [class.unread]="n._unread">
+              <button class="act-avatar-btn" (click)="openProfile(n, $event)" [attr.aria-label]="'Open profile of ' + (n.actor?.username || 'user')">
+                <span class="bb-avatar bb-avatar-md">
+                  @if (n.actor?.profilePic) { <img [src]="n.actor!.profilePic" alt="" /> }
+                  @else { <span>{{ initials(n) }}</span> }
+                </span>
+              </button>
+              <div class="act-text" (click)="openProfile(n)">
+                <strong>{{ n.actor?.username || 'Someone' }}</strong>
+                @if (n.actor?.displayName) { <span class="act-sub">{{ n.actor!.displayName }}</span> }
+                @else { <span class="act-sub">wants to follow your progress</span> }
+              </div>
+              <div class="act-actions">
+                @switch (n._req) {
+                  @case ('accepted') {
+                    @if (isFollowing(n.actor?.username)) {
+                      <button class="bb-btn bb-btn--secondary bb-btn--sm" (click)="toggleFollow(n, $event)">Following</button>
+                    } @else {
+                      <button class="bb-btn bb-btn--primary bb-btn--sm" (click)="toggleFollow(n, $event)">Follow back</button>
+                    }
+                  }
+                  @default {
+                    <button class="bb-btn bb-btn--primary bb-btn--sm" [disabled]="n._req === 'busy'" (click)="respond(n, 'accept', $event)">Confirm</button>
+                    <button class="bb-btn bb-btn--secondary bb-btn--sm" [disabled]="n._req === 'busy'" (click)="respond(n, 'decline', $event)">Delete</button>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @for (g of groups(); track g.label) {
+        <div class="act-section">
+          <h3 class="act-label">{{ g.label }}</h3>
+          @for (n of g.items; track n.id) {
+            <div class="act-row" [class.unread]="n._unread" [class.clickable]="!!(n.postId || n.actor)"
+                 role="button" tabindex="0" (click)="open(n)" (keydown.enter)="open(n)">
+              @if (n.actor) {
+                <button class="act-avatar-btn" (click)="openProfile(n, $event)" [attr.aria-label]="'Open profile of ' + n.actor.username" tabindex="-1">
+                  <span class="bb-avatar bb-avatar-md">
+                    @if (n.actor.profilePic) { <img [src]="n.actor.profilePic" alt="" /> }
+                    @else { <span>{{ initials(n) }}</span> }
+                  </span>
+                  <span class="act-type-dot" [attr.data-type]="n.type" aria-hidden="true">
+                    <span class="material-icons">{{ icon(n.type) }}</span>
+                  </span>
+                </button>
+              } @else {
+                <span class="bb-avatar bb-avatar-md act-icon-avatar" [attr.data-type]="n.type" aria-hidden="true">
+                  <span class="material-icons">{{ icon(n.type) }}</span>
+                </span>
+              }
+              <div class="act-text">
+                @if (parts(n).name) { <strong>{{ parts(n).name }}</strong>&nbsp;}{{ parts(n).rest }}
+                <span class="act-time">{{ timeShort(n.createdAt) }}</span>
+              </div>
+              <div class="act-actions">
+                @if (isFollow(n) && n.actor) {
+                  @if (isFollowing(n.actor.username)) {
+                    <button class="bb-btn bb-btn--secondary bb-btn--sm" (click)="toggleFollow(n, $event)"
+                            [attr.aria-label]="'Unfollow ' + n.actor.username">Following</button>
+                  } @else {
+                    <button class="bb-btn bb-btn--primary bb-btn--sm" (click)="toggleFollow(n, $event)"
+                            [attr.aria-label]="'Follow back ' + n.actor.username">Follow back</button>
+                  }
+                } @else if (thumb(n)) {
+                  <img class="act-thumb" [src]="thumb(n)" alt="" />
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+      <p class="act-footer">You're all caught up. Keep showing up for yourself.</p>
+    }
+  </div>
+</section>

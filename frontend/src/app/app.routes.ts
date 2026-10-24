@@ -13,7 +13,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: 'feed', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'feed', loadComponent: () => import('./pages/feed/feed.component').then(m => m.FeedComponent) },
       { path: 'leaderboard', loadComponent: () => import('./pages/leaderboard/leaderboard.component').then(m => m.LeaderboardComponent) },
@@ -32,6 +32,8 @@ export const routes: Routes = [
       { path: 'explore/tags/:tag', loadComponent: () => import('./pages/hashtag/hashtag.component').then(m => m.HashtagComponent) },
       { path: 'settings', loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent) },
       { path: 'settings/:section', loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent) },
+      { path: 'reels', loadComponent: () => import('./pages/reels/reels.component').then(m => m.ReelsComponent) },
+      { path: 'notifications', loadComponent: () => import('./pages/notifications/notifications.component').then(m => m.NotificationsComponent) },
     ]
   },
   { path: '**', redirectTo: '' }
