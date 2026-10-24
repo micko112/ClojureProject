@@ -4,11 +4,12 @@ import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
+import { ComposerComponent } from '../components/composer/composer.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ComposerComponent],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css']
 })

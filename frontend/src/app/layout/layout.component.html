@@ -129,52 +129,11 @@
     </div>
   }
 
-  <!-- Create post modal -->
+  <!-- Create post: Instagram-style composer (components/composer) -->
   @if (showCreatePost) {
-    <div class="modal-overlay" (click)="closeCreate()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>New Post</h3>
-          <button (click)="closeCreate()">
-            <span class="material-icons">close</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          @if (createMediaPreview) {
-            <div class="media-preview">
-              @if (createMediaFile?.type?.startsWith('video/')) {
-                <video [src]="createMediaPreview" controls></video>
-              } @else {
-                <img [src]="createMediaPreview" alt="" />
-              }
-              <button class="remove-media" (click)="createMediaFile = null; createMediaPreview = ''">
-                <span class="material-icons">close</span>
-              </button>
-            </div>
-          }
-          <label class="media-upload-btn">
-            <span class="material-icons">photo_camera</span> Add photo/video
-            <input type="file" accept="image/*,video/*" (change)="onMediaSelect($event)" hidden />
-          </label>
-          <textarea
-            [(ngModel)]="createCaption"
-            placeholder="What did you accomplish?"
-            rows="3"
-          ></textarea>
-          <input
-            type="text"
-            [(ngModel)]="createActivityTag"
-            placeholder="Activity tag (e.g. running, coding...)"
-          />
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" (click)="closeCreate()">Cancel</button>
-          <button class="btn-primary" (click)="submitPost()" [disabled]="creating">
-            {{ creating ? 'Posting...' : 'Post' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    @defer (on immediate) {
+      <app-composer (closed)="closeCreate()" />
+    }
   }
 </div>
 

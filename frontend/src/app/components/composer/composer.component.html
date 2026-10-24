@@ -1,0 +1,307 @@
+<div class="cmp-overlay" (click)="requestClose()">
+  <div class="cmp" [class.wide]="step() !== 'pick'" role="dialog" aria-modal="true"
+       [attr.aria-label]="title" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <header class="cmp-head">
+      <button type="button" class="icon-btn" (click)="back()" [attr.aria-label]="step() === 'pick' ? 'Close' : 'Back'">
+        <span class="material-icons">{{ step() === 'pick' ? 'close' : 'arrow_back' }}</span>
+      </button>
+      <h2>{{ title }}</h2>
+      @if (step() === 'edit') {
+        <button type="button" class="act" (click)="next()">Next</button>
+      } @else if (step() === 'details') {
+        <button type="button" class="act" (click)="share()" [disabled]="sharing() || captionLength > captionMax">Share</button>
+      } @else {
+        <span class="act-space"></span>
+      }
+    </header>
+
+    <div class="cmp-body">
+      @switch (step()) {
+
+        <!-- Step 1: pick -->
+        @case ('pick') {
+          <div class="drop" [class.over]="dragOver()"
+               (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+            <span class="material-icons drop-icon">add_photo_alternate</span>
+            <p class="drop-title">Drag photos and videos here</p>
+            <p class="drop-sub">Up to {{ maxItems }}. Every day counts, even the small ones.</p>
+            <div class="drop-actions">
+              <label class="btn-fill">
+                Select from device
+                <input type="file" multiple accept="image/*,video/*,.heic,.heif" hidden (change)="onFileInput($event)" />
+              </label>
+              <label class="btn-ghost">
+                <span class="material-icons">photo_camera</span> Camera
+                <input type="file" accept="image/*" capture="environment" hidden (change)="onFileInput($event)" />
+              </label>
+            </div>
+            <button type="button" class="link" (click)="textOnly()">Post text only</button>
+            @if (loadingFiles()) { <p class="drop-sub">Opening…</p> }
+          </div>
+        }
+
+        <!-- Step 2: crop / reorder -->
+        @case ('edit') {
+          <div class="edit">
+            <div class="stage" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+              @if (active(); as it) {
+                <div class="frame" #frame [style.--r]="frameRatio()" [class.grab]="it.kind === 'image'"
+                     (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)"
+                     (pointerup)="onPointerUp($event)" (pointercancel)="onPointerUp($event)"
+                     (wheel)="onWheel($event)" (dblclick)="resetCrop()">
+                  @if (it.kind === 'image') {
+                    <img class="fm" [src]="it.url" [style]="mediaStyle(it)" alt="" draggable="false" />
+                  } @else {
+                    <video class="fm" [src]="it.url" [style]="mediaStyle(it)" [muted]="true" autoplay loop playsinline></video>
+                  }
+                  @if (adjusting()) { <div class="grid" aria-hidden="true"></div> }
+                  @if (layout() === 'compare') {
+                    <span class="ba-badge">{{ activeIndex() === 0 ? 'Before' : 'After' }}</span>
+                  }
+                  @if (items().length > 1) {
+                    @if (activeIndex() > 0) {
+                      <button type="button" class="nav prev" (pointerdown)="$event.stopPropagation()" (click)="select(activeIndex() - 1)" aria-label="Previous">
+                        <span class="material-icons">chevron_left</span>
+                      </button>
+                    }
+                    @if (activeIndex() < items().length - 1) {
+                      <button type="button" class="nav next" (pointerdown)="$event.stopPropagation()" (click)="select(activeIndex() + 1)" aria-label="Next">
+                        <span class="material-icons">chevron_right</span>
+                      </button>
+                    }
+                    <div class="dots">
+                      @for (x of items(); track x.id; let i = $index) { <span [class.on]="i === activeIndex()"></span> }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <aside class="tools">
+              <div class="seg" role="radiogroup" aria-label="Crop">
+                @for (a of aspects; track a.value) {
+                  <button type="button" role="radio" [attr.aria-checked]="aspect() === a.value"
+                          [class.on]="aspect() === a.value" (click)="setAspect(a.value)">
+                    <span class="material-icons">{{ a.icon }}</span>{{ a.label }}
+                  </button>
+                }
+              </div>
+
+              @if (active()?.kind === 'image') {
+                <div class="zoom">
+                  <span class="material-icons">zoom_out</span>
+                  <input type="range" min="1" [max]="maxZoom" step="0.01" [value]="active()!.zoom"
+                         (input)="setZoom($any($event.target).value)" aria-label="Zoom" />
+                  <span class="material-icons">zoom_in</span>
+                  <button type="button" class="icon-btn sm" (click)="resetCrop()" title="Reset crop" aria-label="Reset crop">
+                    <span class="material-icons">restart_alt</span>
+                  </button>
+                </div>
+                <p class="hint">Drag to reposition · pinch or scroll to zoom</p>
+              } @else if (active()) {
+                <p class="hint">Videos keep their full length; the frame shows how they'll be cropped in the feed.</p>
+              }
+
+              @if (canCompare()) {
+                <div class="switch-row">
+                  <div>
+                    <div class="sw-title"><span class="material-icons">compare</span> Before / After</div>
+                    <div class="sw-sub">Show both photos side by side with a slider</div>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" [checked]="compare()" (change)="compare.set($any($event.target).checked)" />
+                    <span></span>
+                  </label>
+                </div>
+                @if (compare()) {
+                  <button type="button" class="btn-ghost sm" (click)="swapCompare()">
+                    <span class="material-icons">swap_horiz</span> Swap before and after
+                  </button>
+                }
+              }
+
+              <div class="thumbs">
+                @for (it of items(); track it.id; let i = $index) {
+                  <div class="thumb" [class.on]="i === activeIndex()" [style.--r]="frameRatio()"
+                       draggable="true" (dragstart)="onThumbDragStart(i, $event)"
+                       (dragover)="onThumbDragOver($event)" (drop)="onThumbDrop(i, $event)"
+                       (click)="select(i)" role="button" [attr.aria-label]="'Item ' + (i + 1)">
+                    @if (it.kind === 'image') {
+                      <img class="fm" [src]="it.url" [style]="mediaStyle(it)" alt="" draggable="false" />
+                    } @else {
+                      <video class="fm" [src]="it.url" [style]="mediaStyle(it)" [muted]="true" preload="metadata" playsinline></video>
+                      <span class="material-icons kind">videocam</span>
+                    }
+                    @if (layout() === 'compare') { <span class="tlabel">{{ i === 0 ? 'Before' : 'After' }}</span> }
+                    <button type="button" class="tx" (click)="remove(i, $event)" aria-label="Remove">
+                      <span class="material-icons">close</span>
+                    </button>
+                    @if (i === activeIndex() && items().length > 1) {
+                      <div class="tmove">
+                        <button type="button" [disabled]="i === 0" (click)="move(i, -1, $event)" aria-label="Move left">
+                          <span class="material-icons">chevron_left</span>
+                        </button>
+                        <button type="button" [disabled]="i === items().length - 1" (click)="move(i, 1, $event)" aria-label="Move right">
+                          <span class="material-icons">chevron_right</span>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (items().length < maxItems) {
+                  <label class="thumb add" [style.--r]="frameRatio()" aria-label="Add more">
+                    <span class="material-icons">add</span>
+                    <input type="file" multiple accept="image/*,video/*,.heic,.heif" hidden (change)="onFileInput($event)" />
+                  </label>
+                }
+              </div>
+              <p class="hint">{{ items().length }} / {{ maxItems }} · drag or use the arrows to reorder</p>
+            </aside>
+          </div>
+        }
+
+        <!-- Step 3: details -->
+        @case ('details') {
+          <div class="details">
+            <div class="stage small">
+              @if (items().length) {
+                @if (layout() === 'compare') {
+                  <div class="ba">
+                    @for (it of items(); track it.id; let i = $index) {
+                      <div class="frame" [style.--r]="frameRatio()">
+                        <img class="fm" [src]="it.url" [style]="mediaStyle(it)" alt="" draggable="false" />
+                        <span class="ba-badge">{{ i === 0 ? 'Before' : 'After' }}</span>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  @if (active(); as it) {
+                    <div class="frame" [style.--r]="frameRatio()">
+                      @if (it.kind === 'image') {
+                        <img class="fm" [src]="it.url" [style]="mediaStyle(it)" alt="" draggable="false" />
+                      } @else {
+                        <video class="fm" [src]="it.url" [style]="mediaStyle(it)" [muted]="true" autoplay loop playsinline></video>
+                      }
+                      @if (items().length > 1) {
+                        @if (activeIndex() > 0) {
+                          <button type="button" class="nav prev" (click)="select(activeIndex() - 1)" aria-label="Previous">
+                            <span class="material-icons">chevron_left</span>
+                          </button>
+                        }
+                        @if (activeIndex() < items().length - 1) {
+                          <button type="button" class="nav next" (click)="select(activeIndex() + 1)" aria-label="Next">
+                            <span class="material-icons">chevron_right</span>
+                          </button>
+                        }
+                        <div class="dots">
+                          @for (x of items(); track x.id; let i = $index) { <span [class.on]="i === activeIndex()"></span> }
+                        </div>
+                      }
+                    </div>
+                  }
+                }
+              } @else {
+                <div class="text-card">
+                  <span class="material-icons">edit_note</span>
+                  <p>{{ caption.trim() || 'Text-only post: tell people what you did today.' }}</p>
+                  <button type="button" class="btn-ghost sm" (click)="step.set('pick')">
+                    <span class="material-icons">add_photo_alternate</span> Add photos
+                  </button>
+                </div>
+              }
+            </div>
+
+            <div class="form">
+              <div class="author">
+                <div class="avatar">
+                  @if (user?.profilePic) { <img [src]="user!.profilePic" alt="" /> }
+                  @else { <span>{{ (user?.displayName || user?.username || '?').charAt(0).toUpperCase() }}</span> }
+                </div>
+                <strong>{{ user?.username }}</strong>
+              </div>
+
+              <div class="caption">
+                <textarea [(ngModel)]="caption" rows="5" placeholder="What did you do today? Small steps count."
+                          aria-label="Caption" [class.over]="captionLength > captionMax"></textarea>
+                <div class="count" [class.over]="captionLength > captionMax">
+                  {{ captionLength.toLocaleString('en-US') }}/{{ captionMax.toLocaleString('en-US') }}
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="lbl" for="cmpTag"><span class="material-icons">sell</span> Activity</label>
+                <input id="cmpTag" type="text" [(ngModel)]="activityTag" maxlength="40"
+                       placeholder="e.g. running, coding, reading" autocomplete="off" />
+                <div class="chips">
+                  @for (t of tagSuggestions; track t) {
+                    <button type="button" class="chip" [class.on]="activityTag === t" (click)="pickTag(t)">{{ t }}</button>
+                  }
+                </div>
+              </div>
+
+              <div class="field">
+                <span class="lbl"><span class="material-icons">visibility</span> Audience</span>
+                <div class="aud" role="radiogroup" aria-label="Audience">
+                  @for (a of audiences; track a.value) {
+                    <button type="button" role="radio" [attr.aria-checked]="audience === a.value"
+                            [class.on]="audience === a.value" (click)="audience = a.value" [title]="a.hint">
+                      <span class="material-icons">{{ a.icon }}</span>
+                      <span>{{ a.label }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="switch-row">
+                <div>
+                  <div class="sw-title">Hide like count</div>
+                  <div class="sw-sub">Only you will see the total number of likes</div>
+                </div>
+                <label class="switch"><input type="checkbox" [(ngModel)]="hideLikes" /><span></span></label>
+              </div>
+              <div class="switch-row">
+                <div>
+                  <div class="sw-title">Turn off comments</div>
+                  <div class="sw-sub">You can change this later</div>
+                </div>
+                <label class="switch"><input type="checkbox" [(ngModel)]="commentsOff" /><span></span></label>
+              </div>
+
+              <button type="button" class="btn-fill wide" (click)="share()" [disabled]="sharing() || captionLength > captionMax">
+                Share
+              </button>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Upload progress -->
+    @if (sharing()) {
+      <div class="sheet" role="status" aria-live="polite">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="24" cy="24" r="20" class="bg" />
+          <circle cx="24" cy="24" r="20" class="fg" [style.stroke-dashoffset]="125.66 * (1 - progress())" />
+        </svg>
+        <div class="pct">{{ (progress() * 100).toFixed(0) }}%</div>
+        <p>{{ shareStatus() }}</p>
+        <div class="bar"><span [style.width.%]="progress() * 100"></span></div>
+        <button type="button" class="btn-ghost sm" (click)="cancelShare()">Cancel</button>
+      </div>
+    }
+
+    <!-- Discard confirmation -->
+    @if (confirmDiscard()) {
+      <div class="sheet dim" (click)="confirmDiscard.set(false)">
+        <div class="confirm" role="alertdialog" aria-label="Discard post?" (click)="$event.stopPropagation()">
+          <h3>Discard post?</h3>
+          <p>If you leave, your edits won't be saved.</p>
+          <button type="button" class="danger" (click)="discard()">Discard</button>
+          <button type="button" (click)="confirmDiscard.set(false)">Cancel</button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
