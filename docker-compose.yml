@@ -31,6 +31,18 @@ services:
       PORT: "3000"
       BEBETTER_SEED: "${BEBETTER_SEED:-false}"
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      # Media storage: leave empty to store uploads on local disk (uploads/).
+      # To test S3 locally: `docker compose --profile minio up` and set e.g.
+      #   S3_ENDPOINT=http://minio:9000 S3_BUCKET=bebetter-media
+      #   S3_ACCESS_KEY=minioadmin S3_SECRET_KEY=minioadmin
+      #   MEDIA_PUBLIC_BASE_URL=http://localhost:9000/bebetter-media
+      S3_ENDPOINT: "${S3_ENDPOINT:-}"
+      S3_BUCKET: "${S3_BUCKET:-}"
+      S3_ACCESS_KEY: "${S3_ACCESS_KEY:-}"
+      S3_SECRET_KEY: "${S3_SECRET_KEY:-}"
+      S3_REGION: "${S3_REGION:-}"
+      S3_PREFIX: "${S3_PREFIX:-}"
+      MEDIA_PUBLIC_BASE_URL: "${MEDIA_PUBLIC_BASE_URL:-}"
     volumes:
       - uploads_data:/app/uploads
     ports:
@@ -50,6 +62,39 @@ services:
     depends_on:
       - backend
 
+  # ─── Optional: MinIO (local S3-compatible storage) ─────────────────────────
+  # Started only with `docker compose --profile minio up`.
+  # Console: http://localhost:9001 (minioadmin / minioadmin)
+  minio:
+    image: minio/minio:latest
+    container_name: bebetter-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    profiles:
+      - minio
+
+  # Creates the bucket and makes objects publicly readable (like an R2 public bucket).
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb --ignore-existing local/bebetter-media;
+      mc anonymous set download local/bebetter-media;
+      "
+    profiles:
+      - minio
+
 volumes:
   datomic_data:
   uploads_data:
+  minio_data:

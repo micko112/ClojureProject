@@ -206,6 +206,66 @@ Push anything to `main`, or in Actions -> Run workflow manually. The first run t
 
 ---
 
+## Media storage (Cloudflare R2)
+
+Photos and videos go through `POST /api/media`: the backend checks the real file
+type, rotates photos upright, **strips all metadata (EXIF/GPS)**, makes
+320/640/1080 px JPEG versions and a tiny blurred placeholder, then stores them.
+
+Without configuration files are kept on the VPS disk (`uploads_data` volume) and
+served by nginx. For production use **Cloudflare R2**: S3-compatible, cheap
+storage and **no egress fees** (you don't pay for people viewing photos), served
+from Cloudflare's CDN. AWS S3 and MinIO work with the same variables.
+
+### 1. Create the bucket
+1. Cloudflare dashboard -> **R2 Object Storage** -> enable R2 (needs a payment method; 10 GB/month free).
+2. **Create bucket**, e.g. `bebetter-media`, location *Automatic*.
+
+### 2. Make it publicly readable
+Bucket -> **Settings -> Public access**:
+- **Recommended:** *Custom Domains -> Connect Domain* -> `media.bebetter.quest`
+  (the domain must be on Cloudflare DNS; the record is created for you). Enables CDN caching.
+- Quick test alternative: *R2.dev subdomain -> Allow* (rate-limited, not for production).
+
+### 3. Create an API token
+R2 overview -> **Manage R2 API Tokens -> Create API token**:
+- Permissions: **Object Read & Write**, limited to the `bebetter-media` bucket.
+- Copy the **Access Key ID**, **Secret Access Key** and the S3 endpoint
+  `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` (shown on the same page).
+
+### 4. Configure the backend
+Add to `/opt/app/.env` on the VPS:
+```bash
+S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+S3_BUCKET=bebetter-media
+S3_ACCESS_KEY=<access key id>
+S3_SECRET_KEY=<secret access key>
+S3_REGION=auto
+S3_PREFIX=media/
+MEDIA_PUBLIC_BASE_URL=https://media.bebetter.quest   # or the r2.dev URL, no trailing slash
+```
+Restart: `docker compose -f docker-compose.prod.yml up -d backend`.
+The log shows `[media] S3 storage: bucket bebetter-media ...`.
+
+### 5. Check it
+Upload a photo in the app and open it: the URL should start with
+`https://media.bebetter.quest/media/`. Objects are uploaded with
+`Cache-Control: public, max-age=31536000, immutable` (names are random UUIDs).
+Optional: in Cloudflare add a Cache Rule "Cache everything" for the media hostname.
+
+Notes
+- Old files in `uploads_data` keep working (`/uploads/...` URLs are still served).
+  To move them, copy the volume into the bucket with `rclone` and keep the volume until done.
+- AWS S3: leave `S3_ENDPOINT` empty, set `S3_REGION` (e.g. `eu-central-1`) and
+  `MEDIA_PUBLIC_BASE_URL` (bucket website or CloudFront URL).
+- Local S3 testing: `docker compose --profile minio up` starts MinIO
+  (console http://localhost:9001, `minioadmin`/`minioadmin`) with a public
+  `bebetter-media` bucket; set `S3_ENDPOINT=http://minio:9000`, `S3_REGION=us-east-1`,
+  `MEDIA_PUBLIC_BASE_URL=http://localhost:9000/bebetter-media`.
+- Upload limits: images 15 MB, videos 100 MB (nginx `client_max_body_size 120m`).
+
+---
+
 ## Rollback
 
 Pick a green run from before the bug in **Actions -> CI/CD** and click **Re-run all jobs**.
