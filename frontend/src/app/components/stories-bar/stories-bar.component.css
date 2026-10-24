@@ -213,7 +213,7 @@
 
 /* ── Live (realtime area) ─────────────────────────── */
 .ring-wrap.live-ring {
-  background: linear-gradient(45deg, var(--brand-2), var(--like));
+  background: var(--like);
 }
 .live-label {
   position: absolute;
