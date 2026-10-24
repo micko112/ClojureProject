@@ -3,6 +3,7 @@
             [database.schema-posts :as posts]
             [database.schema-accounts :as accounts]
             [database.schema-realtime :as realtime]
+            [database.schema-tokens :as tokens]
             [database.schema-vision :as vision]))
 
 (def user-schema
@@ -129,5 +130,5 @@
           group-schema group-message-schema
           competition-schema challenge-schema story-schema
           tracking-entry-schema
-          media/schema posts/schema accounts/schema realtime/schema
+          media/schema posts/schema accounts/schema realtime/schema tokens/schema
           vision/schema))

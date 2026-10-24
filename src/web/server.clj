@@ -23,6 +23,7 @@
             [web.posts :as posts]
             [web.accounts :as accounts]
             [web.realtime :as realtime]
+            [web.tokens :as tokens]
             [web.notifications :as notifications]
             [web.dm :as dm]
             [web.live :as live]
@@ -912,6 +913,7 @@
        (ring/create-default-handler))
       (wrap-multipart-params)
       (accounts/wrap-session-version)
+      (tokens/wrap-token-auth)
       (wrap-session {:cookie-name "bb-session"
                      :cookie-attrs {:same-site :lax
                                     :http-only true
