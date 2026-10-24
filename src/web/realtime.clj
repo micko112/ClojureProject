@@ -136,11 +136,14 @@
 
 (defn activity-hidden?
   "True when `user-e` chose to hide their activity status. Delegates to
-   `(web.accounts/activity-status-hidden? db user-e)` when that exists."
+   `(web.accounts/activity-status-visible? db user-e)` (or the older name
+   `activity-status-hidden?`) when the accounts area provides it."
   [db user-e]
-  (if-let [f (resolve-optional 'web.accounts/activity-status-hidden?)]
-    (try (boolean (f db user-e)) (catch Throwable _ false))
-    false))
+  (if-let [visible? (resolve-optional 'web.accounts/activity-status-visible?)]
+    (try (not (visible? db user-e)) (catch Throwable _ false))
+    (if-let [hidden? (resolve-optional 'web.accounts/activity-status-hidden?)]
+      (try (boolean (hidden? db user-e)) (catch Throwable _ false))
+      false)))
 
 (defn presence
   "{:online bool :lastActive iso-string-or-nil} for user entity `u`, or nil

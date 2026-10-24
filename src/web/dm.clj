@@ -31,9 +31,17 @@
 (defn follows? [db a-e b-e]
   (boolean (some #(= (:db/id %) b-e) (:user/follows (d/entity db a-e)))))
 
-(defn blocked-between? [db a-e b-e]
-  (or (contains? (set (accounts/hidden-author-ids db a-e)) b-e)
-      (contains? (set (accounts/hidden-author-ids db b-e)) a-e)))
+(defn- resolve-optional [sym]
+  (try (requiring-resolve sym) (catch Throwable _ nil)))
+
+(defn blocked-between?
+  "True when a-e may not message b-e: blocks/mutes in either direction, or
+   `(web.accounts/can-message? db a-e b-e)` (resolved at runtime) says no."
+  [db a-e b-e]
+  (if-let [can? (resolve-optional 'web.accounts/can-message?)]
+    (try (not (can? db a-e b-e)) (catch Throwable _ false))
+    (or (contains? (set (accounts/hidden-author-ids db a-e)) b-e)
+        (contains? (set (accounts/hidden-author-ids db b-e)) a-e))))
 
 (defn find-conv [db a-e b-e]
   (d/q '[:find ?c . :in $ ?a ?b
