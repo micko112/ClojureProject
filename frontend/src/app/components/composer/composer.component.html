@@ -232,7 +232,18 @@
 
               <div class="field">
                 <label class="lbl" for="cmpTag"><span class="material-icons">sell</span> Activity</label>
-                <input id="cmpTag" type="text" [(ngModel)]="activityTag" maxlength="40"
+                @if (suggestions().length) {
+                  <div class="looks" aria-live="polite">
+                    <span class="looks-lbl">Looks like:</span>
+                    @for (s of suggestions(); track s.activity; let first = $first) {
+                      <button type="button" class="look" [class.top]="first" [class.on]="activityTag === s.activity"
+                              (click)="pickSuggestion(s)" [attr.aria-label]="'Tag as ' + s.label + ', ' + pct(s.score) + ' percent sure'">
+                        <span aria-hidden="true">{{ s.emoji }}</span> {{ s.label }} <span class="sc">{{ pct(s.score) }}%</span>
+                      </button>
+                    }
+                  </div>
+                }
+                <input id="cmpTag" type="text" [(ngModel)]="activityTag" (ngModelChange)="onTagEdited()" maxlength="40"
                        placeholder="e.g. running, coding, reading" autocomplete="off" />
                 <div class="chips">
                   @for (t of tagSuggestions; track t) {

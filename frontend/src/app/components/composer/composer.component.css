@@ -169,6 +169,20 @@ textarea.over { border-color: var(--danger); }
 .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 .aud button { flex-direction: column; gap: 2px; padding: 10px 4px; font-size: 12px; }
 
+/* Activity suggestions from the photo ("Looks like: Running 87%") */
+.looks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; animation: looks-in .25s var(--ease, ease-out); }
+.looks-lbl { font-size: 12px; color: var(--text-muted); }
+.look {
+  display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text-muted); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer;
+}
+.look.top { color: var(--text); font-size: 13px; font-weight: 600; padding: 5px 12px; border-color: var(--border-mid, var(--border)); }
+.look.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.look .sc { opacity: .7; font-weight: 500; font-variant-numeric: tabular-nums; }
+.look:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@keyframes looks-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .looks { animation: none; } }
+
 /* Overlays */
 .sheet {
   position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
