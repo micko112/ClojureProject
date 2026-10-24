@@ -1,0 +1,6 @@
+# Downloaded model files (python scripts/download_model.py) and trained heads
+models/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
