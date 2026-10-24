@@ -1,0 +1,122 @@
+<div class="pv" [class.modal]="inModal">
+  <div class="pv-media" [style.aspect-ratio]="aspect">
+    @if (media.length) {
+      <app-media-carousel [media]="media" [layout]="post.layout" [fill]="true"
+                          sizes="(max-width: 735px) 100vw, 60vw" (tapped)="onTap()"></app-media-carousel>
+    } @else {
+      <div class="pv-note" (click)="onTap()"><app-caption [text]="post.caption" (navigate)="navigate.emit()"></app-caption></div>
+    }
+    @if (burst) { <span class="pv-burst material-icons" aria-hidden="true">favorite</span> }
+  </div>
+
+  <section class="pv-side">
+    <header class="pv-head">
+      <a class="pv-av" [routerLink]="['/profile', name]" (click)="navigate.emit()">
+        @if (post.author.profilePic) { <img [src]="post.author.profilePic" alt="" /> } @else { {{ initials(post.author) }} }
+      </a>
+      <div class="pv-who">
+        <a class="pv-name" [routerLink]="['/profile', name]" (click)="navigate.emit()">{{ name }}</a>
+        @if (post.dayNumber) { <span class="pv-day">Day {{ post.dayNumber }}</span> }
+        @if (post.activityTag) { <div class="pv-sub">{{ post.activityTag }}</div> }
+      </div>
+      <div class="pv-menu-wrap">
+        <button type="button" class="pv-icon" aria-label="More options" (click)="toggleMenu($event)"><span class="material-icons">more_horiz</span></button>
+        @if (menuOpen) {
+          <div class="pv-menu" (click)="$event.stopPropagation()">
+            @if (isOwner) {
+              <button type="button" (click)="menuOpen = false; editOpen = true">Edit</button>
+              <button type="button" (click)="archive()">{{ post.archived ? 'Show on profile' : 'Archive' }}</button>
+              <button type="button" class="danger" (click)="remove()">Delete</button>
+            } @else {
+              <button type="button" (click)="menuOpen = false; shareOpen = true">Share to…</button>
+            }
+            <button type="button" (click)="copyLink()">Copy link</button>
+            <button type="button" class="muted" (click)="menuOpen = false">Cancel</button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <div class="pv-scroll">
+      @if (post.caption && media.length) {
+        <div class="pv-row">
+          <a class="pv-av sm" [routerLink]="['/profile', name]" (click)="navigate.emit()">
+            @if (post.author.profilePic) { <img [src]="post.author.profilePic" alt="" /> } @else { {{ initials(post.author) }} }
+          </a>
+          <div class="pv-c">
+            <app-caption [author]="name" [text]="post.caption" (navigate)="navigate.emit()"></app-caption>
+            <div class="pv-c-meta">{{ timeAgo(post.createdAt) }}@if (post.editedAt) { <span> · Edited</span> }</div>
+          </div>
+        </div>
+      }
+
+      @if (loadingComments) {
+        @for (i of [1, 2, 3]; track i) { <div class="pv-skel"><span></span><i></i></div> }
+      } @else {
+        @for (c of comments; track c.id) {
+          <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: c, parent: null }"></ng-container>
+          @if ((c.replyCount || 0) > 0) {
+            <button type="button" class="pv-replies-toggle" (click)="toggleReplies(c)">
+              <span class="line"></span>
+              {{ expanded.has(c.id) ? 'Hide replies' : 'View replies (' + c.replyCount + ')' }}
+            </button>
+            @if (expanded.has(c.id)) {
+              <div class="pv-replies">
+                @for (r of c.replies || []; track r.id) {
+                  <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: r, parent: c }"></ng-container>
+                }
+              </div>
+            }
+          }
+        }
+        @if (nextCursor) {
+          <button type="button" class="pv-more" (click)="loadMore()" [disabled]="loadingMore" aria-label="Load more comments">
+            <span class="material-icons">add_circle_outline</span>
+          </button>
+        }
+        @if (!comments.length && !post.commentsOff) {
+          <div class="pv-empty"><strong>No comments yet.</strong><span>Cheer them on — start the conversation.</span></div>
+        }
+      }
+    </div>
+
+    <div class="pv-foot">
+      <app-post-actions [post]="post" [isOwner]="isOwner" (comment)="focusInput()" (share)="shareOpen = true"></app-post-actions>
+      <div class="pv-time">{{ timeAgoLong(post.createdAt) }}</div>
+      @if (post.commentsOff) {
+        <div class="pv-off">Commenting has been turned off.</div>
+      } @else {
+        @if (replyTo) {
+          <div class="pv-replying">Replying to &#64;{{ replyTo.author.username }} <button type="button" (click)="cancelReply()" aria-label="Cancel reply"><span class="material-icons">close</span></button></div>
+        }
+        <form class="pv-form" (ngSubmit)="send()">
+          <input #input name="comment" [(ngModel)]="text" placeholder="Add a comment…" autocomplete="off" maxlength="2200" />
+          <button type="submit" [disabled]="!text.trim() || sending">{{ sending ? '…' : 'Post' }}</button>
+        </form>
+      }
+    </div>
+  </section>
+</div>
+
+<ng-template #commentTpl let-c let-parent="parent">
+  <div class="pv-row" [class.reply]="!!parent">
+    <a class="pv-av sm" [routerLink]="['/profile', c.author?.username]" (click)="navigate.emit()">
+      @if (c.author?.profilePic) { <img [src]="c.author.profilePic" alt="" /> } @else { {{ initials(c.author) }} }
+    </a>
+    <div class="pv-c">
+      <app-caption [author]="c.author?.username" [text]="c.content" (navigate)="navigate.emit()"></app-caption>
+      <div class="pv-c-meta">
+        <span>{{ timeAgo(c.createdAt) }}</span>
+        @if (c.likeCount > 0) { <span>{{ c.likeCount }} {{ c.likeCount === 1 ? 'like' : 'likes' }}</span> }
+        @if (!post.commentsOff) { <button type="button" (click)="reply(c, parent || undefined)">Reply</button> }
+        @if (c.canDelete) { <button type="button" (click)="deleteComment(c, parent || undefined)">Delete</button> }
+      </div>
+    </div>
+    <button type="button" class="pv-heart" [class.on]="c.liked" (click)="likeComment(c)" [attr.aria-label]="c.liked ? 'Unlike comment' : 'Like comment'">
+      <span class="material-icons">{{ c.liked ? 'favorite' : 'favorite_border' }}</span>
+    </button>
+  </div>
+</ng-template>
+
+@if (shareOpen) { <app-share-sheet [post]="post" (closed)="shareOpen = false"></app-share-sheet> }
+@if (editOpen) { <app-post-edit [post]="post" (closed)="editOpen = false" (saved)="onEdited($event)"></app-post-edit> }

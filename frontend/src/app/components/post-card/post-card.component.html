@@ -1,0 +1,77 @@
+<article class="pc" [class.kb-focused]="focused">
+  <header class="pc-head">
+    <a class="pc-av" [routerLink]="['/profile', name]" [attr.aria-label]="name">
+      @if (post.author.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
+      @else { <span>{{ initials(post.author) }}</span> }
+    </a>
+    <div class="pc-who">
+      <div class="pc-line">
+        <a class="pc-name" [routerLink]="['/profile', name]">{{ name }}</a>
+        @if (post.dayNumber) { <span class="pc-day" title="Days of posting progress">Day {{ post.dayNumber }}</span> }
+        <span class="pc-dot">•</span>
+        <time class="pc-time" [attr.datetime]="post.createdAt" [title]="timeAgoLong(post.createdAt)">{{ timeAgo(post.createdAt) }}</time>
+        @if (post.audience === 'close-friends') {
+          <span class="pc-aud cf" title="Close friends"><span class="material-icons">star</span></span>
+        } @else if (post.audience === 'followers') {
+          <span class="pc-aud" title="Followers only"><span class="material-icons">group</span></span>
+        }
+      </div>
+      @if (post.activityTag) { <div class="pc-sub">{{ post.activityTag }}</div> }
+    </div>
+    <div class="pc-menu-wrap">
+      <button type="button" class="pc-more" aria-label="More options" (click)="toggleMenu($event)">
+        <span class="material-icons">more_horiz</span>
+      </button>
+      @if (menuOpen) {
+        <div class="pc-menu" role="menu" (click)="$event.stopPropagation()">
+          @if (isOwner) {
+            <button type="button" role="menuitem" (click)="openEdit()">Edit</button>
+            <button type="button" role="menuitem" (click)="archive()">Archive</button>
+            <button type="button" role="menuitem" class="danger" (click)="remove()">Delete</button>
+          } @else {
+            <button type="button" role="menuitem" (click)="openShare()">Share to…</button>
+          }
+          <button type="button" role="menuitem" (click)="copyLink()">Copy link</button>
+          <button type="button" role="menuitem" (click)="goToPost()">Go to post</button>
+          <button type="button" role="menuitem" class="muted" (click)="menuOpen = false">Cancel</button>
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (media.length) {
+    <div class="pc-media">
+      <app-media-carousel [media]="media" [layout]="post.layout" (tapped)="onTap()"></app-media-carousel>
+      @if (burst) {
+        <span class="pc-burst material-icons" aria-hidden="true">favorite</span>
+      }
+    </div>
+  } @else if (post.caption) {
+    <div class="pc-note" (click)="onTap()">
+      <app-caption [text]="post.caption" [limit]="280"></app-caption>
+      @if (burst) { <span class="pc-burst material-icons" aria-hidden="true">favorite</span> }
+    </div>
+  }
+
+  <div class="pc-body">
+    <app-post-actions [post]="post" [isOwner]="isOwner" (comment)="open.emit(post)" (share)="shareOpen = true"></app-post-actions>
+
+    @if (post.caption && media.length) {
+      <app-caption class="pc-caption" [author]="name" [text]="post.caption" [limit]="125"></app-caption>
+    }
+    @if (!post.commentsOff && (post.commentCount || 0) > 0) {
+      <button type="button" class="pc-view" (click)="open.emit(post)">
+        {{ post.commentCount === 1 ? 'View 1 comment' : 'View all ' + post.commentCount + ' comments' }}
+      </button>
+    } @else if (!post.commentsOff) {
+      <button type="button" class="pc-view" (click)="open.emit(post)">Add a comment…</button>
+    }
+    <div class="pc-meta">
+      {{ timeAgoLong(post.createdAt) }}
+      @if (post.editedAt) { <span> · Edited</span> }
+    </div>
+  </div>
+</article>
+
+@if (shareOpen) { <app-share-sheet [post]="post" (closed)="shareOpen = false"></app-share-sheet> }
+@if (editOpen) { <app-post-edit [post]="post" (closed)="editOpen = false" (saved)="onEdited($event)"></app-post-edit> }

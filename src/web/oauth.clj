@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [datomic.api :as d]
             [project.system :as s]
-            [buddy.hashers :as hashers])
+            [web.accounts :as accounts])
   (:import (java.util UUID)))
 
 ;; Optional: set GOOGLE_CLIENT_ID env var to validate audience
@@ -42,7 +42,7 @@
                  (str/replace #"[^a-z0-9]" "")
                  (or "user"))
         candidate (if (>= (count base) 3) base (str base "user"))]
-    (if (d/q '[:find ?e . :in $ ?u :where [?e :user/username ?u]] (d/db s/conn) candidate)
+    (if (accounts/find-user (d/db s/conn) candidate)
       (str candidate (subs (str (UUID/randomUUID)) 0 4))
       candidate)))
 
@@ -50,7 +50,7 @@
   (let [db (d/db s/conn)
         existing-e (or (when google-id   (find-user-by-attr db :user/google-id google-id))
                        (when facebook-id (find-user-by-attr db :user/facebook-id facebook-id))
-                       (when email       (find-user-by-attr db :user/email email)))]
+                       (when email       (accounts/find-user-by-email db email)))]
     (if existing-e
       (do
         (let [updates (cond-> []
@@ -59,19 +59,28 @@
           (when (seq updates) @(d/transact s/conn updates)))
         (:user/username (d/entity (d/db s/conn) existing-e)))
       (let [username (safe-username display-name email)
-            tx-data  (cond-> {:user/username username :user/xp 0 :user/display-name (or display-name username)}
+            tx-data  (cond-> {:user/username username :user/xp 0 :user/display-name (or display-name username)
+                          :user/session-version 0 :user/created-at (java.util.Date.)}
                        google-id    (assoc :user/google-id google-id)
                        facebook-id  (assoc :user/facebook-id facebook-id)
-                       email        (assoc :user/email email)
+                       email        (assoc :user/email (str/lower-case email))
                        profile-pic  (assoc :user/profile-pic profile-pic))]
         @(d/transact s/conn [tx-data])
         username))))
 
-(defn json-ok [body session-username]
-  {:status 200
-   :headers {"Content-Type" "application/json"}
-   :body (json/generate-string body)
-   :session {:username session-username}})
+(defn json-ok
+  "Logs `session-username` in: reactivates a deactivated account and puts the
+   current session version in the session (see accounts/wrap-session-version)."
+  [_body session-username]
+  (let [db  (d/db s/conn)
+        eid (d/q '[:find ?e . :in $ ?u :where [?e :user/username ?u]] db session-username)
+        db  (if (:user/deactivated? (d/entity db eid))
+              (:db-after @(d/transact s/conn [[:db/retract eid :user/deactivated? true]]))
+              db)]
+    {:status 200
+     :headers {"Content-Type" "application/json"}
+     :body (json/generate-string (accounts/me-dto db eid))
+     :session (accounts/session-for db eid)}))
 
 (defn json-err [msg]
   {:status 401

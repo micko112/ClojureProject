@@ -1,15 +1,4 @@
 <div class="feed-page">
-  <!-- Reel viewer overlay -->
-  @if (reelOpen) {
-    <app-reel-viewer
-      [posts]="reelPosts"
-      [startIndex]="reelStartIndex"
-      (closed)="closeReel()"
-      (postSaved)="onReelSaved($event)">
-    </app-reel-viewer>
-  }
-
-  <!-- Story viewer overlay -->
   @if (viewerGroups) {
     <app-story-viewer
       [groups]="viewerGroups"
@@ -21,20 +10,62 @@
   <div class="feed-main">
     <app-stories-bar (openViewer)="openStoryViewer($event)"></app-stories-bar>
 
+    @if (streak) {
+      @if (!streak.postedToday && !bannerDismissed) {
+        <section class="streak-banner" aria-live="polite">
+          <div class="sb-icon"><span class="material-icons">local_fire_department</span></div>
+          <div class="sb-text">
+            <strong>Day {{ streak.nextDayNumber }} is waiting — post your progress</strong>
+            <span>{{ streakMessage(streak) }}</span>
+            <div class="sb-actions">
+              <button type="button" class="sb-btn" (click)="openComposer()">Post today's progress</button>
+              <button type="button" class="sb-later" (click)="dismissBanner()">Maybe later</button>
+            </div>
+          </div>
+        </section>
+      } @else if (streak.postedToday) {
+        <div class="streak-done">
+          <span class="material-icons">local_fire_department</span>
+          <span><strong>{{ streak.current }}-day streak</strong> · Day {{ streak.totalDays }} shared</span>
+          @if (streak.best > streak.current) { <span class="sd-best">Best {{ streak.best }}</span> }
+          @else if (streak.current > 1) { <span class="sd-best">Your best yet</span> }
+        </div>
+      }
+    }
+
     @if (trending.length) {
       <div class="trending-bar">
-        @for (t of trending; track t.type) {
-          <span class="trending-chip">
-            <span class="material-icons md-18">military_tech</span> {{ t.type }} · {{ t.count }}
-          </span>
+        @for (t of trending; track t.tag) {
+          @if (t.kind === 'activity') {
+            <span class="trending-chip"><span class="material-icons md-18">military_tech</span>{{ t.tag }} · {{ t.count }}</span>
+          } @else {
+            <a class="trending-chip" [routerLink]="['/explore/tags', t.tag]">#{{ t.tag }} · {{ t.count }}</a>
+          }
         }
       </div>
     }
 
     @if (loading) {
-      <div class="loading">Loading feed...</div>
+      @for (i of [1, 2]; track i) {
+        <div class="skel" aria-hidden="true">
+          <div class="skel-head"><span class="skel-av"></span><span class="skel-line w40"></span></div>
+          <div class="skel-media"></div>
+          <span class="skel-line w60"></span>
+          <span class="skel-line w30"></span>
+        </div>
+      }
+    } @else if (loadError) {
+      <div class="empty">
+        <p>Couldn't load your feed.</p>
+        <button type="button" class="sb-btn" (click)="loadFeed()">Try again</button>
+      </div>
     } @else if (!posts.length) {
-      <div class="empty">No posts yet. Follow people to see their activity!</div>
+      <div class="empty">
+        <span class="material-icons md-48">photo_camera</span>
+        <h3>Your feed is quiet</h3>
+        <p>Follow people to see their daily progress here, or discover others on Explore.</p>
+        <a class="sb-btn" routerLink="/explore">Explore progress</a>
+      </div>
     } @else {
       <div class="feed-kbd-hint">
         <span class="material-icons md-18">keyboard</span>
@@ -46,56 +77,28 @@
         </span>
       </div>
       @for (post of posts; track post.id; let i = $index) {
-        <div class="post-card" [class.kb-focused]="i === focusedIndex" (click)="focusedIndex = i">
-          <div class="post-header">
-            <a [routerLink]="['/profile', post.author?.username]" class="author-link">
-              <div class="avatar">
-                @if (post.author?.profilePic) { <img [src]="post.author.profilePic" alt="" /> }
-                @else { <span>{{ initials(post.author) }}</span> }
-              </div>
-              <div>
-                <div class="author-name">{{ post.author?.displayName || post.author?.username }}</div>
-                <div class="post-time">{{ timeAgo(post.createdAt) }}</div>
-              </div>
-            </a>
-            @if (post.activityTag) {
-              <span class="activity-tag">{{ post.activityTag }}</span>
-            }
-          </div>
-
-          @if (post.mediaUrl) {
-            <div class="post-media" (click)="openReel(post)">
-              @if (isVideo(post.mediaUrl)) {
-                <video [src]="post.mediaUrl" [muted]="true" playsinline></video>
-                <div class="play-overlay">
-                  <span class="material-icons">play_circle</span>
-                </div>
-              } @else {
-                <img [src]="post.mediaUrl" alt="" />
-              }
-            </div>
-          }
-
-          @if (post.caption) {
-            <div class="post-caption" (click)="openReel(post)">{{ post.caption }}</div>
-          }
-
-          <div class="post-actions">
-            <button class="action-btn" [class.liked]="post.liked" (click)="like(post, $event)">
-              <span class="material-icons md-18">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
-              {{ likeCount(post) }}
-            </button>
-            <button class="action-btn" (click)="openReel(post)">
-              <span class="material-icons md-18">chat_bubble_outline</span>
-              {{ post.commentCount || 0 }}
-            </button>
-            <div class="actions-spacer"></div>
-            <button class="action-btn save-btn" [class.saved]="post.saved" (click)="toggleSave(post, $event)" [title]="post.saved ? 'Unsave' : 'Save'">
-              <span class="material-icons md-18">{{ post.saved ? 'bookmark' : 'bookmark_border' }}</span>
-            </button>
-          </div>
+        <app-post-card [post]="post" [focused]="i === focusedIndex" (click)="focusedIndex = i"
+                       (open)="open($event)" (removed)="onRemoved($event)"></app-post-card>
+      }
+      @if (nextCursor) {
+        <div appInView (inView)="loadMore()" class="sentinel"></div>
+      }
+      @if (loadingMore) {
+        <div class="skel" aria-hidden="true">
+          <div class="skel-head"><span class="skel-av"></span><span class="skel-line w40"></span></div>
+          <div class="skel-media"></div>
+        </div>
+      } @else if (!nextCursor) {
+        <div class="caught-up">
+          <span class="material-icons">check_circle_outline</span>
+          <strong>You're all caught up</strong>
+          <span>Come back tomorrow for more progress.</span>
         </div>
       }
     }
   </div>
 </div>
+
+@if (selected) {
+  <app-post-modal [initialPost]="selected" [postId]="selected.id" (closed)="selected = null" (removed)="onRemoved($event)"></app-post-modal>
+}

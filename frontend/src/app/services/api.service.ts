@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { User } from '../models/user.model';
+import { Page, Post } from '../models/post.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -43,8 +44,11 @@ export class ApiService {
   }
 
   // Feed / Posts
-  getFeed(): Observable<any[]> {
-    return this.http.get<any[]>('/api/feed');
+  /** Cursor page {items, nextCursor}; see PostService for the other post lists. */
+  getFeed(cursor?: string | null, limit = 10): Observable<Page<Post>> {
+    let params = new HttpParams().set('limit', limit);
+    if (cursor) params = params.set('cursor', cursor);
+    return this.http.get<Page<Post>>('/api/feed', { params });
   }
   createPost(data: any): Observable<any> {
     return this.http.post('/api/posts', data);
@@ -60,8 +64,9 @@ export class ApiService {
   }
 
   // Comments
+  /** First page of top-level comments (each has nested `replies`). */
   getComments(postId: string): Observable<any[]> {
-    return this.http.get<any[]>(`/api/posts/${postId}/comments`);
+    return this.http.get<{ items: any[] }>(`/api/posts/${postId}/comments`).pipe(map(r => r.items));
   }
   createComment(postId: string, content: string): Observable<any> {
     return this.http.post(`/api/posts/${postId}/comments`, { content });
@@ -231,8 +236,10 @@ export class ApiService {
   }
 
   // User posts
-  getUserPosts(username: string): Observable<any[]> {
-    return this.http.get<any[]>(`/api/users/${username}/posts`);
+  /** First page of a user's posts as an array (the endpoint returns {items, nextCursor}). */
+  getUserPosts(username: string, limit = 50): Observable<any[]> {
+    return this.http.get<Page<Post>>(`/api/users/${username}/posts`, { params: { limit } })
+      .pipe(map(r => Array.isArray(r) ? r : r.items));
   }
 
   // Aliases used by some components

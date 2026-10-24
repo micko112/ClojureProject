@@ -61,46 +61,9 @@
 
 ;; ===== DTO CONVERTERS =====
 
-(defn- user-dto [u]
-  (when (and u (:user/username u))
-    {:username    (:user/username u)
-     :displayName (:user/display-name u)
-     :profilePic  (:user/profile-pic u)
-     :bio         (:user/bio u)
-     :website     (:user/website u)
-     :xp          (or (:user/xp u) 0)}))
-
-(defn- user-dto-e [db eid]
-  (user-dto (d/entity db eid)))
-
-(defn- post-dto
-  ([db eid] (post-dto db eid nil))
-  ([db eid me-eid]
-   (let [e      (d/entity db eid)
-         author (d/entity db (-> e :post/author :db/id))
-         likes  (keep #(:user/username (d/entity db (:db/id %))) (:post/likes e))
-         cc     (or (d/q '[:find (count ?c) . :in $ ?p :where [?c :comment/post ?p]] db eid) 0)
-         base   {:id          (str eid)
-                 :author      (author-dto author)
-                 :caption     (:post/caption e)
-                 :mediaUrl    (:post/media-url e)
-                 :activityTag (:post/activity-tag e)
-                 :likes       (vec likes)
-                 :commentCount cc
-                 :createdAt   (instant->str (:post/created-at e))}]
-     (if me-eid
-       (assoc base
-              :liked (boolean (some #(= (:db/id %) me-eid) (:post/likes e)))
-              :saved (boolean (some #(= (:db/id %) me-eid) (:post/saved-by e))))
-       base))))
-
-(defn- comment-dto [db eid]
-  (let [e (d/entity db eid)
-        author (d/entity db (-> e :comment/author :db/id))]
-    {:id        (str eid)
-     :author    (author-dto author)
-     :content   (:comment/content e)
-     :createdAt (instant->str (:comment/created-at e))}))
+;; Post/comment DTOs live in web.posts (posts area); kept here for the
+;; competition feed.
+(defn- post-dto [db eid] (posts/post-dto db eid nil))
 
 (defn- msg-dto [db eid]
   (let [e (d/entity db eid)
@@ -144,47 +107,7 @@
 ;; ===== DB HELPERS =====
 
 ;; ===== AUTH =====
-
-(defn- handle-me [req]
-  (if-let [un (me req)]
-    (let [u (d/entity (ddb) [:user/username un])]
-      (if (:db/id u) (ok (user-dto u)) (unauth)))
-    (unauth)))
-
-(defn- handle-login [req]
-  (let [{:keys [username password]} (parse-body req)
-        un (str/trim (str username))
-        u  (d/entity (ddb) [:user/username un])]
-    (cond
-      (not (:db/id u))
-      (jresp 401 {:error "User not found"})
-
-      (and (seq (:user/password-hash u))
-           (not (hashers/check (str password) (:user/password-hash u))))
-      (jresp 401 {:error "Wrong password"})
-
-      :else
-      (-> (ok (user-dto u))
-          (assoc :session {:username un})))))
-
-(defn- handle-register [req]
-  (let [{:keys [username password displayName]} (parse-body req)
-        un (str/trim (str username))]
-    (cond
-      (str/blank? un)           (bad "Username required")
-      (< (count (str password)) 6) (bad "Password too short")
-      (d/entity (ddb) [:user/username un]) (bad "Username taken")
-      :else
-      (do
-        @(d/transact s/conn [{:user/username un
-                               :user/xp 0
-                               :user/display-name (or (str/trim (str displayName)) un)
-                               :user/password-hash (hashers/derive (str password))}])
-        (-> (created (user-dto (d/entity (ddb) [:user/username un])))
-            (assoc :session {:username un}))))))
-
-(defn- handle-logout [_]
-  (-> (ok {:ok true}) (assoc :session nil)))
+;; Moved to web.accounts (login/register/me/logout/password reset).
 
 ;; ===== ACTIVITIES =====
 
@@ -427,226 +350,11 @@
           (ok (mapv #(tracking-entry-dto db %) (sort-by #(:tracking/date (d/entity db %)) ids))))))
     (unauth)))
 
-;; ===== POSTS / FEED =====
+;; ===== POSTS / FEED / COMMENTS / SAVED =====
+;; Moved to web.posts (routes in posts/routes).
 
-(defn- handle-get-feed [req]
-  (if-let [username (me req)]
-    (let [db (ddb)
-          u-e (user-e db username)
-          ;; posts from me and people I follow
-          post-ids (d/q '[:find [?p ...]
-                          :in $ ?me
-                          :where
-                          (or [?me :user/follows ?followed]
-                              [(identity ?me) ?followed])
-                          [?p :post/author ?followed]]
-                        db u-e)
-          sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) post-ids)]
-      (ok (mapv #(post-dto db % u-e) (take 50 sorted))))
-    (unauth)))
-
-(defn- handle-create-post [req]
-  (if-let [username (me req)]
-    (let [{:keys [caption mediaUrl activityTag]} (parse-body req)
-          db (ddb)
-          u-e (user-e db username)
-          post-id (d/tempid :db.part/user)
-          tx-data (cond-> [{:db/id post-id
-                            :post/author u-e
-                            :post/created-at (Date.)}]
-                    (seq caption)     (conj [:db/add post-id :post/caption caption])
-                    (seq mediaUrl)    (conj [:db/add post-id :post/media-url mediaUrl])
-                    (seq activityTag) (conj [:db/add post-id :post/activity-tag activityTag]))
-          result @(d/transact s/conn tx-data)
-          new-id (d/resolve-tempid (:db-after result) (:tempids result) post-id)]
-      (created (post-dto (:db-after result) new-id)))
-    (unauth)))
-
-(defn- handle-get-post [req]
-  (let [pid (Long/parseLong (get-in req [:path-params :id]))
-        db  (ddb)
-        e   (d/entity db pid)]
-    (if (:post/author e)
-      (ok (post-dto db pid))
-      (not-found))))
-
-(defn- handle-like-post [req]
-  (if-let [username (me req)]
-    (let [pid    (Long/parseLong (get-in req [:path-params :id]))
-          db     (ddb)
-          u-e    (user-e db username)
-          post-e (d/entity db pid)
-          liked? (boolean (some #(= (:db/id %) u-e) (:post/likes post-e)))
-          tx     (if liked?
-                   [[:db/retract pid :post/likes u-e]]
-                   [[:db/add pid :post/likes u-e]])
-          r      @(d/transact s/conn tx)
-          db2    (:db-after r)
-          likes  (vec (keep #(:user/username (d/entity db2 (:db/id %)))
-                             (:post/likes (d/entity db2 pid))))]
-      (when (and (not liked?) (not= (-> post-e :post/author :db/id) u-e))
-        (create-notif! (-> post-e :post/author :db/id) :like (str username " liked your post")))
-      (ok {:likes likes :liked (not liked?)}))
-    (unauth)))
-
-(defn- handle-delete-post [req]
-  (if-let [username (me req)]
-    (let [pid (Long/parseLong (get-in req [:path-params :id]))
-          post-e (d/entity (ddb) pid)
-          owner  (-> post-e :post/author :user/username)]
-      (if (not= owner username)
-        (jresp 403 {:error "Forbidden"})
-        (do @(d/transact s/conn [[:db/retractEntity pid]])
-            (ok {:ok true}))))
-    (unauth)))
-
-(defn- handle-save-post [req]
-  (if-let [username (me req)]
-    (let [pid (Long/parseLong (get-in req [:path-params :id]))
-          u-e (user-e (ddb) username)]
-      @(d/transact s/conn [[:db/add pid :post/saved-by u-e]])
-      (ok {:saved true}))
-    (unauth)))
-
-(defn- handle-unsave-post [req]
-  (if-let [username (me req)]
-    (let [pid (Long/parseLong (get-in req [:path-params :id]))
-          u-e (user-e (ddb) username)]
-      @(d/transact s/conn [[:db/retract pid :post/saved-by u-e]])
-      (ok {:saved false}))
-    (unauth)))
-
-(defn- handle-get-saved-posts [req]
-  (if-let [username (me req)]
-    (let [db    (ddb)
-          u-e   (user-e db username)
-          pids  (d/q '[:find [?p ...] :in $ ?u :where [?p :post/saved-by ?u]] db u-e)
-          sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) pids)]
-      (ok (mapv #(post-dto db % u-e) (take 50 sorted))))
-    (unauth)))
-
-(defn- handle-get-user-posts [req]
-  (let [uname  (get-in req [:path-params :username])
-        db     (ddb)
-        u      (d/entity db [:user/username uname])]
-    (if-not (:db/id u)
-      (not-found)
-      (let [me-un  (me req)
-            me-eid (when me-un (:db/id (d/entity db [:user/username me-un])))
-            pids   (d/q '[:find [?p ...] :in $ ?u :where [?p :post/author ?u]] db (:db/id u))
-            sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) pids)]
-        (ok (mapv #(post-dto db % me-eid) (take 50 sorted)))))))
-
-;; ===== COMMENTS =====
-
-(defn- handle-get-comments [req]
-  (let [pid (Long/parseLong (get-in req [:path-params :id]))
-        db  (ddb)
-        cids (sort (d/q '[:find [?c ...] :in $ ?p :where [?c :comment/post ?p]] db pid))]
-    (ok (mapv #(comment-dto db %) cids))))
-
-(defn- handle-add-comment [req]
-  (if-let [username (me req)]
-    (let [pid (Long/parseLong (get-in req [:path-params :id]))
-          {:keys [content]} (parse-body req)
-          db (ddb)
-          u-e (user-e db username)
-          result @(d/transact s/conn [{:comment/post pid
-                                        :comment/author u-e
-                                        :comment/content content
-                                        :comment/created-at (Date.)}])
-          cid (first (vals (:tempids result)))]
-      (let [post-e (d/entity (ddb) pid)
-            author-e (-> post-e :post/author :db/id)]
-        (when (and author-e (not= author-e u-e))
-          (create-notif! author-e :comment (str username " commented on your post"))))
-      (created (comment-dto (:db-after result) cid)))
-    (unauth)))
-
-(defn- handle-delete-comment [req]
-  (if-let [username (me req)]
-    (let [cid (Long/parseLong (get-in req [:path-params :id]))
-          c-e (d/entity (ddb) cid)
-          owner (-> c-e :comment/author :user/username)]
-      (if (not= owner username)
-        (jresp 403 {:error "Forbidden"})
-        (do @(d/transact s/conn [[:db/retractEntity cid]])
-            (ok {:ok true}))))
-    (unauth)))
-
-;; ===== PROFILE =====
-
-(defn- handle-get-profile [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u     (d/entity db [:user/username uname])]
-    (if-not (:db/id u)
-      (not-found)
-      (let [me-un (me req)
-            me-e  (when me-un (user-e db me-un))
-            followers (d/q '[:find [?f ...] :in $ ?u :where [?f :user/follows ?u]] db (:db/id u))
-            following (map :db/id (:user/follows u))
-            am-following (boolean (some #(= % me-e) followers))]
-        (ok (merge (user-dto u)
-                   {:followersCount (count followers)
-                    :followingCount (count following)
-                    :isFollowing    am-following}))))))
-
-(defn- handle-update-profile [req]
-  (if-let [username (me req)]
-    (let [{:keys [displayName bio website profilePic]} (parse-body req)
-          tx-data (cond-> []
-                    displayName (conj [:db/add [:user/username username] :user/display-name displayName])
-                    bio         (conj [:db/add [:user/username username] :user/bio bio])
-                    website     (conj [:db/add [:user/username username] :user/website website])
-                    profilePic  (conj [:db/add [:user/username username] :user/profile-pic profilePic]))]
-      (when (seq tx-data) @(d/transact s/conn tx-data))
-      (ok (user-dto (d/entity (ddb) [:user/username username]))))
-    (unauth)))
-
-(defn- handle-delete-account [req]
-  (if-let [username (me req)]
-    (let [param-un (get-in req [:path-params :username])]
-      (if (not= username param-un)
-        (jresp 403 {:error "Forbidden"})
-        (let [u-e (user-e (ddb) username)]
-          @(d/transact s/conn [[:db/retractEntity u-e]])
-          (-> (ok {:ok true}) (assoc :session nil)))))
-    (unauth)))
-
-;; ===== FOLLOW =====
-
-(defn- handle-toggle-follow [req]
-  (if-let [me-un (me req)]
-    (let [{:keys [username]} (parse-body req)
-          target username
-          db     (ddb)
-          me-e   (user-e db me-un)
-          t-e    (user-e db target)]
-      (if-not t-e
-        (not-found)
-        (let [following? (some #(= (:db/id %) t-e) (:user/follows (d/entity db me-e)))]
-          (if following?
-            (do @(d/transact s/conn [[:db/retract me-e :user/follows t-e]])
-                (ok {:action "unfollowed"}))
-            (do @(d/transact s/conn [[:db/add me-e :user/follows t-e]])
-                (create-notif! t-e :follow (str me-un " started following you"))
-                (ok {:action "followed"}))))))
-    (unauth)))
-
-(defn- handle-get-followers [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u-e   (user-e db uname)
-        fids  (d/q '[:find [?f ...] :in $ ?u :where [?f :user/follows ?u]] db u-e)]
-    (ok (mapv #(:user/username (d/entity db %)) fids))))
-
-(defn- handle-get-following [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u     (d/entity db [:user/username uname])
-        fids  (map :db/id (:user/follows u))]
-    (ok (mapv #(:user/username (d/entity db %)) fids))))
+;; ===== PROFILE / FOLLOW =====
+;; Moved to web.accounts (profile header, follow, follow requests, privacy).
 
 ;; ===== LEADERBOARD =====
 
@@ -712,14 +420,7 @@
     (unauth)))
 
 ;; ===== TRENDING =====
-
-(defn- handle-trending [_]
-  (let [db (ddb)
-        tags (d/q '[:find ?tag (count ?p)
-                    :where [?p :post/activity-tag ?tag]]
-                  db)
-        sorted (sort-by second #(compare %2 %1) tags)]
-    (ok (mapv (fn [[tag cnt]] {:tag tag :count cnt}) (take 10 sorted)))))
+;; Moved to web.posts.
 
 ;; ===== UPLOAD =====
 
@@ -1260,11 +961,7 @@
 ;; ===== ROUTES =====
 
 (def core-routes
-  [["/api/me"           {:get handle-me}]
-   ["/api/login"        {:post handle-login}]
-   ["/api/register"     {:post handle-register}]
-   ["/api/logout"       {:post handle-logout}]
-
+  [;; auth/profile/follow routes live in accounts/routes
    ["/api/oauth/google"   {:post oauth/handle-google}]
    ["/api/oauth/facebook" {:post oauth/handle-facebook}]
 
@@ -1277,28 +974,11 @@
 
    ["/api/stats"                   {:get handle-get-stats}]
 
-   ["/api/feed"             {:get handle-get-feed}]
-   ["/api/posts"            {:post handle-create-post}]
-   ["/api/posts/:id"        {:get handle-get-post :delete handle-delete-post}]
-   ["/api/posts/:id/like"   {:post handle-like-post}]
-   ["/api/posts/:id/save"   {:post handle-save-post}]
-   ["/api/posts/:id/unsave" {:post handle-unsave-post}]
-   ["/api/posts/:id/comments" {:get handle-get-comments :post handle-add-comment}]
-   ["/api/comments/:id"     {:delete handle-delete-comment}]
-   ["/api/saved-posts"      {:get handle-get-saved-posts}]
-
-   ["/api/profile"          {:put handle-update-profile}]
    ["/api/users/search"     {:get handle-search}]
-   ["/api/users/:username"  {:get handle-get-profile :delete handle-delete-account}]
-   ["/api/users/:username/posts"  {:get handle-get-user-posts}]
    ["/api/users/:username/badges" {:get handle-get-badges}]
 
-   ["/api/follow"           {:post handle-toggle-follow}]
-   ["/api/followers/:username" {:get handle-get-followers}]
-   ["/api/following/:username" {:get handle-get-following}]
 
    ["/api/leaderboard"      {:get handle-get-leaderboard}]
-   ["/api/trending"         {:get handle-trending}]
    ["/api/notifications"    {:get handle-get-notifications}]
    ["/api/notifications/read" {:post handle-mark-notifs-read}]
 
@@ -1353,6 +1033,7 @@
                                          wrap-keyword-params]}})
        (ring/create-default-handler))
       (wrap-multipart-params)
+      (accounts/wrap-session-version)
       (wrap-session {:cookie-name "bb-session"
                      :cookie-attrs {:same-site :lax
                                     :http-only true

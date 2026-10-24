@@ -1,0 +1,154 @@
+<div class="reels-page">
+  @if (loading()) {
+    <div class="reels-scroller">
+      <div class="reel">
+        <div class="reel-frame skeleton-frame" aria-busy="true" aria-label="Loading reels">
+          <div class="sk-meta">
+            <span class="bb-skeleton bb-skeleton-circle" style="width:32px;height:32px"></span>
+            <span class="bb-skeleton bb-skeleton-text" style="width:120px"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else if (!reels().length) {
+    <div class="reels-empty">
+      <div class="bb-empty">
+        <span class="bb-empty-icon"><span class="material-icons-outlined" aria-hidden="true">movie</span></span>
+        <h3>No reels yet</h3>
+        <p>Short videos of real progress will show up here. Record a few seconds of today's effort — no editing, no filters. It counts.</p>
+        <button class="bb-btn bb-btn--primary" (click)="composer.open()">
+          <span class="material-icons" aria-hidden="true">videocam</span> Share a video
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="reels-scroller" #scroller role="feed" aria-label="Reels" [attr.aria-busy]="false">
+      @for (r of reels(); track r.post.id; let i = $index) {
+        <article class="reel" #reelEl [attr.data-idx]="i" [attr.aria-posinset]="i + 1" [attr.aria-setsize]="reels().length"
+                 [attr.aria-label]="'Reel by ' + (r.post.author?.username || 'unknown')">
+          <div class="reel-frame">
+            <div class="reel-media" (click)="onTap(i)">
+              @if (isNear(i)) {
+                <video [src]="r.src" [poster]="r.poster || ''" [muted]="muted()" loop playsinline
+                       [attr.preload]="i === active() ? 'auto' : 'metadata'"
+                       (canplay)="i === active() && syncPlayback()"></video>
+              } @else if (r.poster) {
+                <img [src]="r.poster" alt="" />
+              }
+              <div class="reel-shade" aria-hidden="true"></div>
+
+              @if (i === active() && flash()) {
+                <span class="reel-flash" aria-hidden="true">
+                  <span class="material-icons">{{ flash() === 'mute' ? 'volume_off' : 'volume_up' }}</span>
+                </span>
+              }
+              @if (i === active() && paused()) {
+                <span class="reel-flash paused" aria-hidden="true"><span class="material-icons">play_arrow</span></span>
+              }
+              @if (heartAt() === i) {
+                <span class="reel-heart" aria-hidden="true"><span class="material-icons">favorite</span></span>
+              }
+            </div>
+
+            <button class="mute-btn" (click)="toggleMute()" [attr.aria-label]="muted() ? 'Unmute' : 'Mute'" [attr.aria-pressed]="!muted()">
+              <span class="material-icons" aria-hidden="true">{{ muted() ? 'volume_off' : 'volume_up' }}</span>
+            </button>
+
+            <!-- Author + caption -->
+            <div class="reel-meta">
+              <a class="reel-author" [routerLink]="['/profile', r.post.author?.username]">
+                <span class="bb-avatar bb-avatar-sm reel-avatar">
+                  @if (r.post.author?.profilePic) { <img [src]="r.post.author.profilePic" alt="" /> }
+                  @else { <span>{{ initials(r.post.author) }}</span> }
+                </span>
+                <span class="reel-username">{{ r.post.author?.username }}</span>
+                @if (r.post.dayNumber) { <span class="day-chip">Day {{ r.post.dayNumber }}</span> }
+                @else if (r.post.activityTag) { <span class="day-chip">{{ r.post.activityTag }}</span> }
+              </a>
+              @if (r.post.caption) {
+                <p class="reel-caption" [class.open]="expanded().has(r.post.id)" (click)="toggleCaption(r.post.id, $event)">
+                  {{ r.post.caption }}
+                </p>
+              }
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="reel-actions">
+            <button class="act" [class.liked]="r.post.liked" (click)="like(r)" [attr.aria-pressed]="!!r.post.liked"
+                    [attr.aria-label]="(r.post.liked ? 'Unlike' : 'Like') + ', ' + likeCount(r.post) + ' likes'">
+              <span class="material-icons" aria-hidden="true">{{ r.post.liked ? 'favorite' : 'favorite_border' }}</span>
+              @if (!r.post.hideLikes) { <span class="act-n">{{ compact(likeCount(r.post)) }}</span> }
+            </button>
+            @if (!r.post.commentsOff) {
+              <button class="act" (click)="openComments(r)" [attr.aria-label]="'Comments, ' + (r.post.commentCount || 0)">
+                <span class="material-icons-outlined flip" aria-hidden="true">mode_comment</span>
+                <span class="act-n">{{ compact(r.post.commentCount || 0) }}</span>
+              </button>
+            }
+            <button class="act" (click)="share(r)" aria-label="Share">
+              <span class="material-icons-outlined dm" aria-hidden="true">send</span>
+            </button>
+            <button class="act" [class.saved]="r.post.saved" (click)="toggleSave(r)" [attr.aria-pressed]="!!r.post.saved"
+                    [attr.aria-label]="r.post.saved ? 'Remove from saved' : 'Save'">
+              <span class="material-icons" aria-hidden="true">{{ r.post.saved ? 'bookmark' : 'bookmark_border' }}</span>
+            </button>
+            <a class="act act-thumb" [routerLink]="['/post', r.post.id]" aria-label="Open post">
+              <span class="material-icons" aria-hidden="true">more_horiz</span>
+            </a>
+          </div>
+        </article>
+      }
+    </div>
+
+    <div class="kbd-hint" aria-hidden="true">
+      <button class="nav-arrow" (click)="go(-1)" [disabled]="active() === 0" tabindex="-1"><span class="material-icons">keyboard_arrow_up</span></button>
+      <button class="nav-arrow" (click)="go(1)" [disabled]="active() >= reels().length - 1" tabindex="-1"><span class="material-icons">keyboard_arrow_down</span></button>
+    </div>
+  }
+
+  <!-- Comments sheet -->
+  @if (commentsFor(); as cr) {
+    <div class="sheet-backdrop" (click)="closeComments()" aria-hidden="true"></div>
+    <section class="comments-sheet" role="dialog" aria-modal="true" aria-labelledby="reel-comments-title">
+      <div class="grip" aria-hidden="true"></div>
+      <header>
+        <h2 id="reel-comments-title">Comments</h2>
+        <button class="bb-icon-btn" (click)="closeComments()" aria-label="Close comments"><span class="material-icons" aria-hidden="true">close</span></button>
+      </header>
+      <div class="c-list">
+        @if (commentsLoading()) {
+          @for (k of [0,1,2]; track k) {
+            <div class="c-row"><span class="bb-skeleton bb-skeleton-circle" style="width:32px;height:32px"></span>
+              <span style="flex:1"><span class="bb-skeleton bb-skeleton-text" style="width:40%"></span><span class="bb-skeleton bb-skeleton-text" style="width:75%"></span></span></div>
+          }
+        } @else if (!comments().length) {
+          <div class="c-empty">
+            <strong>No comments yet</strong>
+            <span>Be the first to cheer {{ cr.post.author?.username }} on.</span>
+          </div>
+        } @else {
+          @for (c of comments(); track c.id) {
+            <div class="c-row">
+              <span class="bb-avatar bb-avatar-sm">
+                @if (c.author?.profilePic) { <img [src]="c.author.profilePic" alt="" /> } @else { <span>{{ initials(c.author) }}</span> }
+              </span>
+              <div class="c-body">
+                <div><strong>{{ c.author?.username }}</strong> <span class="c-time">{{ timeAgo(c.createdAt) }}</span></div>
+                <div class="c-text">{{ c.content }}</div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+      <form class="c-input" (ngSubmit)="addComment()">
+        <span class="bb-avatar bb-avatar-sm">
+          @if (auth.currentUser()?.profilePic) { <img [src]="auth.currentUser()!.profilePic" alt="" /> }
+          @else { <span>{{ initials(auth.currentUser()) }}</span> }
+        </span>
+        <input name="comment" [(ngModel)]="newComment" placeholder="Add some encouragement..." aria-label="Add a comment" autocomplete="off" />
+        <button type="submit" class="post-btn" [disabled]="!newComment.trim() || posting">Post</button>
+      </form>
+    </section>
+  }
+</div>

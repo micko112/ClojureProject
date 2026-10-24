@@ -1,11 +1,15 @@
-import { Component, OnInit, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { BRAND } from '../../core/brand';
 
 // Replace with your actual Google Client ID
 const GOOGLE_CLIENT_ID = 'REPLACE_WITH_GOOGLE_CLIENT_ID';
+
+const USERNAME_RE = /^[A-Za-z0-9._]{3,30}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
   selector: 'app-login',
@@ -14,26 +18,42 @@ const GOOGLE_CLIENT_ID = 'REPLACE_WITH_GOOGLE_CLIENT_ID';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit, AfterViewInit {
+export class LoginComponent implements AfterViewInit {
+  brand = BRAND;
   mode: 'login' | 'register' = 'login';
+  // login: username OR email
   username = '';
   password = '';
+  // register
+  email = '';
+  displayName = '';
+  showPassword = false;
+
   loading = false;
   oauthLoading = false;
   error = '';
+  info = '';
   selectedUser = '';
-  showPasswordFor = '';
 
   seedUsers = ['Micko', 'Uros', 'Milan', 'Pavel', 'Toda', 'Vule'];
 
-  constructor(private auth: AuthService, private router: Router) {
-    if (this.auth.isLoggedIn()) this.router.navigate(['/dashboard']);
+  constructor(private auth: AuthService, private router: Router, route: ActivatedRoute) {
+    if (this.auth.isLoggedIn()) this.router.navigate(['/feed']);
+    const q = route.snapshot.queryParamMap;
+    if (q.get('mode') === 'register') this.mode = 'register';
+    if (q.get('reason') === 'deleted') this.info = 'Your account was deleted.';
+    if (q.get('reason') === 'deactivated') this.info = 'Your account is deactivated. Log in again any time to reactivate it.';
+    if (q.get('reason') === 'logged-out') this.info = 'You were logged out of all devices.';
   }
-
-  ngOnInit(): void {}
 
   ngAfterViewInit(): void {
     this.tryInitGoogle(0);
+  }
+
+  setMode(m: 'login' | 'register'): void {
+    this.mode = m;
+    this.error = '';
+    this.info = '';
   }
 
   private tryInitGoogle(attempts: number): void {
@@ -56,7 +76,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
     this.oauthLoading = true;
     this.error = '';
     this.auth.loginWithOAuth('/api/oauth/google', { idToken }).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => this.router.navigate(['/feed']),
       error: e => { this.oauthLoading = false; this.error = e?.error?.error || 'Google login failed.'; }
     });
   }
@@ -69,7 +89,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
     FB.login((response: any) => {
       if (response.authResponse?.accessToken) {
         this.auth.loginWithOAuth('/api/oauth/facebook', { accessToken: response.authResponse.accessToken }).subscribe({
-          next: () => this.router.navigate(['/dashboard']),
+          next: () => this.router.navigate(['/feed']),
           error: e => { this.oauthLoading = false; this.error = e?.error?.error || 'Facebook login failed.'; }
         });
       } else {
@@ -81,26 +101,42 @@ export class LoginComponent implements OnInit, AfterViewInit {
   selectUser(u: string): void {
     this.selectedUser = u;
     this.username = u;
-    this.showPasswordFor = u;
     this.password = '';
   }
 
+  get canSubmit(): boolean {
+    if (this.loading || this.oauthLoading) return false;
+    if (this.mode === 'login') return !!this.username.trim() && !!this.password;
+    return !!this.email.trim() && !!this.username.trim() && this.password.length >= 6;
+  }
+
+  private validateRegister(): string {
+    if (!EMAIL_RE.test(this.email.trim())) return 'Enter a valid email address.';
+    if (!USERNAME_RE.test(this.username.trim()))
+      return 'Usernames must be 3-30 characters: letters, numbers, periods and underscores.';
+    if (this.password.length < 6) return 'Password must be at least 6 characters.';
+    return '';
+  }
+
   submit(): void {
-    if (!this.username.trim() || this.loading) return;
-    if (this.mode === 'register' && this.password.length < 6) {
-      this.error = 'Password must be at least 6 characters.';
-      return;
-    }
+    if (!this.canSubmit) return;
+    this.error = this.mode === 'register' ? this.validateRegister() : '';
+    if (this.error) return;
     this.loading = true;
-    this.error = '';
+    this.info = '';
     const obs = this.mode === 'login'
       ? this.auth.login(this.username.trim(), this.password)
-      : this.auth.register(this.username.trim(), this.password);
+      : this.auth.register({
+          username: this.username.trim(),
+          password: this.password,
+          email: this.email.trim(),
+          displayName: this.displayName.trim() || undefined
+        });
     obs.subscribe({
       next: () => {
         const dest = (this.mode === 'register' && !localStorage.getItem('bb-onboarded'))
           ? '/onboarding'
-          : '/dashboard';
+          : '/feed';
         this.router.navigate([dest]);
       },
       error: (e) => {

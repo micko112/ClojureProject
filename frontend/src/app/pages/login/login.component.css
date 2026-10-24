@@ -67,6 +67,35 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
 .fb-btn:hover { background: #222; border-color: #1877f2; }
 .fb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+form { display: flex; flex-direction: column; gap: 14px; }
+.optional { font-weight: 400; color: var(--text-3); }
+.password-wrap { position: relative; display: flex; }
+.password-wrap input { flex: 1; padding-right: 64px; min-width: 0; }
+.show-btn {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text); font-size: 13px; font-weight: 600; padding: 4px 6px;
+}
+.forgot-link { text-align: center; font-size: 13px; color: var(--text-muted); }
+.forgot-link:hover { color: var(--text); }
+.info-msg {
+  background: var(--accent-dim); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 13px; color: var(--text);
+}
+.success-msg { color: var(--success); font-size: 13px; }
+.switch-mode {
+  text-align: center; font-size: 14px; color: var(--text-muted);
+  border-top: 1px solid var(--border); padding-top: 16px;
+}
+.switch-mode button, .text-btn {
+  background: none; border: none; color: var(--text); font-weight: 700; font-size: 14px; padding: 0 2px;
+}
+.center-icon {
+  width: 88px; height: 88px; border-radius: 50%; border: 2px solid var(--text);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto;
+}
+.center-icon .material-icons { font-size: 44px; }
+.center { text-align: center; }
+
 @media (max-width: 480px) {
   .login-card { padding: 24px 18px; border-radius: 12px; }
   h1 { font-size: 24px; }

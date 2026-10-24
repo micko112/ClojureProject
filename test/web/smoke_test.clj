@@ -12,4 +12,4 @@
     (is (= "Day 1 #gym" (:caption (json-body r)))))
   (let [r (api (request :get "/api/feed" nil "Micko"))]
     (is (= 200 (:status r)))
-    (is (= 1 (count (json-body r))))))
+    (is (= 1 (count (:items (json-body r)))))))
