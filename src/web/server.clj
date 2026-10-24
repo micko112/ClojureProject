@@ -17,7 +17,7 @@
             [project.time :as t]
             [web.oauth :as oauth]
             [web.http :refer [jresp parse-body me ok created bad unauth not-found
-                              instant->str ddb user-e author-dto]]
+                              instant->str ddb user-e author-dto parse-id]]
             [web.notifications :refer [notif-dto create-notif!]]
             [web.media :as media]
             [web.posts :as posts]
@@ -594,18 +594,27 @@
         ranked (map-indexed (fn [i e] (assoc e :rank (inc i))) sorted)]
     (ok (vec ranked))))
 
-(defn- handle-competition-feed [req]
-  (let [cid (Long/parseLong (get-in req [:path-params :id]))
-        db  (ddb)
-        c   (d/entity db cid)
-        members (set (map :db/id (:competition/members c)))
-        post-ids (d/q '[:find [?p ...] :where [?p :post/author]] db)
-        filtered (filter (fn [pid]
-                           (let [author-e (-> (d/entity db pid) :post/author :db/id)]
-                             (members author-e)))
-                         post-ids)
-        sorted (sort-by #(:post/created-at (d/entity db %)) #(compare %2 %1) filtered)]
-    (ok (mapv #(post-dto db %) (take 30 sorted)))))
+(defn- handle-competition-feed
+  "Newest 30 posts of the competition's members that the viewer may see
+   (audience, archived, private accounts, blocks — same rules as the feed)."
+  [req]
+  (let [db  (ddb)
+        cid (parse-id (get-in req [:path-params :id]))
+        c   (when cid (d/entity db cid))]
+    (if-not (:competition/name c)
+      (not-found)
+      (let [u        (some->> (me req) (user-e db))
+            ctx      (posts/viewer-ctx db u)
+            members  (vec (map :db/id (:competition/members c)))
+            rows     (when (seq members)
+                       (d/q '[:find ?p ?t :in $ [?a ...] :where [?p :post/author ?a] [?p :post/created-at ?t]]
+                            db members))
+            pids     (->> rows
+                          (sort-by (fn [[p ^Date t]] [(.getTime t) p]) #(compare %2 %1))
+                          (map first)
+                          (filter #(posts/listable? ctx (d/entity db %)))
+                          (take 30))]
+        (ok (posts/post-dtos db pids u))))))
 
 ;; ===== CHALLENGES =====
 
