@@ -266,7 +266,7 @@
   (with-redefs [vision/ml-url (constantly nil)]
     (let [m (upload! "Micko")
           p (json-body (api (request :post "/api/posts" {:mediaIds [(:id m)] :activityTag "running"} "Micko")))]
-      (is (= 201 (:status (api (request :post "/api/posts" {:mediaIds [] :activityTag "running"} "Micko")))))
+      (is (= 201 (:status (api (request :post "/api/posts" {:mediaIds [] :caption "Rest day" :activityTag "running"} "Micko")))))
       (is (empty? (labels-of (parse-long (:id p))))))))
 
 ;; ---------------------------------------------------------------------------

@@ -34,18 +34,34 @@
     (try (boolean (f db recipient-e type)) (catch Throwable _ true))
     true))
 
+(defn- hidden-actor-ids
+  "Users the recipient must not see activity from (blocked either way, muted,
+   deactivated) — web.accounts/hidden-author-ids when available."
+  [db recipient-e]
+  (if-let [f (resolve-optional 'web.accounts/hidden-author-ids)]
+    (try (set (f db recipient-e)) (catch Throwable _ #{}))
+    #{}))
+
 (defn- hidden-actor?
   "Recipient blocked/muted the actor (or vice versa)."
   [db recipient-e actor-e]
   (when actor-e
-    (when-let [f (resolve-optional 'web.accounts/hidden-author-ids)]
-      (try (contains? (set (f db recipient-e)) actor-e) (catch Throwable _ false)))))
+    (contains? (hidden-actor-ids db recipient-e) actor-e)))
+
+(defn- drop-hidden
+  "Notification ids minus those whose actor is now hidden from the recipient:
+   blocking someone after they liked your post removes that notification."
+  [db recipient-e nids]
+  (let [hidden (hidden-actor-ids db recipient-e)]
+    (if (empty? hidden)
+      nids
+      (remove #(contains? hidden (some-> (d/entity db %) :notification/actor :db/id)) nids))))
 
 (defn unread-count [db recipient-e]
-  (or (d/q '[:find (count ?n) . :in $ ?u
-             :where [?n :notification/recipient ?u] [?n :notification/read false]]
-           db recipient-e)
-      0))
+  (count (drop-hidden db recipient-e
+                      (d/q '[:find [?n ...] :in $ ?u
+                             :where [?n :notification/recipient ?u] [?n :notification/read false]]
+                           db recipient-e))))
 
 ;; Toggle-style actions (unlike → like again, unfollow → follow again) must
 ;; not stack identical notifications, like on Instagram.
@@ -161,8 +177,9 @@
   [db recipient-e {:keys [limit before]}]
   (let [limit   (-> (or limit 30) (max 1) (min 100))
         all-ids (sort #(compare %2 %1)
-                      (d/q '[:find [?n ...] :in $ ?u :where [?n :notification/recipient ?u]]
-                           db recipient-e))
+                      (drop-hidden db recipient-e
+                                   (d/q '[:find [?n ...] :in $ ?u :where [?n :notification/recipient ?u]]
+                                        db recipient-e)))
         page-src (if before (drop-while #(>= % before) all-ids) all-ids)
         page    (take limit page-src)
         groups  (build-groups db all-ids)

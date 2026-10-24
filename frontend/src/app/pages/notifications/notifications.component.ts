@@ -114,7 +114,7 @@ export class NotificationsComponent implements OnInit {
 
   icon(type: string): string {
     const icons: Record<string, string> = {
-      like: 'favorite', comment: 'chat_bubble', follow: 'person_add', mention: 'alternate_email',
+      like: 'favorite', 'comment-like': 'favorite', comment: 'chat_bubble', follow: 'person_add', mention: 'alternate_email',
       follow_request: 'person_add', challenge: 'flag', competition: 'bolt', live: 'sensors',
       story: 'auto_awesome', streak: 'local_fire_department', badge: 'military_tech', message: 'send'
     };

@@ -87,6 +87,15 @@
       (when (and (:media/url e) (= owner-e (:db/id (:media/owner e))))
         eid))))
 
+(defn delete-stored-files!
+  "Deletes every stored object of media `eids`, read from `db` (a value from
+   before the entities were retracted). Never throws."
+  [db eids]
+  (doseq [eid eids
+          k (:media/storage-keys (d/entity db eid))]
+    (try (storage/delete! (storage/storage) k)
+         (catch Exception e (log/warn e "[media] could not delete" k)))))
+
 ;; ===== Helpers =====
 
 (defn- file-of [part] (when (map? part) (:tempfile part)))
@@ -264,6 +273,8 @@
               limit (case class (:image :gif :heic) image-max-bytes :video video-max-bytes audio-max-bytes)]
           (cond
             (nil? c) (unsupported nil)
+            ;; can't be re-encoded here, so storing it would keep EXIF/GPS
+            (= :heic class) (unsupported :heic)
             (> size limit) (error 413 (str "File is too large (max " (mb limit) " MB)"))
             :else
             (try

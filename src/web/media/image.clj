@@ -141,9 +141,12 @@
         (when (> px max-pixels)
           (throw (ex-info "Image has too many pixels" {:type ::too-many-pixels})))
         (let [param (.getDefaultReadParam r)
-              s (long (Math/floor (Math/sqrt (/ (double px) decode-pixel-budget))))
-              ;; never subsample below 2160 px on the short side
-              s (max 1 (min s (quot (min w h) 2160)))]
+              ;; ceil: the decoded image must fit the budget (floor let up to ~4x through)
+              s (long (Math/ceil (Math/sqrt (/ (double px) decode-pixel-budget))))
+              ;; keep the LONG side >= 2160 px (legacy max side; renditions are
+              ;; <= 1080 wide). Capping by the short side disabled subsampling
+              ;; for panoramas: 16000x4000 decoded at full 64 Mpx.
+              s (max 1 (min s (quot (max w h) 2160)))]
           (when (> s 1) (.setSourceSubsampling ^ImageReadParam param (int s) (int s) 0 0))
           (.read r 0 param))))))
 

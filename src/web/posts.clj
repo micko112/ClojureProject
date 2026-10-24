@@ -126,24 +126,32 @@
 (defn audience [e] (or (:post/audience e) :public))
 
 (defn visible?
-  "Can the viewer open this post? Owners always can (even archived)."
-  [{:keys [viewer-e hidden follows can-view close]} e]
+  "Can the viewer open this post? Owners always can (even archived).
+   Blocks (either way) and deactivated authors are covered by `can-view`;
+   muted authors stay reachable directly (profile, post link) — see
+   accounts/hidden-author-ids."
+  [{:keys [viewer-e follows can-view close]} e]
   (let [author-e (-> e :post/author :db/id)]
     (cond
       (nil? author-e)              false
       (= author-e viewer-e)        true
       (:post/archived e)           false
-      (contains? hidden author-e)  false
       (not (can-view author-e))    false
       :else (case (audience e)
               :followers     (contains? follows author-e)
               :close-friends (close author-e)
               true))))
 
-(defn listable?
-  "Visible and not archived — what feeds/grids/lists show."
+(defn shown?
+  "Visible and not archived — profile grids and the saved list."
   [ctx e]
   (and (not (:post/archived e)) (visible? ctx e)))
+
+(defn listable?
+  "shown? and the author isn't hidden from the viewer (muted too) — what
+   feeds, explore and hashtag pages show."
+  [ctx e]
+  (and (shown? ctx e) (not (contains? (:hidden ctx) (-> e :post/author :db/id)))))
 
 ;; ===== MEDIA =====
 
@@ -177,9 +185,11 @@
       {}
       {:likes     (into {} (d/q '[:find ?p (count ?u) :in $ [?p ...] :where [?p :post/likes ?u]] db pids))
        :comments  (into {} (d/q '[:find ?p (count ?c) :in $ [?p ...] :where [?c :comment/post ?p]] db pids))
+       ;; [?r :reaction/user _]: a deleted user's reaction loses its user ref
+       ;; but the entity stays behind (accounts/delete-user-tx).
        :reactions (reduce (fn [m [p emo n]] (assoc-in m [p emo] n)) {}
                           (d/q '[:find ?p ?emo (count ?r) :in $ [?p ...]
-                                 :where [?r :reaction/post ?p] [?r :reaction/emoji ?emo]]
+                                 :where [?r :reaction/post ?p] [?r :reaction/user _] [?r :reaction/emoji ?emo]]
                                db pids))
        :mine      (if viewer-e
                     (into {} (d/q '[:find ?p ?emo :in $ [?p ...] ?me
@@ -189,7 +199,7 @@
                     {})
        :days      (author-days db author-es)})))
 
-(defn- dto [db e viewer-e {:keys [likes comments reactions mine days]}]
+(defn- dto [db e viewer-e {:keys [likes comments reactions mine days hidden]}]
   (let [pid         (:db/id e)
         author      (:post/author e)
         author-e    (:db/id author)
@@ -211,7 +221,9 @@
              :archived     (boolean (:post/archived e))
              :activityTag  (:post/activity-tag e)
              :hashtags     (vec (sort (:post/hashtags e)))
-             :likes        (if show-likes? (vec (keep :user/username like-set)) [])
+             :likes        (if show-likes?
+                             (vec (keep #(when-not (contains? hidden (:db/id %)) (:user/username %)) like-set))
+                             [])
              :likeCount    (when show-likes? (get likes pid 0))
              :commentCount (get comments pid 0)
              :reactions    (if show-likes? (get reactions pid {}) {})
@@ -227,7 +239,9 @@
   [db pids viewer-e]
   (let [es      (mapv #(d/entity db %) pids)
         authors (distinct (keep #(-> % :post/author :db/id) es))
-        st      (batch-stats db pids viewer-e authors)]
+        st      (assoc (batch-stats db pids viewer-e authors)
+                       ;; likers who blocked the viewer / deactivated stay out of `likes`
+                       :hidden (if (seq pids) (set (accounts/hidden-author-ids db viewer-e)) #{}))]
     (mapv #(dto db % viewer-e st) es)))
 
 (defn post-dto
@@ -296,6 +310,18 @@
       (when (visible? (viewer-ctx db m) pe)
         (notify! m actor-e :mention (str username " mentioned you in a " where) post-e)))))
 
+(def max-caption 2200)
+
+(defn- present? [s] (and (string? s) (not (str/blank? s))))
+
+(defn- caption-error
+  "Error message for an unusable caption (nil = absent, fine)."
+  [caption]
+  (cond
+    (nil? caption)                   nil
+    (not (string? caption))          "Caption must be text"
+    (> (count caption) max-caption)  (str "Caption is too long (max " max-caption " characters)")))
+
 (def layouts #{"single" "carousel" "compare"})
 (def audiences #{"public" "followers" "close-friends"})
 (def max-media 10)
@@ -328,9 +354,10 @@
       (not-found)
       (let [u   (viewer db req)
             ctx (viewer-ctx db u)]
-        (if (and (not= a u) (or (contains? (:hidden ctx) a) (not ((:can-view ctx) a))))
+        ;; can-view covers blocks and deactivation; muted authors keep their profile
+        (if (and (not= a u) (not ((:can-view ctx) a)))
           (ok {:items [] :nextCursor nil :private true})
-          (ok (page-response db u (page-newest-first db (author-rows db [a]) #(listable? ctx %)
+          (ok (page-response db u (page-newest-first db (author-rows db [a]) #(shown? ctx %)
                                                      (param req :cursor) (parse-limit req 12)))))))))
 
 (defn handle-get-archived [req]
@@ -349,7 +376,7 @@
           u    (user-e db username)
           ctx  (viewer-ctx db u)
           rows (d/q '[:find ?p ?t :in $ ?u :where [?p :post/saved-by ?u] [?p :post/created-at ?t]] db u)]
-      (ok (:items (page-response db u (page-newest-first db rows #(listable? ctx %) nil 50)))))
+      (ok (:items (page-response db u (page-newest-first db rows #(shown? ctx %) nil 50)))))
     (unauth)))
 
 ;; ===== EXPLORE =====
@@ -362,26 +389,51 @@
      (/ (+ 1.0 likes (* 2.0 comments) reactions)
         (Math/pow (+ (max 0.0 age-hours) 2.0) 1.5))))
 
+(def explore-scan-limit
+  "Newest posts looked at per explore request (index walk, newest first)."
+  5000)
+
+(def explore-max-candidates
+  "Eligible posts ranked per request. With gravity 1.5 older posts can't
+   compete anyway, and ranking every post ever on each request doesn't scale."
+  500)
+
+(defn- parse-explore-cursor
+  "\"<offset>_<now millis>_<basis-t>\" (or a legacy bare offset) ->
+   [offset now basis-t], missing parts nil."
+  [s]
+  (let [[o n b] (map parse-long (str/split (str s) #"_"))]
+    [(when (and o (pos? o)) o) (when (and n (pos? n)) n) (when (and b (pos? b)) b)]))
+
 (defn handle-explore
   "GET /api/explore?cursor=&limit= -> {items, nextCursor}: public posts from
    people the viewer doesn't follow, ranked by time-decayed engagement.
-   cursor = offset into the ranking."
+   The cursor pins the ranking (offset, clock and database basis of the
+   first page), so likes arriving while the viewer scrolls neither repeat
+   nor skip posts; visibility is still checked against the current db."
   [req]
   (let [db     (ddb)
         u      (viewer db req)
-        ctx    (viewer-ctx db u)
+        [offset now basis] (parse-explore-cursor (param req :cursor))
+        offset (or offset 0)
+        now    (or now (System/currentTimeMillis))
+        basis  (or basis (d/basis-t db))
+        rdb    (d/as-of db basis)
+        ctx    (viewer-ctx rdb u)
         skip   (conj (:follows ctx) u)
-        now    (System/currentTimeMillis)
-        rows   (d/q '[:find ?p ?a ?t :where [?p :post/author ?a] [?p :post/created-at ?t]] db)
-        cands  (->> rows
-                    (remove (fn [[_ a _]] (contains? skip a)))
-                    (filter (fn [[p _ _]] (let [e (d/entity db p)]
-                                            (and (= :public (audience e)) (listable? ctx e))))))
+        cands  (->> (d/index-pull rdb {:index :avet :reverse true :start [:post/created-at]
+                                       :selector [:db/id :post/created-at {:post/author [:db/id]}]})
+                    (take explore-scan-limit)
+                    (keep (fn [{p :db/id t :post/created-at {a :db/id} :post/author}]
+                            (when (and a (not (contains? skip a))) [p a t])))
+                    (filter (fn [[p _ _]] (let [e (d/entity rdb p)]
+                                            (and (= :public (audience e)) (listable? ctx e)))))
+                    (take explore-max-candidates))
         pids   (mapv first cands)
-        st     (batch-stats db pids nil nil)
+        st     (batch-stats rdb pids nil nil)
         scored (->> cands
                     (map (fn [[p _ ^Date t]]
-                           (let [e (d/entity db p)]
+                           (let [e (d/entity rdb p)]
                              [p (explore-score {:likes     (get-in st [:likes p] 0)
                                                 :comments  (get-in st [:comments p] 0)
                                                 :reactions (reduce + 0 (vals (get-in st [:reactions p])))
@@ -389,12 +441,13 @@
                                                 :has-media (boolean (or (seq (:post/media e)) (:post/media-url e)))})])))
                     (sort-by (fn [[p sc]] [(- sc) (- p)]))
                     (map first))
-        offset (or (some-> (param req :cursor) str parse-long) 0)
         limit  (parse-limit req 24)
-        page   (take limit (drop offset scored))
+        now-ctx (viewer-ctx db u)
+        page   (filter #(let [e (d/entity db %)] (and (= :public (audience e)) (listable? now-ctx e)))
+                       (take limit (drop offset scored)))
         more?  (seq (drop (+ offset limit) scored))]
     (ok {:items (post-dtos db page u)
-         :nextCursor (when more? (str (+ offset limit)))})))
+         :nextCursor (when more? (str (+ offset limit) "_" now "_" basis))})))
 
 ;; ===== HASHTAGS / TRENDING =====
 
@@ -415,16 +468,31 @@
                    :tag tag
                    :count (count rows)))))))
 
+(def ^:private public-post-rules
+  "Posts anyone may see: public audience, not archived, by an active public
+   account. Counts shown to everybody (hashtag search, trending) must only
+   include these, or a close-friends / private-account post leaks its tags."
+  '[[(public-post? ?p)
+     [?p :post/author ?a]
+     [?a :user/username]
+     (not [?a :user/private? true])
+     (not [?a :user/deactivated? true])
+     (not [?p :post/archived true])
+     (or-join [?p]
+              [?p :post/audience :public]
+              [(missing? $ ?p :post/audience)])]])
+
 (defn handle-hashtag-search
   "GET /api/hashtags/search?q= -> [{tag, count}] (prefix match, most used first)"
   [req]
   (let [q (normalize-tag (param req :q))]
     (if (str/blank? q)
       (ok [])
-      (let [rows (d/q '[:find ?tag (count ?p) :in $ ?q
+      (let [rows (d/q '[:find ?tag (count ?p) :in $ % ?q
                         :where [?p :post/hashtags ?tag]
-                        [(clojure.string/starts-with? ?tag ?q)]]
-                      (ddb) q)]
+                        [(clojure.string/starts-with? ?tag ?q)]
+                        (public-post? ?p)]
+                      (ddb) public-post-rules q)]
         (ok (->> rows
                  (sort-by (fn [[t c]] [(- c) t]))
                  (take 20)
@@ -435,14 +503,20 @@
    last 7 days, topped up with all-time activity tags."
   [_]
   (let [db       (ddb)
-        week-ago (- (System/currentTimeMillis) (* 7 24 3600 1000))
-        tags     (->> (d/q '[:find ?tag ?p ?t :where [?p :post/hashtags ?tag] [?p :post/created-at ?t]] db)
-                      (filter (fn [[_ _ ^Date t]] (> (.getTime t) week-ago)))
-                      (group-by first)
-                      (map (fn [[tag rs]] {:tag tag :count (count rs) :kind "hashtag"}))
+        week-ago (Date. (- (System/currentTimeMillis) (* 7 24 3600 1000)))
+        ;; only the last week's posts, straight from the :post/created-at index
+        recent   (mapv :e (d/index-range db :post/created-at week-ago nil))
+        tags     (->> (if (seq recent)
+                        (d/q '[:find ?tag (count ?p) :in $ % [?p ...]
+                               :where [?p :post/hashtags ?tag] (public-post? ?p)]
+                             db public-post-rules recent)
+                        [])
+                      (map (fn [[tag c]] {:tag tag :count c :kind "hashtag"}))
                       (sort-by (juxt (comp - :count) :tag))
                       (take 10))
-        acts     (->> (d/q '[:find ?tag (count ?p) :where [?p :post/activity-tag ?tag]] db)
+        acts     (->> (d/q '[:find ?tag (count ?p) :in $ %
+                             :where [?p :post/activity-tag ?tag] (public-post? ?p)]
+                           db public-post-rules)
                       (map (fn [[tag c]] {:tag tag :count c :kind "activity"}))
                       (sort-by (juxt (comp - :count) :tag)))]
     (ok (vec (take 10 (concat tags acts))))))
@@ -486,6 +560,9 @@
           u   (user-e db username)
           ids (mapv parse-id (if (sequential? mediaIds) mediaIds []))]
       (cond
+        (caption-error caption)                 (bad (caption-error caption))
+        (and (empty? ids) (not (present? caption)) (not (present? mediaUrl)))
+        (bad "Add a photo, video or caption")
         (some nil? ids)                         (bad "Invalid media id")
         (> (count ids) max-media)               (bad (str "A post can have at most " max-media " photos or videos"))
         (not= (count ids) (count (distinct ids))) (bad "Duplicate media in post")
@@ -554,8 +631,12 @@
             username (me req)
             pid      (:db/id e)
             aud      (:audience body)]
-        (if (and (contains? body :audience) (not (audiences aud)))
+        (cond
+          (and (contains? body :audience) (not (audiences aud)))
           (bad "Invalid audience")
+          (caption-error (:caption body))
+          (bad (caption-error (:caption body)))
+          :else
           (let [caption      (:caption body)
                 cap?         (contains? body :caption)
                 old-tags     (set (:post/hashtags e))
@@ -598,13 +679,21 @@
 
 (defn handle-delete-post [req]
   (with-own-post req
-    (fn [db _ e]
+    (fn [db u e]
       (let [pid (:db/id e)
             cs  (d/q '[:find [?c ...] :in $ ?p :where [?c :comment/post ?p]] db pid)
             rs  (d/q '[:find [?r ...] :in $ ?p :where [?r :reaction/post ?p]] db pid)
-            ls  (d/q '[:find [?l ...] :in $ ?p :where [?l :vision-label/post ?p]] db pid)]
-        @(d/transact s/conn (concat (for [x (concat cs rs ls)] [:db/retractEntity x])
+            ls  (d/q '[:find [?l ...] :in $ ?p :where [?l :vision-label/post ?p]] db pid)
+            nids (d/q '[:find [?n ...] :in $ ?p :where [?n :notification/post ?p]] db pid)
+            ;; the author's uploads that no other post shows: entity + stored files go
+            mids (->> (:post/media e) (keep #(-> % :post-media/media :db/id)) distinct
+                      (filter #(= u (media-owner-e (d/entity db %))))
+                      (remove #(d/q '[:find ?q . :in $ ?m ?p
+                                      :where [?s :post-media/media ?m] [?q :post/media ?s] [(not= ?q ?p)]]
+                                    db % pid)))]
+        @(d/transact s/conn (concat (for [x (concat cs rs ls nids mids)] [:db/retractEntity x])
                                     [[:db/retractEntity pid]]))
+        (media/delete-stored-files! db mids)
         (ok {:ok true})))))
 
 (defn- with-visible-post
@@ -627,10 +716,11 @@
       (let [pid    (:db/id e)
             liked? (boolean (some #(= (:db/id %) u) (:post/likes e)))
             db2    (:db-after @(d/transact s/conn [[(if liked? :db/retract :db/add) pid :post/likes u]]))
-            likes  (vec (keep :user/username (:post/likes (d/entity db2 pid))))]
+            ;; same rules as the DTO: hideLikes hides count + likers from non-owners
+            dto    (post-dto db2 pid u)]
         (when-not liked?
           (notify! (-> e :post/author :db/id) u :like (str username " liked your post") pid))
-        (ok {:likes likes :liked (not liked?) :likeCount (count likes)})))))
+        (ok {:likes (:likes dto) :liked (not liked?) :likeCount (:likeCount dto)})))))
 
 (defn handle-react-post
   "POST /api/posts/:id/react {emoji} — one supportive reaction per user;
@@ -794,7 +884,9 @@
         (let [liked? (boolean (some #(= (:db/id %) u) (:comment/likes c)))
               db2    (:db-after @(d/transact s/conn [[(if liked? :db/retract :db/add) cid :comment/likes u]]))]
           (when-not liked?
-            (notify! (-> c :comment/author :db/id) u :like (str username " liked your comment") (:db/id post)))
+            ;; :comment-like, not :like — notifications group :like by post
+            ;; ("ana and 2 others liked your post").
+            (notify! (-> c :comment/author :db/id) u :comment-like (str username " liked your comment") (:db/id post)))
           (ok {:liked (not liked?) :likeCount (count (:comment/likes (d/entity db2 cid)))}))))
     (unauth)))
 
