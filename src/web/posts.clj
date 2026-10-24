@@ -308,14 +308,14 @@
   "GET /api/feed?cursor=&limit= -> {items, nextCursor}: own + followed posts,
    newest first, archived excluded, privacy respected."
   [req]
-  (if-let [username (me req)]
-    (let [db  (ddb)
-          u   (user-e db username)
-          ctx (viewer-ctx db u)
-          authors (remove (:hidden ctx) (conj (:follows ctx) u))]
-      (ok (page-response db u (page-newest-first db (author-rows db authors) #(listable? ctx %)
-                                                 (param req :cursor) (parse-limit req 10)))))
-    (unauth)))
+  (let [db (ddb)
+        u  (some->> (me req) (user-e db))]
+    (if-not u
+      (unauth)
+      (let [ctx     (viewer-ctx db u)
+            authors (remove (:hidden ctx) (conj (:follows ctx) u))]
+        (ok (page-response db u (page-newest-first db (author-rows db authors) #(listable? ctx %)
+                                                   (param req :cursor) (parse-limit req 10))))))))
 
 (defn handle-get-user-posts
   "GET /api/users/:username/posts?cursor=&limit= -> {items, nextCursor, private?}"
@@ -453,10 +453,11 @@
 (defn handle-my-streak
   "GET /api/me/streak -> {current, best, postedToday, totalDays, nextDayNumber, today}"
   [req]
-  (if-let [username (me req)]
-    (let [db (ddb)]
-      (ok (streak-info (user-days db (user-e db username)) (today))))
-    (unauth)))
+  (let [db (ddb)
+        u  (some->> (me req) (user-e db))]
+    (if u
+      (ok (streak-info (user-days db u) (today)))
+      (unauth))))
 
 (defn handle-user-streak [req]
   (let [db (ddb)
