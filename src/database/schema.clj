@@ -2,7 +2,8 @@
   (:require [database.schema-media :as media]
             [database.schema-posts :as posts]
             [database.schema-accounts :as accounts]
-            [database.schema-realtime :as realtime]))
+            [database.schema-realtime :as realtime]
+            [database.schema-vision :as vision]))
 
 (def user-schema
   [{:db/ident :user/username :db/valueType :db.type/string :db/cardinality :db.cardinality/one :db/unique :db.unique/identity}
@@ -128,4 +129,5 @@
           group-schema group-message-schema
           competition-schema challenge-schema story-schema
           tracking-entry-schema
-          media/schema posts/schema accounts/schema realtime/schema))
+          media/schema posts/schema accounts/schema realtime/schema
+          vision/schema))

@@ -9,13 +9,16 @@ Automated CI/CD for BeBetter (Clojure + Datomic + Angular). The pipeline is defi
 push to main
     |
     +-- test-backend       (lein test)             -+
-    |                                               | parallel
-    +-- test-frontend      (ng build --prod)       -+
+    |                                               |
+    +-- test-frontend      (ng build --prod)        | parallel
+    |                                               |
+    +-- test-ml            (python unittest)       -+
     |
-    +-- build-and-push     (3 images -> GHCR)       matrix
+    +-- build-and-push     (4 images -> GHCR)       matrix
     |       +-- bebetter-backend
     |       +-- bebetter-frontend
     |       +-- bebetter-datomic
+    |       +-- bebetter-ml
     |
     +-- deploy             (SSH -> /opt/app/deploy.sh -> smoke test)
 ```
@@ -37,6 +40,7 @@ This starts:
 | Datomic    | 4334 | (peer-only)                  |
 | Backend    | 3000 | http://localhost:3000/api    |
 | Frontend   | 4200 | http://localhost:4200        |
+| ML         | 8000 | http://localhost:8000/health |
 
 First run only — seed the DB:
 ```powershell
@@ -147,8 +151,8 @@ On the VPS:
 cd /opt/app
 # Bring up datomic + backend + frontend (skip nginx for a moment)
 export IMAGE_OWNER=<your-github-user-lowercase>
-docker compose -f docker-compose.prod.yml pull backend frontend datomic
-docker compose -f docker-compose.prod.yml up -d datomic backend frontend
+docker compose -f docker-compose.prod.yml pull backend frontend datomic ml
+docker compose -f docker-compose.prod.yml up -d datomic ml backend frontend
 ```
 
 Wait ~30 seconds for Datomic + backend to come up. Confirm:
@@ -266,6 +270,50 @@ Notes
 
 ---
 
+## Activity suggestions (ML service)
+
+The composer suggests the activity of a photo ("Looks like: 🏃 Running 87%")
+using the `ml` service: CLIP ViT-B/32 (quantized ONNX, CPU) plus a small head
+trained on the tags people confirm or correct. How it works and how to
+retrain: [ml/README.md](ml/README.md).
+
+- **Image**: `bebetter-ml`, built by CI like the others. The ~155 MB model is
+  downloaded at build time from HuggingFace, pinned to a commit and
+  checksum-verified (`ml/scripts/download_model.py`); nothing is fetched at
+  runtime. ~230 MB RAM, ~60 ms per photo on 2 CPU threads.
+- **Volume**: `ml_data` (`/data/head.npz`, the trained head). Losing it just
+  means falling back to zero-shot until the next retrain; labels are in Datomic.
+- **Network**: the service has no published port in production; only the
+  backend talks to it (`ML_URL=http://ml:8000`, the compose default).
+- **Optional by design**: if `ml` is down or slow, uploads and posts work as
+  before, just without suggestions (2 s timeout, then calls pause for 15 s).
+
+`.env` on the VPS:
+
+```env
+ADMIN_USERNAMES=Micko              # who may call /api/vision/status, /retrain, /export
+# ML_URL=                          # uncomment (empty) to switch suggestions off
+# ML_TOKEN=some-long-random-string # optional shared secret for POST /train
+# ML_TIMEOUT_MS=2000
+# ML_THREADS=2                     # CPU threads for inference
+```
+
+First deploy of this feature: `deploy.sh` pulls and starts `ml` automatically
+(no data migration: the new Datomic attributes are added on backend start).
+
+Retrain after a few hundred new labels (log in as an admin in the browser
+first, or pass the session cookie to curl):
+
+```bash
+curl -b 'bb-session=...' https://bebetter.quest/api/vision/status
+curl -b 'bb-session=...' -X POST https://bebetter.quest/api/vision/retrain
+```
+
+Check the service: `docker compose -f docker-compose.prod.yml logs ml` should
+show `[ml] model ready in ~2s (zero-shot)` (or `head+zero-shot`).
+
+---
+
 ## Rollback
 
 Pick a green run from before the bug in **Actions -> CI/CD** and click **Re-run all jobs**.
@@ -291,6 +339,11 @@ IMAGE_TAG=<older-sha> ./deploy.sh <older-sha>
 
 **Empty DB after first deploy**
 - Set `BEBETTER_SEED=true` in `.env`, restart backend, wait for `[bootstrap] BEBETTER_SEED=true — running reset-db!` in logs, then set it back to `false`.
+
+**No "Looks like ..." suggestions in the composer**
+- `docker compose -f docker-compose.prod.yml ps ml` should be `healthy`; check `logs ml`.
+- The backend logs `[vision] ML service unavailable ...` when calls fail; it retries after 15 s.
+- `ML_URL` set to empty in `.env` disables the feature.
 
 **Uploaded images 404 in frontend**
 - The `uploads_data` volume is shared between backend (writes) and nginx (reads). If nginx wasn't recreated after adding the volume mount, run `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx`.

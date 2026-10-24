@@ -9,8 +9,9 @@ import { AuthService } from '../../services/auth.service';
 import { MediaService, MAX_VIDEO_BYTES, UploadEvent, loadImage } from '../../services/media.service';
 import { ToastService } from '../../services/toast.service';
 import { ComposerService } from '../../services/composer.service';
+import { VisionService } from '../../services/vision.service';
 import { CreatePostRequest, Post, PostAudience, PostLayout } from '../../models/post.model';
-import { Media } from '../../models/media.model';
+import { ActivitySuggestion, Media } from '../../models/media.model';
 
 export type ComposerAspect = '1:1' | '4:5' | 'original';
 type Step = 'pick' | 'edit' | 'details';
@@ -36,6 +37,8 @@ export const CAPTION_MAX = 2200;
 const MAX_ZOOM = 4;
 const MIN_RATIO = 9 / 16;
 const MAX_RATIO = 1.91;
+/** Pre-fill the activity tag only when the classifier is reasonably sure. */
+const PREFILL_MIN_SCORE = 0.35;
 
 /**
  * Instagram-style post composer: pick up to 10 photos/videos, crop each
@@ -86,6 +89,9 @@ export class ComposerComponent implements OnInit, OnDestroy {
   progress = signal(0);
   shareStatus = signal('');
 
+  /** "Looks like: 🏃 Running 87%" for the first photo/video; empty = show nothing. */
+  suggestions = signal<ActivitySuggestion[]>([]);
+
   readonly tagSuggestions = ['gym', 'running', 'coding', 'reading', 'study', 'meditation', 'nutrition', 'yoga', 'walking', 'sleep'];
   readonly audiences: { value: PostAudience; label: string; icon: string; hint: string }[] = [
     { value: 'public', label: 'Public', icon: 'public', hint: 'Anyone on BeBetter' },
@@ -118,12 +124,16 @@ export class ComposerComponent implements OnInit, OnDestroy {
   private cancelUpload?: () => void;
   private dragIndex: number | null = null;
   private prevOverflow = '';
+  private suggestedFor = 0;   // id of the item the current suggestions are for
+  private suggestSeq = 0;     // ignores answers that arrive after the cover changed
+  private autoTag = '';       // tag we filled in ourselves (replaced if the cover changes)
 
   constructor(
     private api: ApiService,
     private media: MediaService,
     private toast: ToastService,
     private composer: ComposerService,
+    private vision: VisionService,
     public auth: AuthService,
   ) {}
 
@@ -256,6 +266,7 @@ export class ComposerComponent implements OnInit, OnDestroy {
       this.reclampAll();
     }
     if (this.step() === 'pick') this.step.set('edit');
+    this.refreshSuggestions();
   }
 
   private async makeItem(file: File): Promise<ComposerItem> {
@@ -297,6 +308,7 @@ export class ComposerComponent implements OnInit, OnDestroy {
     this.items.update(list => list.filter((_, idx) => idx !== i));
     const n = this.items().length;
     if (!this.canCompare()) this.compare.set(false);
+    this.refreshSuggestions();
     if (n === 0) { this.step.set('pick'); this.activeIndex.set(0); return; }
     this.activeIndex.set(Math.min(this.activeIndex(), n - 1));
     if (i === 0) this.reclampAll(); // "original" ratio follows the first item
@@ -310,7 +322,7 @@ export class ComposerComponent implements OnInit, OnDestroy {
     [list[i], list[j]] = [list[j], list[i]];
     this.items.set(list);
     this.activeIndex.set(j);
-    if (i === 0 || j === 0) this.reclampAll();
+    if (i === 0 || j === 0) { this.reclampAll(); this.refreshSuggestions(); }
   }
 
   swapCompare(): void { this.move(0, 1); }
@@ -337,6 +349,7 @@ export class ComposerComponent implements OnInit, OnDestroy {
     this.items.set(list);
     this.activeIndex.set(i);
     this.reclampAll();
+    this.refreshSuggestions();
   }
 
   setZoom(value: number | string): void {
@@ -433,6 +446,54 @@ export class ComposerComponent implements OnInit, OnDestroy {
 
   pickTag(t: string): void {
     this.activityTag = this.activityTag === t ? '' : t;
+    this.autoTag = '';
+  }
+
+  // ===== Activity suggestions =====
+
+  /** Tapping a suggestion sets it as the activity (it's then the user's choice). */
+  pickSuggestion(s: ActivitySuggestion): void {
+    this.activityTag = s.activity;
+    this.autoTag = '';
+  }
+
+  /** The user typed in the activity field: never overwrite what they wrote. */
+  onTagEdited(): void {
+    if (this.activityTag !== this.autoTag) this.autoTag = '';
+  }
+
+  pct(score: number): number {
+    return Math.round(score * 100);
+  }
+
+  /**
+   * Asks the classifier about the cover (first item; a video's poster frame)
+   * whenever it changes. Runs in the background while the user crops and
+   * writes the caption; failures just mean no suggestions.
+   */
+  private refreshSuggestions(): void {
+    const cover = this.items()[0];
+    if (cover?.id === this.suggestedFor) return;
+    this.suggestedFor = cover?.id ?? 0;
+    const seq = ++this.suggestSeq;
+    this.suggestions.set([]);
+    const source = cover ? (cover.kind === 'image' ? cover.file : cover.poster) : null;
+    if (!source) { this.applyTopSuggestion(); return; }
+    this.vision.suggest(source).then(list => {
+      if (seq !== this.suggestSeq) return;
+      this.suggestions.set(list.slice(0, 3));
+      this.applyTopSuggestion();
+    });
+  }
+
+  /** Pre-fills the tag with the top suggestion unless the user chose one. */
+  private applyTopSuggestion(): void {
+    const typed = this.activityTag.trim();
+    if (typed && typed !== this.autoTag) return;
+    const top = this.suggestions()[0];
+    const next = top && top.score >= PREFILL_MIN_SCORE ? top.activity : '';
+    this.activityTag = next;
+    this.autoTag = next;
   }
 
   async share(): Promise<void> {

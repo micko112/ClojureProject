@@ -11,6 +11,7 @@
                               not-found parse-id instant->str ddb user-e author-dto]]
             [web.notifications :refer [create-notif!]]
             [web.media :as media]
+            [web.vision :as vision]
             [web.accounts :as accounts]
             [web.realtime :as realtime])
   (:import (java.util Date)
@@ -513,6 +514,9 @@
               db2      (:db-after r)
               pid      (get (:tempids r) "new-post")]
           (notify-mentions! db2 pid u username mentions "post")
+          ;; The activity tag labels the photos for the activity classifier.
+          (when (and (seq ids) (not (str/blank? activityTag)))
+            (vision/sync-labels! pid))
           ;; Close-friends posts are not announced: other followers must not
           ;; learn that a post they can't see exists.
           (when-not (= "close-friends" audience)
@@ -578,6 +582,8 @@
                      (and (contains? body :activityTag) (str/blank? (:activityTag body)) (:post/activity-tag e))
                      (conj [:db/retract pid :post/activity-tag (:post/activity-tag e)]))
                 db2 (:db-after @(d/transact s/conn tx))]
+            (when (contains? body :activityTag)
+              (vision/sync-labels! pid))
             (notify-mentions! db2 pid u username added "post")
             (ok (post-dto db2 pid u))))))))
 
@@ -595,8 +601,9 @@
     (fn [db _ e]
       (let [pid (:db/id e)
             cs  (d/q '[:find [?c ...] :in $ ?p :where [?c :comment/post ?p]] db pid)
-            rs  (d/q '[:find [?r ...] :in $ ?p :where [?r :reaction/post ?p]] db pid)]
-        @(d/transact s/conn (concat (for [x (concat cs rs)] [:db/retractEntity x])
+            rs  (d/q '[:find [?r ...] :in $ ?p :where [?r :reaction/post ?p]] db pid)
+            ls  (d/q '[:find [?l ...] :in $ ?p :where [?l :vision-label/post ?p]] db pid)]
+        @(d/transact s/conn (concat (for [x (concat cs rs ls)] [:db/retractEntity x])
                                     [[:db/retractEntity pid]]))
         (ok {:ok true})))))
 

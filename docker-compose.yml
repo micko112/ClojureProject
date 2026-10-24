@@ -43,6 +43,12 @@ services:
       S3_REGION: "${S3_REGION:-}"
       S3_PREFIX: "${S3_PREFIX:-}"
       MEDIA_PUBLIC_BASE_URL: "${MEDIA_PUBLIC_BASE_URL:-}"
+      # Activity suggestions from photos. Set ML_URL= (empty) to turn them off;
+      # uploads keep working when the ml service is down either way.
+      ML_URL: "${ML_URL-http://ml:8000}"
+      ML_TOKEN: "${ML_TOKEN:-}"
+      # Comma-separated usernames allowed to call /api/vision/retrain and /status.
+      ADMIN_USERNAMES: "${ADMIN_USERNAMES:-}"
     volumes:
       - uploads_data:/app/uploads
     ports:
@@ -50,6 +56,22 @@ services:
     depends_on:
       datomic:
         condition: service_started
+      ml:
+        condition: service_started
+
+  # ─── Activity classifier (Python: CLIP via ONNX Runtime + trained head) ──────
+  # See ml/README.md. The trained head lives on the ml_data volume.
+  ml:
+    build:
+      context: ./ml
+    image: bebetter-ml
+    container_name: bebetter-ml
+    environment:
+      ML_TOKEN: "${ML_TOKEN:-}"
+    volumes:
+      - ml_data:/data
+    ports:
+      - "8000:8000"
 
   # ─── Angular frontend (nginx serving built SPA) ──────────────────────────────
   frontend:
@@ -98,3 +120,4 @@ volumes:
   datomic_data:
   uploads_data:
   minio_data:
+  ml_data:

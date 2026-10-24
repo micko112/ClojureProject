@@ -15,7 +15,8 @@
             [web.http :refer [jresp me ok bad unauth ddb user-e parse-id]]
             [web.media.image :as img]
             [web.media.storage :as storage]
-            [web.media.video :as video])
+            [web.media.video :as video]
+            [web.vision :as vision])
   (:import (java.io File RandomAccessFile InputStream)
            (java.util Date UUID)))
 
@@ -44,20 +45,26 @@
 (defn media-dto
   "Shape (see docs/ARCHITECTURE.md): {:id :type :url :width :height
    :variants [{:w :url}] :placeholder :posterUrl :durationSec}
-   Keys without a value are omitted. Returns nil when `eid` is not a media."
-  [db eid]
-  (let [e (d/entity db eid)]
-    (when (:media/url e)
-      (drop-nils
-       {:id          (str (:db/id e))
-        :type        (or (:media/type e) "image")
-        :url         (:media/url e)
-        :width       (:media/width e)
-        :height      (:media/height e)
-        :variants    (or (parse-variants (:media/variants e)) [])
-        :placeholder (:media/placeholder e)
-        :posterUrl   (:media/poster-url e)
-        :durationSec (:media/duration e)}))))
+   Keys without a value are omitted. Returns nil when `eid` is not a media.
+   With {:suggestions? true} (upload response only) adds
+   :suggestions [{:activity :label :emoji :score}] from the activity
+   classifier, when there are any."
+  ([db eid] (media-dto db eid nil))
+  ([db eid {:keys [suggestions?]}]
+   (let [e (d/entity db eid)
+         sg (when suggestions? (seq (vision/media-suggestions e)))]
+     (when (:media/url e)
+       (drop-nils
+        {:id          (str (:db/id e))
+         :type        (or (:media/type e) "image")
+         :url         (:media/url e)
+         :width       (:media/width e)
+         :height      (:media/height e)
+         :variants    (or (parse-variants (:media/variants e)) [])
+         :placeholder (:media/placeholder e)
+         :posterUrl   (:media/poster-url e)
+         :durationSec (:media/duration e)
+         :suggestions (some-> sg vec)})))))
 
 (def ^:private video-ext-re #"(?i)\.(mp4|mov|webm|m4v|ogv)(\?.*)?$")
 
@@ -125,7 +132,10 @@
      :media/height height
      :media/variants (json/generate-string (mapv #(select-keys % [:w :url]) stored))
      :media/placeholder placeholder
-     :media/storage-keys (mapv :key stored)}))
+     :media/storage-keys (mapv :key stored)
+     ;; not an attribute: what the activity classifier looks at (640 px is
+     ;; plenty for its 224 px input)
+     ::vision-input (:bytes (or (first (filter #(= 640 (:w %)) renditions)) (peek renditions)))}))
 
 (defn- process-gif-upload
   "GIFs are kept as-is so animation survives (they carry no EXIF/GPS)."
@@ -140,7 +150,8 @@
              :media/height (long h)
              :media/variants (json/generate-string [{:w w :url url}])
              :media/storage-keys [k]}
-      ph (assoc :media/placeholder ph))))
+      ph (assoc :media/placeholder ph)
+      (<= (.length f) (* 5 1024 1024)) (assoc ::vision-input f))))
 
 (defn- process-poster
   "Optional poster image for a video: one JPEG <= 1080 px wide + placeholder."
@@ -151,9 +162,10 @@
         (try
           (let [im (img/orient (img/decode pf) (img/exif-orientation pf))
                 top (img/resize-to-width im 1080)
-                [k url] (store! base "_poster" "jpg" (img/encode-jpeg top 0.8) "image/jpeg")]
+                jpeg (img/encode-jpeg top 0.8)
+                [k url] (store! base "_poster" "jpg" jpeg "image/jpeg")]
             {:url url :key k :width (.getWidth top) :height (.getHeight top)
-             :placeholder (img/placeholder im)})
+             :placeholder (img/placeholder im) :jpeg jpeg})
           (catch Exception e (log/warn e "[media] poster processing failed") nil))))))
 
 (defn- process-video-upload
@@ -177,7 +189,8 @@
       height (assoc :media/height (long height))
       duration (assoc :media/duration (double duration))
       poster (assoc :media/poster-url (:url poster)
-                    :media/placeholder (:placeholder poster)))))
+                    :media/placeholder (:placeholder poster)
+                    ::vision-input (:jpeg poster)))))
 
 ;; ===== POST /api/media =====
 
@@ -210,6 +223,10 @@
                               :image (process-image-upload f base)
                               :gif   (process-gif-upload f base)
                               :video (process-video-upload f c params base))
+                      ;; Activity suggestion (videos: from the poster). Short
+                      ;; timeout; nil when the ML service is off or slow.
+                      prediction (some-> (::vision-input attrs) (vision/classify {:embedding? true}))
+                      attrs (merge (dissoc attrs ::vision-input) (vision/prediction-attrs prediction))
                       tmp "new-media"
                       tx @(d/transact s/conn [(merge attrs
                                                      {:db/id tmp
@@ -218,7 +235,7 @@
                                                       :media/hash hash
                                                       :media/created-at (Date.)})])
                       eid (get-in tx [:tempids tmp])]
-                  (jresp 201 (media-dto (:db-after tx) eid)))
+                  (jresp 201 (media-dto (:db-after tx) eid {:suggestions? true})))
                 (catch clojure.lang.ExceptionInfo e
                   (if (#{::img/too-many-pixels} (:type (ex-data e)))
                     (error 413 "Image resolution is too large")

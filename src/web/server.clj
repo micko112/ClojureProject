@@ -26,6 +26,7 @@
             [web.notifications :as notifications]
             [web.dm :as dm]
             [web.live :as live]
+            [web.vision :as vision]
             [buddy.hashers :as hashers])
   (:import (java.util UUID Date)
            (java.time Instant LocalDate ZoneId)))
@@ -897,7 +898,8 @@
                realtime/routes
                notifications/routes
                dm/routes
-               live/routes)))
+               live/routes
+               vision/routes)))
 
 ;; ===== APP =====
 
