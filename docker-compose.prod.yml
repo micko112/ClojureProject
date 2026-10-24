@@ -23,11 +23,28 @@ services:
     environment:
       DATOMIC_URI: "datomic:dev://datomic:4334/bebetter?password=bebetter_datomic_secret"
       PORT: "3000"
+      # Activity classifier; ML_URL= in .env turns suggestions off.
+      ML_URL: "${ML_URL-http://ml:8000}"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       datomic:
         condition: service_started
+      ml:
+        condition: service_started
+
+  # ─── Activity classifier (CLIP + trained head) ───────────────────────────────
+  # Internal only (no published port). Trained head on the ml_data volume.
+  ml:
+    image: ghcr.io/${IMAGE_OWNER:-micko112}/bebetter-ml:${IMAGE_TAG:-latest}
+    container_name: bebetter-ml
+    restart: unless-stopped
+    environment:
+      ML_TOKEN: "${ML_TOKEN:-}"
+      ORT_THREADS: "${ML_THREADS:-2}"
+    volumes:
+      - ml_data:/data
+    mem_limit: 1g
 
   # ─── Angular frontend ────────────────────────────────────────────────────────
   frontend:
@@ -74,5 +91,6 @@ services:
 volumes:
   datomic_data:
   uploads_data:
+  ml_data:
   certbot-conf:
   certbot-www:

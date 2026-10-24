@@ -39,10 +39,10 @@ else
 fi
 
 echo "▶ [4/6] Pull latest images"
-docker compose -f "$COMPOSE_FILE" pull backend frontend datomic
+docker compose -f "$COMPOSE_FILE" pull backend frontend datomic ml
 
 echo "▶ [5/6] Restart services (Datomic untouched to avoid data loss window)"
-docker compose -f "$COMPOSE_FILE" up -d --no-deps --remove-orphans backend frontend
+docker compose -f "$COMPOSE_FILE" up -d --no-deps --remove-orphans ml backend frontend
 
 # Nginx caches upstream DNS — restart forces it to resolve the new container IPs.
 # Without this you can see 502 Bad Gateway right after a deploy.

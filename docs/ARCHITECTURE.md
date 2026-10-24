@@ -16,6 +16,7 @@ in `frontend/src/app/core/brand.ts` so it can be renamed in one place.
 | Accounts | `web.accounts` (+ auth/profile handlers in `web.server`) | `database/schema_accounts.clj` | profile page, settings pages, follow requests, login/register/reset |
 | Realtime & live | `web.realtime`, `web.notifications` | `database/schema_realtime.clj` | `services/realtime.service.ts`, chat live features, live broadcast pages |
 | Shell & UX | — (small read-only endpoints allowed) | — | layout/navigation, reels page, notifications page, progress streak UX, design system |
+| Activity classifier | `web.vision` (+ Python service in `ml/`) | `database/schema_vision.clj` | `services/vision.service.ts`, "Looks like" chips in the composer |
 
 Shared, everyone may use, nobody restructures: `web.http` (JSON helpers),
 `project.test-db` (in-memory Datomic fixture for tests).
@@ -33,6 +34,8 @@ production data already exists — never change the type of an existing attribut
  variants: [{w, url}] (ascending), placeholder: "data:image/...", posterUrl, durationSec}
 ```
 `POST /api/media` (multipart `file`, optional `poster` for video) → Media DTO.
+The upload response (only) may also carry
+`suggestions: [{activity, label, emoji, score}]` from the activity classifier.
 `POST /api/upload` stays working for legacy callers (returns `{url}`).
 
 ### Post DTO and creation (`models/post.model.ts`)
@@ -41,6 +44,18 @@ Post DTO = previous fields + `media: Media[]`, `layout: single|carousel|compare`
 `likeCount`, `dayNumber`, `editedAt`. Legacy posts with only `mediaUrl` are
 returned with a one-item `media` array.
 `POST /api/posts {caption, mediaIds[], layout?, audience?, hideLikes?, commentsOff?, activityTag?}`.
+
+### Activity classifier (`web.vision`, `ml/`)
+Optional: everything works without `ML_URL`. After an upload, `web.media`
+calls `(web.vision/classify bytes {:embedding? true})` (2 s timeout, circuit
+breaker) and stores `:media/predictions`, `:media/embedding`.
+`web.posts` calls `(web.vision/sync-labels! post-id)` after create/update so
+the post's activity tag (normalized with `web.vision/normalize-activity`)
+becomes a `:vision-label/*` training example. Activity keys are shared
+between `web.vision/activities` and `ml/app/activities.py`.
+Endpoints: `POST /api/vision/classify` (composer preview, stores nothing),
+admin-only `GET /api/vision/status`, `POST /api/vision/retrain`,
+`GET /api/vision/export` (`ADMIN_USERNAMES`).
 
 ### Privacy (`web.accounts`)
 `(hidden-author-ids db viewer-e)`, `(can-view-posts? db viewer-e author-e)`,
@@ -55,4 +70,5 @@ Frontend: `RealtimeService.on('notification' | 'message' | ...)`.
 
 ## Running locally
 Backend tests: `lein test` (uses in-memory Datomic, no transactor needed).
+ML service: `cd ml && python scripts/download_model.py && python -m unittest discover -s tests -t .`.
 Frontend: `cd frontend && npm ci && npx ng build --configuration production`.
