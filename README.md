@@ -1,112 +1,105 @@
 # BeBetter
 
-A social platform for tracking meaningful activities, earning XP, and competing with friends through visible progress.
+Post your progress. Every day.
 
-## About 
+## About
 
-BeBetter is a web platform that allows users to track meaningful daily activities through a daily planner.
-For each completed activity, users receive a deserved amount of XP based on effort and difficulty. Progress is transparent, measurable, and earned.
+BeBetter is an Instagram-style social app built around one habit: share a photo or video of your progress every day, without shame. No filters needed — only your effort counts. Every post shows which day of your journey it is ("Day 37"), your streak keeps you going, and people can only react with support (🔥 💪 👏 🙌 💯 — there are no dislikes).
 
-BeBetter introduces a social layer that encourages accountability among users. Daily activities are public to friends, and a leaderboard ranks users based on their performance. This creates positive competition and reinforces consistency and discipline.
+The original BeBetter tools — daily planner, XP, leaderboard, competitions, challenges, groups, journal, stats and recap — are still there under **More → Your progress tools**.
 
 ## Features
 
- ### Interactive planner
-- Visual day view (hourly slots from 00:00 to 23:00).
-- Clicking an empty slot opens a form to add an activity.
-- Visual activity blocks.
+### Posting progress
+- Composer with up to 10 photos/videos, crop (1:1, 4:5, original), reorder, Before/After compare layout.
+- Audience per post: public, followers, or close friends; hide like count; turn off comments.
+- "Day N" label on every post, daily streak, a gentle "post today" prompt.
 
- ### Leaderboard
- - Users ranked by XP earned in different time periods (Daily, Weekly, Monthly, All-Time).
- - Live Delta: shows position changes (e.g. show +2 if you climbed 2 spots compared to yesterday / last week / last month).
- - Rank ties: when you have same XP as your friend, you share a rank.
+### Feed & discovery
+- Infinite feed with carousel and Before/After sliders, double-tap to like, supportive reactions.
+- Explore grid, hashtag pages, @mentions, threaded comments, Reels, stories.
 
-### XP System
-- XP is automatically calculated on server (XP = Duration(min) * Activity-Type * Intensity
+### Accounts
+- Private accounts with follow requests, block, mute, restrict, close friends.
+- Settings: edit profile, username/email/password, privacy, notification preferences, log out of all devices, password reset by email.
 
-## Project Status
-Active Development  
+### Live & messages
+- Realtime notifications, DMs with typing indicators, "Seen", reactions, replies, message requests and shared posts.
+- Live video (WebRTC) with live comments and hearts.
 
-Core Daily Planner, XP system, Leaderboard and ranking logic implemented.  
+### Media
+- Cloud storage on Cloudflare R2 / AWS S3 / MinIO (local disk fallback).
+- Optimized images (320/640/1080 renditions, blur-up placeholders), EXIF/GPS stripped for privacy.
 
-## Usage 
+### Progress tools (original BeBetter)
+- Daily planner, XP system (`XP = Duration(min) × Activity-Type × Intensity`), leaderboard with rank ties and deltas, competitions, challenges, groups, journal, stats, recap.
 
-### Running the Application
+## Usage
 
-Since Datomic is used, two services must be started:
-
-1. Start Datomic transactor
-2. Run the Clojure application
-
-#### Start Datomic
-In repository where Datomic Pro is Unzipped, run CMD
+### Run with Docker (recommended)
 ```bash
-bin/transactor config/dev-transactor.properties
+docker compose up --build
 ```
-> [!NOTE] 
-> Wait until you see "System started"
-#### Run the Application
+Frontend: http://localhost:4200 · API: http://localhost:3000. Set `BEBETTER_SEED=true` on the first start to create demo users (password `password123`).
+
+### Run locally
+1. Start the Datomic transactor (in the unzipped Datomic Pro directory):
+   ```bash
+   bin/transactor config/dev-transactor.properties
+   ```
+2. Backend:
+   ```bash
+   lein clean
+   lein run
+   ```
+3. Frontend:
+   ```bash
+   cd frontend
+   npm ci
+   npx ng serve   # proxies /api and /uploads to localhost:3000
+   ```
+
+Without a transactor you can run the backend on an in-memory database:
 ```bash
-lein clean
-lein run
+DATOMIC_URI="datomic:mem://dev" BEBETTER_SEED=true lein run
 ```
-Once the server is running, open your web browser and navigate to:
-http://localhost:3000
 
-### 1. The Daily Planner
-Upon loading the application, you are presented with the Interactive Planner.
-- Timeline: The center of the screen shows a vertical timeline of the current day (00:00 - 23:00).
-- Navigation: Click on dates in navbar to view activities on different dates.
-- 
-### 2. Logging an Activity
-To log a completed activity:
-1. Click on any empty time slot in the calendar (e.g. 14:00)
-2. A form will apear in that slot
-3. Select details:
-   - Activity Type (e.g. Training, Study).
-   - Intensity: Rate how hard you worked (1-5).
-   - Duration: Put how long the activity lasted.
-4. Click Save.
-5. The activity will be visible over selected time slot painted with blue color 
+### Tests
+```bash
+lein test                                        # backend, in-memory Datomic, no transactor needed
+cd frontend && npx ng build --configuration production
+```
 
-### 3. The Leaderboard
-> [!NOTE] 
-> Soon to be publsihed.
+Deployment, cloud storage (R2), email and Live/TURN setup: see [DEPLOYMENT.md](DEPLOYMENT.md). Configuration variables: [.env.example](.env.example).
 
-## Developement
+## Development
 
 ### Technology
+- **Backend:** Clojure (Leiningen), Ring 1.12 + Jetty 11 (WebSockets), Reitit, Datomic, Malli
+- **Frontend:** Angular 19 (standalone components, signals), PWA
+- **Media:** AWS SDK v2 (S3/R2), Thumbnailator, metadata-extractor
+- **Testing:** clojure.test with an in-memory Datomic fixture
 
-- **Language:** Clojure (Leiningen)
-- **Database:** Datomic Pro  
-- **Frontend:** HTMX, Hiccup  
-- **Server:** Ring, Reitit, Jetty  
-- **Testing:** clojure.test  
-- **Validation:** Malli  
-
-### Prerequisites
-- Java JDK (8 or newer)
-- Leiningen (Clojure build tool)
-- Datomic Pro files (unzipped locally)
-
-### File Structure 
-
+### File Structure
 ```text
 src/
-  ├── database/
-  │   ├── schema.clj       
-  │   └── seed.clj          
-  │
-  ├── project/
-  │   ├── api.clj     
-  │   ├── db.clj             
-  │   ├── leaderboard.clj    
-  │   ├── system.clj         
-  │   ├── time.clj          
-  │   └── validation.clj     
-  │
-  └── web/
-      └── server.clj        
+  database/        schema.clj + schema_<area>.clj, seed.clj
+  project/         planner, XP, leaderboard logic (original BeBetter)
+  web/
+    server.clj     app, middleware, core routes, combines area routes
+    http.clj       shared JSON/session helpers
+    posts.clj      posts, feed, explore, hashtags, comments, reactions, streaks
+    media.clj      uploads, storage (media/storage.clj), image/video pipeline
+    accounts.clj   auth, profiles, privacy, settings, sessions
+    realtime.clj   WebSocket, presence;  dm.clj  messages;  live.clj  Live video
+    notifications.clj
+frontend/src/app/
+  layout/          Instagram-style shell (sidebar / bottom tabs)
+  pages/           feed, explore, reels, profile, settings, chat, live, ...
+  components/      post-card, media, media-carousel, compare-slider, composer, ...
+  core/brand.ts    the app name — rename the app here
+docs/
+  ARCHITECTURE.md  areas, ownership and contracts
 ```
 
 ## Authors
@@ -116,4 +109,3 @@ src/
 **Master Student of Faculty of Organizational Sciences**
 
 *Software Engineering and Artificial Intelligence*
-
