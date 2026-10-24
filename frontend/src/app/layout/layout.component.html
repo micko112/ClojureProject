@@ -258,53 +258,8 @@
     </div>
   }
 
-  <!-- Legacy create post modal (kept until the new composer is wired in) -->
-  @if (showCreatePost) {
-    <div class="modal-overlay" (click)="closeCreate()">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="legacy-create-title" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3 id="legacy-create-title">Share today's progress</h3>
-          <button (click)="closeCreate()" aria-label="Close">
-            <span class="material-icons" aria-hidden="true">close</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          @if (createMediaPreview) {
-            <div class="media-preview">
-              @if (createMediaFile?.type?.startsWith('video/')) {
-                <video [src]="createMediaPreview" controls></video>
-              } @else {
-                <img [src]="createMediaPreview" alt="" />
-              }
-              <button class="remove-media" (click)="createMediaFile = null; createMediaPreview = ''" aria-label="Remove media">
-                <span class="material-icons" aria-hidden="true">close</span>
-              </button>
-            </div>
-          }
-          <label class="media-upload-btn">
-            <span class="material-icons" aria-hidden="true">photo_camera</span> Add photo/video
-            <input type="file" accept="image/*,video/*" (change)="onMediaSelect($event)" hidden />
-          </label>
-          <textarea
-            [(ngModel)]="createCaption"
-            placeholder="What did you work on today? Small steps count."
-            aria-label="Caption"
-            rows="3"
-          ></textarea>
-          <input
-            type="text"
-            [(ngModel)]="createActivityTag"
-            aria-label="Activity tag"
-            placeholder="Activity tag (e.g. running, coding...)"
-          />
-        </div>
-        <div class="modal-footer">
-          <button class="bb-btn bb-btn--secondary" (click)="closeCreate()">Cancel</button>
-          <button class="bb-btn bb-btn--primary" (click)="submitPost()" [disabled]="creating">
-            {{ creating ? 'Sharing...' : 'Share' }}
-          </button>
-        </div>
-      </div>
-    </div>
+  <!-- Post composer (photos/videos, crop, before/after, audience) -->
+  @if (composer.isOpen()) {
+    @defer (on immediate) { <app-composer /> }
   }
 </div>

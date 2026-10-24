@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,7 @@ import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
 import { BadgesService } from '../services/badges.service';
 import { ComposerService } from '../services/composer.service';
+import { ComposerComponent } from '../components/composer/composer.component';
 import { ThemeService } from '../services/theme.service';
 import { BRAND } from '../core/brand';
 import { NotificationsComponent } from '../pages/notifications/notifications.component';
@@ -34,7 +35,7 @@ export const PROGRESS_TOOLS = [
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NotificationsComponent, StreakBadgeComponent],
+  imports: [CommonModule, RouterModule, FormsModule, NotificationsComponent, StreakBadgeComponent, ComposerComponent],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css']
 })
@@ -74,24 +75,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   get showNotifPanel(): boolean { return this.panel() === 'notifications'; }
   set showNotifPanel(v: boolean) { this.panel.set(v ? 'notifications' : null); }
 
-  // Legacy create-post modal (the media agent replaces this with the composer)
-  showCreatePost = false;
-  createCaption = '';
-  createActivityTag = '';
-  createMediaFile: File | null = null;
-  createMediaPreview = '';
-  creating = false;
-
   private searchTimer: any;
   private sub?: Subscription;
-
-  constructor() {
-    // Bridge: Create buttons call composer.open(); until the new composer is
-    // wired in at merge time, opening it also shows the legacy modal.
-    effect(() => {
-      if (this.composer.isOpen()) untracked(() => this.openCreate());
-    });
-  }
 
   ngOnInit(): void {
     this.sub = this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {
@@ -221,48 +206,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.panel.set(null);
     this.moreOpen.set(false);
     this.composer.open();
-  }
-
-  openCreate(): void { this.showCreatePost = true; }
-  closeCreate(): void {
-    this.showCreatePost = false;
-    this.createCaption = '';
-    this.createActivityTag = '';
-    this.createMediaFile = null;
-    this.createMediaPreview = '';
-    this.composer.close();
-  }
-
-  onMediaSelect(e: Event): void {
-    const f = (e.target as HTMLInputElement).files?.[0];
-    if (!f) return;
-    this.createMediaFile = f;
-    const reader = new FileReader();
-    reader.onload = ev => { this.createMediaPreview = ev.target?.result as string; };
-    reader.readAsDataURL(f);
-  }
-
-  submitPost(): void {
-    if (this.creating) return;
-    this.creating = true;
-    const doCreate = (mediaUrl?: string) => {
-      this.api.createPost({
-        caption: this.createCaption,
-        activityTag: this.createActivityTag,
-        mediaUrl
-      }).subscribe({
-        next: () => { this.creating = false; this.closeCreate(); },
-        error: () => { this.creating = false; }
-      });
-    };
-    if (this.createMediaFile) {
-      this.api.uploadFile(this.createMediaFile).subscribe({
-        next: r => doCreate(r.url),
-        error: () => { this.creating = false; }
-      });
-    } else {
-      doCreate();
-    }
   }
 
   // ---------- Appearance / account ----------
