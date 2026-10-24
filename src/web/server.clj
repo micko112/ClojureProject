@@ -61,18 +61,6 @@
 
 ;; ===== DTO CONVERTERS =====
 
-(defn- user-dto [u]
-  (when (and u (:user/username u))
-    {:username    (:user/username u)
-     :displayName (:user/display-name u)
-     :profilePic  (:user/profile-pic u)
-     :bio         (:user/bio u)
-     :website     (:user/website u)
-     :xp          (or (:user/xp u) 0)}))
-
-(defn- user-dto-e [db eid]
-  (user-dto (d/entity db eid)))
-
 ;; Post/comment DTOs live in web.posts (posts area); kept here for the
 ;; competition feed.
 (defn- post-dto [db eid] (posts/post-dto db eid nil))
@@ -119,47 +107,7 @@
 ;; ===== DB HELPERS =====
 
 ;; ===== AUTH =====
-
-(defn- handle-me [req]
-  (if-let [un (me req)]
-    (let [u (d/entity (ddb) [:user/username un])]
-      (if (:db/id u) (ok (user-dto u)) (unauth)))
-    (unauth)))
-
-(defn- handle-login [req]
-  (let [{:keys [username password]} (parse-body req)
-        un (str/trim (str username))
-        u  (d/entity (ddb) [:user/username un])]
-    (cond
-      (not (:db/id u))
-      (jresp 401 {:error "User not found"})
-
-      (and (seq (:user/password-hash u))
-           (not (hashers/check (str password) (:user/password-hash u))))
-      (jresp 401 {:error "Wrong password"})
-
-      :else
-      (-> (ok (user-dto u))
-          (assoc :session {:username un})))))
-
-(defn- handle-register [req]
-  (let [{:keys [username password displayName]} (parse-body req)
-        un (str/trim (str username))]
-    (cond
-      (str/blank? un)           (bad "Username required")
-      (< (count (str password)) 6) (bad "Password too short")
-      (d/entity (ddb) [:user/username un]) (bad "Username taken")
-      :else
-      (do
-        @(d/transact s/conn [{:user/username un
-                               :user/xp 0
-                               :user/display-name (or (str/trim (str displayName)) un)
-                               :user/password-hash (hashers/derive (str password))}])
-        (-> (created (user-dto (d/entity (ddb) [:user/username un])))
-            (assoc :session {:username un}))))))
-
-(defn- handle-logout [_]
-  (-> (ok {:ok true}) (assoc :session nil)))
+;; Moved to web.accounts (login/register/me/logout/password reset).
 
 ;; ===== ACTIVITIES =====
 
@@ -405,79 +353,8 @@
 ;; ===== POSTS / FEED / COMMENTS / SAVED =====
 ;; Moved to web.posts (routes in posts/routes).
 
-;; ===== PROFILE =====
-
-(defn- handle-get-profile [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u     (d/entity db [:user/username uname])]
-    (if-not (:db/id u)
-      (not-found)
-      (let [me-un (me req)
-            me-e  (when me-un (user-e db me-un))
-            followers (d/q '[:find [?f ...] :in $ ?u :where [?f :user/follows ?u]] db (:db/id u))
-            following (map :db/id (:user/follows u))
-            am-following (boolean (some #(= % me-e) followers))]
-        (ok (merge (user-dto u)
-                   {:followersCount (count followers)
-                    :followingCount (count following)
-                    :isFollowing    am-following}))))))
-
-(defn- handle-update-profile [req]
-  (if-let [username (me req)]
-    (let [{:keys [displayName bio website profilePic]} (parse-body req)
-          tx-data (cond-> []
-                    displayName (conj [:db/add [:user/username username] :user/display-name displayName])
-                    bio         (conj [:db/add [:user/username username] :user/bio bio])
-                    website     (conj [:db/add [:user/username username] :user/website website])
-                    profilePic  (conj [:db/add [:user/username username] :user/profile-pic profilePic]))]
-      (when (seq tx-data) @(d/transact s/conn tx-data))
-      (ok (user-dto (d/entity (ddb) [:user/username username]))))
-    (unauth)))
-
-(defn- handle-delete-account [req]
-  (if-let [username (me req)]
-    (let [param-un (get-in req [:path-params :username])]
-      (if (not= username param-un)
-        (jresp 403 {:error "Forbidden"})
-        (let [u-e (user-e (ddb) username)]
-          @(d/transact s/conn [[:db/retractEntity u-e]])
-          (-> (ok {:ok true}) (assoc :session nil)))))
-    (unauth)))
-
-;; ===== FOLLOW =====
-
-(defn- handle-toggle-follow [req]
-  (if-let [me-un (me req)]
-    (let [{:keys [username]} (parse-body req)
-          target username
-          db     (ddb)
-          me-e   (user-e db me-un)
-          t-e    (user-e db target)]
-      (if-not t-e
-        (not-found)
-        (let [following? (some #(= (:db/id %) t-e) (:user/follows (d/entity db me-e)))]
-          (if following?
-            (do @(d/transact s/conn [[:db/retract me-e :user/follows t-e]])
-                (ok {:action "unfollowed"}))
-            (do @(d/transact s/conn [[:db/add me-e :user/follows t-e]])
-                (create-notif! t-e :follow (str me-un " started following you"))
-                (ok {:action "followed"}))))))
-    (unauth)))
-
-(defn- handle-get-followers [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u-e   (user-e db uname)
-        fids  (d/q '[:find [?f ...] :in $ ?u :where [?f :user/follows ?u]] db u-e)]
-    (ok (mapv #(:user/username (d/entity db %)) fids))))
-
-(defn- handle-get-following [req]
-  (let [uname (get-in req [:path-params :username])
-        db    (ddb)
-        u     (d/entity db [:user/username uname])
-        fids  (map :db/id (:user/follows u))]
-    (ok (mapv #(:user/username (d/entity db %)) fids))))
+;; ===== PROFILE / FOLLOW =====
+;; Moved to web.accounts (profile header, follow, follow requests, privacy).
 
 ;; ===== LEADERBOARD =====
 
@@ -1099,11 +976,7 @@
 ;; ===== ROUTES =====
 
 (def core-routes
-  [["/api/me"           {:get handle-me}]
-   ["/api/login"        {:post handle-login}]
-   ["/api/register"     {:post handle-register}]
-   ["/api/logout"       {:post handle-logout}]
-
+  [;; auth/profile/follow routes live in accounts/routes
    ["/api/oauth/google"   {:post oauth/handle-google}]
    ["/api/oauth/facebook" {:post oauth/handle-facebook}]
 
@@ -1116,14 +989,9 @@
 
    ["/api/stats"                   {:get handle-get-stats}]
 
-   ["/api/profile"          {:put handle-update-profile}]
    ["/api/users/search"     {:get handle-search}]
-   ["/api/users/:username"  {:get handle-get-profile :delete handle-delete-account}]
    ["/api/users/:username/badges" {:get handle-get-badges}]
 
-   ["/api/follow"           {:post handle-toggle-follow}]
-   ["/api/followers/:username" {:get handle-get-followers}]
-   ["/api/following/:username" {:get handle-get-following}]
 
    ["/api/leaderboard"      {:get handle-get-leaderboard}]
    ["/api/notifications"    {:get handle-get-notifications}]
@@ -1180,6 +1048,7 @@
                                          wrap-keyword-params]}})
        (ring/create-default-handler))
       (wrap-multipart-params)
+      (accounts/wrap-session-version)
       (wrap-session {:cookie-name "bb-session"
                      :cookie-attrs {:same-site :lax
                                     :http-only true
