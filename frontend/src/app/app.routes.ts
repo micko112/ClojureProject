@@ -26,6 +26,8 @@ export const routes: Routes = [
       { path: 'stats', loadComponent: () => import('./pages/stats/stats.component').then(m => m.StatsComponent) },
       { path: 'journal', loadComponent: () => import('./pages/journal/journal.component').then(m => m.JournalComponent) },
       { path: 'post/:id', loadComponent: () => import('./pages/post-detail/post-detail.component').then(m => m.PostDetailComponent) },
+      { path: 'explore', loadComponent: () => import('./pages/explore/explore.component').then(m => m.ExploreComponent) },
+      { path: 'explore/tags/:tag', loadComponent: () => import('./pages/hashtag/hashtag.component').then(m => m.HashtagComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

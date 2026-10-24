@@ -7,6 +7,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { Media } from '../../models/media.model';
+import { postMedia } from '../post-card/post-utils';
 
 @Component({
   selector: 'app-reel-viewer',
@@ -105,7 +107,7 @@ export class ReelViewerComponent implements OnInit, OnDestroy {
   like(): void {
     if (!this.post) return;
     this.api.likePost(this.post.id).subscribe({
-      next: r => { this.post.likes = r.likes; this.post.liked = r.liked; }
+      next: r => { this.post.likes = r.likes; this.post.liked = r.liked; if (this.post.likeCount != null) this.post.likeCount = r.likeCount; }
     });
   }
 
@@ -154,6 +156,17 @@ export class ReelViewerComponent implements OnInit, OnDestroy {
   }
 
   close(): void { this.closed.emit(); }
+
+  /** First video of a (carousel) post, else its first media; legacy mediaUrl supported. */
+  reelMedia(post: any): Media | null {
+    const media = postMedia(post);
+    return media.find(m => m.type === 'video') || media[0] || null;
+  }
+
+  likeCount(post: any): number {
+    if (post?.likeCount != null) return post.likeCount;
+    return Array.isArray(post?.likes) ? post.likes.length : (post?.likes || 0);
+  }
 
   isVideo(url: string): boolean {
     return url ? /\.(mp4|webm|mov)$/i.test(url) : false;

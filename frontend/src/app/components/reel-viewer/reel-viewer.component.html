@@ -23,11 +23,14 @@
 
       <!-- ── Media panel ── -->
       <div class="rv-media-col">
-        @if (post.mediaUrl) {
-          @if (isVideo(post.mediaUrl)) {
-            <video class="rv-media" [src]="post.mediaUrl" controls autoplay [muted]="true" loop playsinline></video>
+        @if (reelMedia(post); as m) {
+          @if (m.type === 'video') {
+            <video class="rv-media" [src]="m.url" [poster]="m.posterUrl || ''" controls autoplay [muted]="true" loop playsinline></video>
           } @else {
-            <img class="rv-media" [src]="post.mediaUrl" alt="" />
+            <img class="rv-media" [src]="m.url" alt="" />
+          }
+          @if ((post.media?.length || 0) > 1) {
+            <span class="rv-multi material-icons" title="More photos in this post">collections</span>
           }
         } @else {
           <div class="rv-text-card">
@@ -47,7 +50,7 @@
               @if (post.activityTag) { <span class="rv-tag-sm">{{ post.activityTag }}</span> }
             </div>
           </a>
-          @if (post.caption && post.mediaUrl) {
+          @if (post.caption && reelMedia(post)) {
             <p class="rv-caption-overlay">{{ post.caption }}</p>
           }
         </div>
@@ -56,7 +59,7 @@
         <div class="rv-mobile-actions">
           <button class="rv-act-btn" [class.liked]="post.liked" (click)="like()">
             <span class="material-icons">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
-            <span class="rv-act-label">{{ post.likes?.length ?? post.likes ?? 0 }}</span>
+            <span class="rv-act-label">{{ likeCount(post) }}</span>
           </button>
           <button class="rv-act-btn" (click)="showCommentsMobile = !showCommentsMobile">
             <span class="material-icons">chat_bubble_outline</span>
@@ -128,7 +131,7 @@
         <div class="rv-c-actions">
           <button class="rv-c-like-btn" [class.liked]="post.liked" (click)="like()">
             <span class="material-icons">{{ post.liked ? 'favorite' : 'favorite_border' }}</span>
-            {{ post.likes?.length ?? post.likes ?? 0 }} likes
+            {{ likeCount(post) }} likes
           </button>
           <div class="rv-c-right">
             <button class="rv-c-icon-btn" (click)="sharePost()" title="Send to DM">
